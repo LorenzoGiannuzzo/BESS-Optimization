@@ -1,4 +1,5 @@
 import pandas as pd
+import openpyxl
 
 # Define CSVHandler class
 class import_file:

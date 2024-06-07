@@ -45,7 +45,7 @@ discharge_rate = load_curve.iloc[357:, [0, 4,5]]
 ''' BESS SETUP
 
     - Technology
-    - Weight [kg]
+    - Size [kWh]
     - Specific Energy / Specific Power
     - Initial SoC
 
@@ -58,7 +58,7 @@ SoC_0 = 0.20 #[%]
 
 ''' BESS Parameter Evaluation
 
-    - Slef Dischage [%/a]
+    - Self Dischage [%/a]
     - Efficiency
     - Specific Energy / Specific Power
 

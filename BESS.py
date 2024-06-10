@@ -1,5 +1,6 @@
 import matplotlib.pyplot as plt
 import pymoo
+import numpy as np
 from pymoo.algorithms.moo.nsga3 import NSGA3
 from pymoo.optimize import minimize
 from pymoo.util.ref_dirs import get_reference_directions
@@ -7,6 +8,7 @@ from revenues import Revenues
 from pymoo.operators.mutation.pm import PolynomialMutation
 from pymoo.operators.crossover.sbx import SimulatedBinaryCrossover
 from pymoo.operators.selection.tournament import TournamentSelection
+from pymoo.core.sampling import Sampling
 
 # FILE PATH DATA
 file_path = "BESS Data.xlsx"
@@ -15,33 +17,57 @@ sheetname = "BESS Properties"
 sheetname2 = "Li-ion ChargeDischarge Curve 10"
 sheetname3 = "PUN"
 
+
+# Funzione di campionamento personalizzata
+class CustomSampling(Sampling):
+    def __init__(self, xl, xu):
+        super().__init__()
+        self.xl = xl
+        self.xu = xu
+
+    def _do(self, problem, n_samples, **kwargs):
+        return np.random.uniform(self.xl, self.xu, (n_samples, problem.n_var))
+
+
 class Optimizer:
 
     def __init__(self, objective_function: Revenues, pop_size: int) -> None:
         self._objective_function = objective_function
         self.pop_size = pop_size
+
     def maximize_revenues(self):
         ref_dirs = get_reference_directions("das-dennis", 1, n_partitions=24)
+
         # Definire gli operatori di mutazione, crossover e selezione
+        mutation = PolynomialMutation(prob=1.0 / self._objective_function.n_var, eta=20)
+        crossover = SimulatedBinaryCrossover(prob=0.9, eta=15)
+        selection = TournamentSelection(func_comp=np.random.random)  # Definisci la tua funzione di selezione
+
+        # Creare un'istanza di CustomSampling
+        sampling = CustomSampling(self._objective_function.xl, self._objective_function.xu)
 
         # Creare l'algoritmo con gli operatori definiti
-        algorithm = NSGA3(pop_size=self.pop_size, ref_dirs=ref_dirs,
-            )
+        algorithm = NSGA3(
+            pop_size=self.pop_size,
+            ref_dirs=ref_dirs,
+            sampling=sampling
+
+        )
 
         res = minimize(
             self._objective_function,
             algorithm,
-            ('n_gen', 500),
+            ('n_gen', 1000),
             seed=42,
             verbose=True,
-
         )
         return res
 
+
 # [OPTIMIZATION]
-pop_size = 10
-size= 2500
-objective_function = Revenues(size=size, pop_size= pop_size,file_path2="PUN.xlsx", sheetname3="PUN")
+pop_size = 100
+size = 2500
+objective_function = Revenues(size=size, pop_size=pop_size, file_path2=file_path2, sheetname3=sheetname3)
 
 # Create an instance of Optimizer with the objective_function and pop_size
 optimizer = Optimizer(objective_function=objective_function, pop_size=pop_size)
@@ -62,9 +88,9 @@ d_func = discharge_rate_interpolated_func
 
 for index in range(48 - 1):
     if c_d_timeseries[index] >= 0:
-        c_d_timeseries[index] = min(c_d_timeseries[index], c_func(soc[index]), 1-soc[index])
+        c_d_timeseries[index] = min(c_d_timeseries[index], c_func(soc[index]), 0.9-soc[index])
     else:
-        c_d_timeseries[index] = max(c_d_timeseries[index], -d_func(soc[index]), -soc[index])
+        c_d_timeseries[index] = max(c_d_timeseries[index], -d_func(soc[index]), -soc[index]+0.1)
 
     if c_d_timeseries[index] >= 0:
         charged_energy[index] = c_d_timeseries[index] * size

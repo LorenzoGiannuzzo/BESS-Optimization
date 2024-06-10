@@ -72,7 +72,7 @@ BESS_Parameters = BESS.get_bess(technology,se_sp,size)
 
 # GET C_D(SoC) FUNCTIONS
 charge_rate_interpolated_func,discharge_rate_interpolated_func = BESS.get_c_d_functions(load_curve)
-n_offspring = 2
+
 time_window = 48
 
 class Revenues(Problem):
@@ -93,7 +93,7 @@ class Revenues(Problem):
             xu=[1] * time_window,
             vtype=float
         )
-        self.pop_size = 10
+        self.pop_size = 100
         self.data = Get_data.get_data(file_path2, sheetname3)
         self.PUN_timeseries = self.data.iloc[:time_window,2].to_numpy()
         self.c_d_timeseries = np.zeros((len(self.PUN_timeseries),self.pop_size))
@@ -112,9 +112,9 @@ class Revenues(Problem):
             for col in range(self.soc.shape[1]):  # Itera su ogni colonna di self.soc
 
                 if self.c_d_timeseries[index, col] >= 0:
-                    self.c_d_timeseries[index, col] = min(self.c_d_timeseries[index, col], self.c_func(self.soc[index, col]), 1 - self.soc[index, col])
+                    self.c_d_timeseries[index, col] = min(self.c_d_timeseries[index, col], self.c_func(self.soc[index, col]), 0.9 - self.soc[index, col])
                 else:
-                    self.c_d_timeseries[index, col] = max(self.c_d_timeseries[index, col], -self.d_func(self.soc[index, col]), -self.soc[index, col])
+                    self.c_d_timeseries[index, col] = max(self.c_d_timeseries[index, col], -self.d_func(self.soc[index, col]), 0.1 + -self.soc[index, col])
 
                 if self.c_d_timeseries[index, col] >= 0:
                     self.charged_energy[index, col] = self.c_d_timeseries[index, col] * size

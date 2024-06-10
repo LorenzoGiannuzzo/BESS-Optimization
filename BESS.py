@@ -62,9 +62,9 @@ d_func = discharge_rate_interpolated_func
 
 for index in range(48 - 1):
     if c_d_timeseries[index] >= 0:
-        c_d_timeseries[index] = min(c_d_timeseries[index], c_func(soc[index]), 1-soc[index])
+        c_d_timeseries[index] = min(c_d_timeseries[index], c_func(soc[index]), 0.9-soc[index])
     else:
-        c_d_timeseries[index] = max(c_d_timeseries[index], -d_func(soc[index]), -soc[index])
+        c_d_timeseries[index] = max(c_d_timeseries[index], -d_func(soc[index]), -soc[index]+0.1)
 
     if c_d_timeseries[index] >= 0:
         charged_energy[index] = c_d_timeseries[index] * size

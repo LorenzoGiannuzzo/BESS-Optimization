@@ -112,9 +112,9 @@ class Revenues(Problem):
             for col in range(self.soc.shape[1]):  # Itera su ogni colonna di self.soc
 
                 if self.c_d_timeseries[index, col] >= 0:
-                    self.c_d_timeseries[index, col] = min(self.c_d_timeseries[index, col], self.c_func(self.soc[index, col]), 1 - self.soc[index, col])
+                    self.c_d_timeseries[index, col] = min(self.c_d_timeseries[index, col], self.c_func(self.soc[index, col]), 0.9 - self.soc[index, col])
                 else:
-                    self.c_d_timeseries[index, col] = max(self.c_d_timeseries[index, col], -self.d_func(self.soc[index, col]), -self.soc[index, col])
+                    self.c_d_timeseries[index, col] = max(self.c_d_timeseries[index, col], -self.d_func(self.soc[index, col]), 0.1 + -self.soc[index, col])
 
                 if self.c_d_timeseries[index, col] >= 0:
                     self.charged_energy[index, col] = self.c_d_timeseries[index, col] * size

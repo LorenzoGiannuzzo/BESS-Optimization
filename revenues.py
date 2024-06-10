@@ -72,6 +72,8 @@ BESS_Parameters = BESS.get_bess(technology,se_sp,size)
 
 # GET C_D(SoC) FUNCTIONS
 charge_rate_interpolated_func,discharge_rate_interpolated_func = BESS.get_c_d_functions(load_curve)
+n_offspring = 2
+time_window = 48
 
 class Revenues(Problem):
     def __init__(
@@ -85,43 +87,51 @@ class Revenues(Problem):
 
     ) -> None:
         super().__init__(
-            n_var=24,
+            n_var=time_window,
             n_obj=1,
-            xl=[-1] * 24,
-            xu=[1] * 24,
+            xl=[-1] * time_window,
+            xu=[1] * time_window,
             vtype=float
         )
+        self.pop_size = 10
         self.data = Get_data.get_data(file_path2, sheetname3)
-        self.PUN_timeseries = self.data.iloc[:24, 2].to_numpy()
-        self.c_d_timeseries = np.zeros(len(self.PUN_timeseries))
-        self.soc = np.zeros(len(self.PUN_timeseries))
-        self.charged_energy = np.zeros(len(self.PUN_timeseries))
-        self.discharged_energy = np.zeros(len(self.PUN_timeseries))
+        self.PUN_timeseries = self.data.iloc[:time_window,2].to_numpy()
+        self.c_d_timeseries = np.zeros((len(self.PUN_timeseries),self.pop_size))
+        self.soc = np.zeros((len(self.PUN_timeseries), self.pop_size))
+        self.charged_energy = np.zeros((len(self.PUN_timeseries),self.pop_size))
+        self.discharged_energy = np.zeros((len(self.PUN_timeseries),self.pop_size))
         self.c_func, self.d_func = BESS.get_c_d_functions(load_curve)
-        self.soc[0] = 0.2  # Inizializzazione della SOC
+        self.soc[0,:] = 0.2  # Inizializzazione della SOC
+
 
     def _evaluate(self, x, out, *args, **kwargs):
-        self.c_d_timeseries = np.array(x).reshape(24, 1)
+        self.c_d_timeseries = np.array(x).reshape(-1, self.pop_size)
 
+        for index in range(len(self.PUN_timeseries) - 1):
+            #print(self.PUN_timeseries[:,0])
+            for col in range(self.soc.shape[1]):  # Itera su ogni colonna di self.soc
 
-        for index in range(len(self.PUN_timeseries)-1):
+                if self.c_d_timeseries[index, col] >= 0:
+                    self.c_d_timeseries[index, col] = min(self.c_d_timeseries[index, col], self.c_func(self.soc[index, col]), 1 - self.soc[index, col])
+                else:
+                    self.c_d_timeseries[index, col] = max(self.c_d_timeseries[index, col], -self.d_func(self.soc[index, col]), -self.soc[index, col])
 
-            if self.c_d_timeseries[index] >= 0:
-                self.c_d_timeseries[index] = min(self.c_d_timeseries[index], self.c_func(self.soc[index]))
-            else:
-                self.c_d_timeseries[index] = max(self.c_d_timeseries[index], -self.d_func(self.soc[index]))
+                if self.c_d_timeseries[index, col] >= 0:
+                    self.charged_energy[index, col] = self.c_d_timeseries[index, col] * size
+                else:
+                    self.discharged_energy[index, col] = self.c_d_timeseries[index, col] * size
 
-            if self.c_d_timeseries[index] >= 0:
-                self.charged_energy[index] = self.c_func(self.soc[index])*size
-            else:
-                self.discharged_energy[index] = -self.d_func(self.soc[index])*size
+                # UPDATE SoC
+                if self.c_d_timeseries[index, 0] >= 0:
+                    self.soc[index + 1, col] = min(1, self.soc[index, col] + self.charged_energy[index, col] / size)
+                else:
+                    self.soc[index + 1, col] = max(0, self.soc[index, col] + self.discharged_energy[index, col] / size)
 
-            # UPDATE SoC
-            if self.c_d_timeseries[index] >= 0:
-                self.soc[index + 1] = min(1, self.soc[index] + self.charged_energy[index]/size)
-            else:
-                self.soc[index + 1] = max(0, self.soc[index] + self.discharged_energy[index]/size)
+        F_values = []
+        for i in range(self.soc.shape[1]):
+            revenues = -self.discharged_energy[:, i] * self.PUN_timeseries - self.charged_energy[:,
+                                                                             i] * self.PUN_timeseries
+            F_values.append(np.array([-revenues.sum()]).reshape(-1, 1))
 
-        revenues = sum(-self.discharged_energy * self.PUN_timeseries) - sum(self.charged_energy * self.PUN_timeseries)
-        out["F"] = np.array([-revenues.sum()])
-        print(-revenues,self.charged_energy,self.discharged_energy)
+        out["F"] = np.concatenate(F_values, axis=1)
+

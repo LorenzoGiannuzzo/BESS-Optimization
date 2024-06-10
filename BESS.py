@@ -1,8 +1,12 @@
 import matplotlib.pyplot as plt
+import pymoo
 from pymoo.algorithms.moo.nsga3 import NSGA3
 from pymoo.optimize import minimize
 from pymoo.util.ref_dirs import get_reference_directions
 from revenues import Revenues
+from pymoo.operators.mutation.pm import PolynomialMutation
+from pymoo.operators.crossover.sbx import SimulatedBinaryCrossover
+from pymoo.operators.selection.tournament import TournamentSelection
 
 # FILE PATH DATA
 file_path = "BESS Data.xlsx"
@@ -17,20 +21,25 @@ class Optimizer:
         self._objective_function = objective_function
         self.pop_size = pop_size
     def maximize_revenues(self):
-        ref_dirs = get_reference_directions("das-dennis", 1, n_partitions=12)
-        algorithm = NSGA3(pop_size=self.pop_size, ref_dirs=ref_dirs)
+        ref_dirs = get_reference_directions("das-dennis", 1, n_partitions=24)
+        # Definire gli operatori di mutazione, crossover e selezione
+
+        # Creare l'algoritmo con gli operatori definiti
+        algorithm = NSGA3(pop_size=self.pop_size, ref_dirs=ref_dirs,
+            )
 
         res = minimize(
             self._objective_function,
             algorithm,
-            ('n_gen', 600),
+            ('n_gen', 500),
             seed=42,
             verbose=True,
+
         )
         return res
 
 # [OPTIMIZATION]
-pop_size = 1
+pop_size = 10
 size= 2500
 objective_function = Revenues(size=size, pop_size= pop_size,file_path2="PUN.xlsx", sheetname3="PUN")
 
@@ -40,7 +49,33 @@ optimizer = Optimizer(objective_function=objective_function, pop_size=pop_size)
 # Maximize revenues
 solution = optimizer.maximize_revenues()
 
+soc = [0.0] * 48
+charged_energy = [0.0]*48
+discharged_energy= [0.0]*48
+c_d_timeseries = solution.X
+soc[0] = 0.2
 
+from revenues import charge_rate_interpolated_func
+from revenues import discharge_rate_interpolated_func
+c_func = charge_rate_interpolated_func
+d_func = discharge_rate_interpolated_func
+
+for index in range(48 - 1):
+    if c_d_timeseries[index] >= 0:
+        c_d_timeseries[index] = min(c_d_timeseries[index], c_func(soc[index]), 1-soc[index])
+    else:
+        c_d_timeseries[index] = max(c_d_timeseries[index], -d_func(soc[index]), -soc[index])
+
+    if c_d_timeseries[index] >= 0:
+        charged_energy[index] = c_d_timeseries[index] * size
+    else:
+        discharged_energy[index] = c_d_timeseries[index] * size
+
+        # UPDATE SoC
+    if c_d_timeseries[index] >= 0:
+        soc[index + 1] = min(1, soc[index] + charged_energy[index] / size)
+    else:
+        soc[index + 1] = max(0, soc[index] + discharged_energy[index] / size)
 
 
 #

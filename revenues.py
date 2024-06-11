@@ -122,16 +122,22 @@ class Revenues(Problem):
                     self.discharged_energy[index, col] = self.c_d_timeseries[index, col] * size
 
                 # UPDATE SoC
-                if self.c_d_timeseries[index, 0] >= 0:
-                    self.soc[index + 1, col] = min(1, self.soc[index, col] + self.charged_energy[index, col] / size)
+                if self.c_d_timeseries[index, col] >= 0:
+                    self.soc[index + 1, col] = min(1, self.soc[index, col] + self.charged_energy[index, col]/size)
                 else:
-                    self.soc[index + 1, col] = max(0, self.soc[index, col] + self.discharged_energy[index, col] / size)
+                    self.soc[index + 1, col] = max(0, self.soc[index, col] + self.discharged_energy[index, col]/size)
+
+        weights = np.ones(time_window)
+        weights[:24] = 1  # Pesi più alti per i primi 24 valori
 
         F_values = []
-        for i in range(self.soc.shape[1]):
-            revenues = -self.discharged_energy[:, i] * self.PUN_timeseries - self.charged_energy[:,
-                                                                             i] * self.PUN_timeseries
-            F_values.append(np.array([-revenues.sum()]).reshape(-1, 1))
+        for i in range(self.pop_size):
+            revenues = (
+                -(self.discharged_energy[:, i] * self.PUN_timeseries / 1000)
+                - (self.charged_energy[:, i] * self.PUN_timeseries / 1000)
+            )
+            weighted_revenues = revenues * weights  # Applica i pesi
+            F_values.append(np.array([-weighted_revenues.sum()]).reshape(-1, 1))
 
         out["F"] = np.concatenate(F_values, axis=1)
 

@@ -92,7 +92,7 @@ soc = [0.0] * 48
 charged_energy = [0.0]*48
 discharged_energy= [0.0]*48
 c_d_timeseries = solution.X
-soc[0] = 0.2
+soc[0] = 0.20
 
 c_func = charge_rate_interpolated_func
 d_func = discharge_rate_interpolated_func

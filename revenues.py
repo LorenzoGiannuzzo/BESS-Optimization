@@ -112,20 +112,20 @@ class Revenues(Problem):
             for col in range(self.soc.shape[1]):  # Itera su ogni colonna di self.soc
 
                 if self.c_d_timeseries[index, col] >= 0:
-                   self.c_d_timeseries[index, col] = np.minimum(self.c_d_timeseries[index, col], np.minimum(self.c_func(self.soc[index, col]), 0.9 - self.soc[index, col]))
+                    self.c_d_timeseries[index, col] = np.minimum(self.c_d_timeseries[index, col], np.minimum(self.c_func(self.soc[index, col]), 0.9 - self.soc[index, col]))
                 else:
-                   self.c_d_timeseries[index, col] = np.maximum(self.c_d_timeseries[index, col], np.maximum(-self.d_func(self.soc[index, col]), 0.1 + self.soc[index, col]))
+                    self.c_d_timeseries[index, col] = np.maximum(self.c_d_timeseries[index, col], np.maximum(-self.d_func(self.soc[index, col]), 0.1 - self.soc[index, col]))
 
                 if self.c_d_timeseries[index, col] >= 0:
-                   self.charged_energy[index, col] = self.c_d_timeseries[index, col] * size
+                    self.charged_energy[index, col] = self.c_d_timeseries[index, col] * size
                 else:
-                   self.discharged_energy[index, col] = self.c_d_timeseries[index, col] * size
+                    self.discharged_energy[index, col] = self.c_d_timeseries[index, col] * size
 
                 # UPDATE SoC
                 if self.c_d_timeseries[index, col] >= 0:
-                   self.soc[index + 1, col] = np.minimum(1, self.soc[index, col] + self.charged_energy[index, col]/size)
+                    self.soc[index + 1, col] = np.minimum(1, self.soc[index, col] + self.charged_energy[index, col]/size)
                 else:
-                   self.soc[index + 1, col] = np.maximum(0, self.soc[index, col] + self.discharged_energy[index, col]/size)
+                    self.soc[index + 1, col] = np.maximum(0, self.soc[index, col] + self.discharged_energy[index, col]/size)
 
         weights = np.ones(time_window)
         weights[:24] = 1  # Pesi più alti per i primi 24 valori

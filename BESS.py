@@ -26,7 +26,7 @@ sheetname = "BESS Properties"
 sheetname2 = "Li-ion ChargeDischarge Curve 10"
 sheetname3 = "PUN"
 
-termination = get_termination("n_gen",10000)
+termination = get_termination("n_gen",100)
 
 def comp_by_cv_then_random(pop, P, **kwargs):
     S = np.full(P.shape[0], np.nan)
@@ -78,15 +78,26 @@ class Optimizer:
         return res
 
 # [OPTIMIZATION]
-pop_size = 1
+# import multiprocessing
+# from pymoo.algorithms.soo.nonconvex.ga import GA
+# from pymoo.core.problem import StarmapParallelization
+#
+# # initialize the thread pool and create the runner
+# n_proccess = 2
+# pool = multiprocessing.Pool(n_proccess)
+# runner = StarmapParallelization(pool.starmap)
+
+
+pop_size = 100
 size = 2500
-objective_function = Revenues(size=size, pop_size=pop_size, file_path2=file_path2, sheetname3=sheetname3)
+objective_function = Revenues(size=size, pop_size=pop_size, file_path2=file_path2, sheetname3=sheetname3) #elementwise_runner=runner)
 
 # Create an instance of Optimizer with the objective_function and pop_size
 optimizer = Optimizer(objective_function=objective_function, pop_size=pop_size)
 
 # Maximize revenues
 solution = optimizer.maximize_revenues()
+#pool.close()
 
 soc = [0.0] * 48
 charged_energy = [0.0]*48

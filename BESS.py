@@ -5,15 +5,19 @@ from pymoo.algorithms.moo.nsga3 import NSGA3
 from pymoo.optimize import minimize
 from pymoo.util.ref_dirs import get_reference_directions
 from revenues import Revenues
-from pymoo.operators.mutation.pm import PolynomialMutation
-from pymoo.operators.crossover.sbx import SimulatedBinaryCrossover
-from pymoo.operators.selection.tournament import TournamentSelection
-from pymoo.core.sampling import Sampling
+from pymoo.operators.sampling.rnd import FloatRandomSampling
 from revenues import discharge_rate
 from revenues import charge_rate
 from revenues import PUN
+from revenues import Get_data
 from revenues import charge_rate_interpolated_func
 from revenues import discharge_rate_interpolated_func
+from pymoo.operators.crossover.sbx import SBX
+from pymoo.operators.mutation.pm import PM
+from pymoo.operators.selection.tournament import TournamentSelection, compare
+from pymoo.termination import get_termination
+
+
 
 # FILE PATH DATA
 file_path = "BESS Data.xlsx"
@@ -22,16 +26,23 @@ sheetname = "BESS Properties"
 sheetname2 = "Li-ion ChargeDischarge Curve 10"
 sheetname3 = "PUN"
 
+termination = get_termination("n_gen",1000)
 
-# Funzione di campionamento personalizzata
-class CustomSampling(Sampling):
-    def __init__(self, xl, xu):
-        super().__init__()
-        self.xl = xl
-        self.xu = xu
+def comp_by_cv_then_random(pop, P, **kwargs):
+    S = np.full(P.shape[0], np.nan)
 
-    def _do(self, problem, n_samples, **kwargs):
-        return np.random.uniform(self.xl, self.xu, (n_samples, problem.n_var))
+    for i in range(P.shape[0]):
+        a, b = P[i, 0], P[i, 1]
+
+        # if at least one solution is infeasible
+        if pop[a].CV > 0.0 or pop[b].CV > 0.0:
+            S[i] = compare(a, pop[a].CV, b, pop[b].CV, method='smaller_is_better', return_random_if_equal=True)
+
+        # both solutions are feasible just set random
+        else:
+            S[i] = np.random.choice([a, b])
+
+    return S[:, None].astype(int)
 
 
 class Optimizer:
@@ -40,33 +51,31 @@ class Optimizer:
         self._objective_function = objective_function
         self.pop_size = pop_size
 
+
     def maximize_revenues(self):
         ref_dirs = get_reference_directions("das-dennis", 1,n_partitions=20) # n_partitions=48
-
-        # Definire gli operatori di mutazione, crossover e selezione
-        mutation = PolynomialMutation(prob=1.0 / self._objective_function.n_var, eta=20)
-        crossover = SimulatedBinaryCrossover(prob=0.9, eta=15)
-        selection = TournamentSelection(func_comp=np.random.random)  # Definisci la tua funzione di selezione
-
-        # Creare un'istanza di CustomSampling
-        sampling = CustomSampling(self._objective_function.xl, self._objective_function.xu)
 
         # Creare l'algoritmo con gli operatori definiti
         algorithm = NSGA3(
             pop_size=self.pop_size,
             ref_dirs=ref_dirs,
-            sampling=sampling
+            sampling=FloatRandomSampling(),
+            selection=TournamentSelection(func_comp=comp_by_cv_then_random),
+            eliminate_duplicates=True,
+            crossover=SBX(eta=30, prob=1.0),
+            mutation=PM(eta=20),
+
         )
 
         res = minimize(
             self._objective_function,
             algorithm,
-            ('n_gen', 1000),
+            termination,
             seed=42,
             verbose=True,
         )
-        return res
 
+        return res
 
 # [OPTIMIZATION]
 pop_size = 100
@@ -90,9 +99,9 @@ d_func = discharge_rate_interpolated_func
 
 for index in range(48 - 1):
     if c_d_timeseries[index] >= 0:
-        c_d_timeseries[index] = min(c_d_timeseries[index], c_func(soc[index]), 0.9-soc[index])
+        c_d_timeseries[index] = min(c_d_timeseries[index], min(c_func(soc[index]), 0.9-soc[index]))
     else:
-        c_d_timeseries[index] = max(c_d_timeseries[index], -d_func(soc[index]), -soc[index]+0.1)
+        c_d_timeseries[index] = max(c_d_timeseries[index], max(-d_func(soc[index]), -soc[index]+0.1))
 
     if c_d_timeseries[index] >= 0:
         charged_energy[index] = c_d_timeseries[index] * size
@@ -101,9 +110,15 @@ for index in range(48 - 1):
 
         # UPDATE SoC
     if c_d_timeseries[index] >= 0:
-        soc[index + 1] = min(1, soc[index] + charged_energy[index]/ size)
+        soc[index + 1] = min(0.9, soc[index] + charged_energy[index]/ size)
     else:
-        soc[index + 1] = max(0, soc[index] + discharged_energy[index]/ size)
+        soc[index + 1] = max(0.1, soc[index] + discharged_energy[index]/ size)
+
+data = Get_data.get_data(file_path2, sheetname3)
+PUN_timeseries = data.iloc[:48,2].to_numpy()
+
+rev = - (discharged_energy* PUN_timeseries/1000) - (charged_energy*PUN_timeseries/1000)
+print(rev.sum())
 
 # Creazione degli istogrammi
 time_steps = np.arange(48)
@@ -202,7 +217,7 @@ plt.grid(True)
 plt.savefig("Plots/discharge_rate_plot.png")
 plt.close()
 
-num_values = 24
+num_values = 48
 time_steps_24 = time_steps[:num_values]
 charged_energy_24 = charged_energy[:num_values]
 discharged_energy_24 = discharged_energy[:num_values]

@@ -26,7 +26,7 @@ sheetname = "BESS Properties"
 sheetname2 = "Li-ion ChargeDischarge Curve 10"
 sheetname3 = "PUN"
 
-termination = get_termination("n_gen",1000)
+termination = get_termination("n_gen",10)
 
 def comp_by_cv_then_random(pop, P, **kwargs):
     S = np.full(P.shape[0], np.nan)

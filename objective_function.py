@@ -1,6 +1,6 @@
 import numpy as np
 from pymoo.core.problem import ElementwiseProblem
-from BESS_parameters import size, file_path, file_path2, sheetname, sheetname2, sheetname3
+from BESS_parameters import size
 from Economic_parameters import PUN_timeseries
 from BESS_parameters import charge_rate_interpolated_func, discharge_rate_interpolated_func
 from pymoo.termination import get_termination
@@ -12,6 +12,10 @@ OPTIMIZATION PARAMETERS:
    1) Time window
    2) State of Charge (SoC) Initialization
    3) Population
+   4) n_var = number of variables to be optimized to minimize/maximize the objective function
+   5) n_obj = number of objects to be minimized/maximized
+   6) xl = lower bound constraints for the n_var variables
+   7) xu = upper bound constraints for the n_var variables
 
 '''
 
@@ -27,10 +31,7 @@ termination = get_termination("n_gen",100)
 class Revenues(ElementwiseProblem):
     def __init__(
             self,
-            size,
-            pop_size,
-            file_path2,
-            sheetname3,**kwargs
+            **kwargs
 
     ) -> None:
         super().__init__(

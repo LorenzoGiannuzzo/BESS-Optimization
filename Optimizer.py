@@ -132,8 +132,7 @@ class Optimizer:
 
 # STATEMENT OF THE OBJECTIVE FUNCTION
 
-objective_function = Revenues(size=size, pop_size=pop_size, file_path2=file_path2,
-                              sheetname3=sheetname3)  # elementwise_runner=runner)
+objective_function = Revenues()#size=size, pop_size=pop_size, file_path2=file_path2, sheetname3=sheetname3)  # elementwise_runner=runner)
 
 
 # LAUNCH THE OPTIMIZER
@@ -175,7 +174,7 @@ for index in range(48 - 1):
 PUN_timeseries = PUN_timeseries
 
 rev = - (discharged_energy * PUN_timeseries / 1000) - (charged_energy * PUN_timeseries / 1000)
-print("Revenus for optimized time window [Euros]:\n", rev.sum())
+print("\nRevenus for optimized time window [EUROs]:\n\n", rev.sum())
 
 
 
@@ -233,10 +232,10 @@ ax1.legend(loc='upper left')
 
 # Aggiungi un secondo asse y per i valori PUN
 ax2 = ax1.twinx()
-ax2.plot(time_steps_24, pun_values_24, marker='o', color='navy', label='PUN [Euro/MWh]')
+ax2.plot(time_steps_24, pun_values_24, color='black', label='PUN [Euro/MWh]')
 ax2.set_ylabel('PUN Value')
 ax2.legend(loc='upper right')
 
 fig.tight_layout()
-plt.savefig(os.path.join("Plots", "Charged_and_Discharged_Energy_with_PUN_24.png"))
+plt.savefig(os.path.join("Plots", "Charged_and_Discharged_Energy_with_PUN.png"))
 plt.close()

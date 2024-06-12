@@ -11,7 +11,7 @@ from pymoo.optimize import minimize
 from pymoo.util.ref_dirs import get_reference_directions
 
 from BESS_parameters import charge_rate_interpolated_func, discharge_rate_interpolated_func
-from BESS_parameters import size, file_path2, sheetname3
+from BESS_parameters import size
 
 from Economic_parameters import PUN_timeseries
 

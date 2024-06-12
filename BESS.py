@@ -64,7 +64,6 @@ class Optimizer:
             eliminate_duplicates=True,
             crossover=SBX(eta=30, prob=1.0),
             mutation=PM(eta=20),
-
         )
 
         res = minimize(

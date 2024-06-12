@@ -26,7 +26,7 @@ sheetname = "BESS Properties"
 sheetname2 = "Li-ion ChargeDischarge Curve 10"
 sheetname3 = "PUN"
 
-termination = get_termination("n_gen",600)
+termination = get_termination("n_gen",10000)
 
 def comp_by_cv_then_random(pop, P, **kwargs):
     S = np.full(P.shape[0], np.nan)
@@ -47,7 +47,7 @@ def comp_by_cv_then_random(pop, P, **kwargs):
 
 class Optimizer:
 
-    def __init__(self, objective_function: Revenues, pop_size: int) -> None:
+    def __init__(self, objective_function: Revenues, pop_size: int):
         self._objective_function = objective_function
         self.pop_size = pop_size
 
@@ -78,7 +78,7 @@ class Optimizer:
         return res
 
 # [OPTIMIZATION]
-pop_size = 100
+pop_size = 1
 size = 2500
 objective_function = Revenues(size=size, pop_size=pop_size, file_path2=file_path2, sheetname3=sheetname3)
 

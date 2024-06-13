@@ -6,6 +6,7 @@ from Plots import EnergyPlots
 import numpy as np
 
 
+
 class Main:
     def __init__(self):
         """
@@ -21,7 +22,8 @@ class Main:
         """
         # Execute the optimization and get the solution
         solution = self.optimizer.maximize_revenues()
-
+        self.history = solution.history
+        # self.history[i].pop[p].get(a) dove i= iterazione, p= individuo della popolazione, a=attributo tipi X o f
         # Get the charge/discharge time series from the solution
         c_d_timeseries = solution.X
 

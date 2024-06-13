@@ -100,6 +100,7 @@ class Optimizer:
             mutation=PM(eta=20),
 
             eliminate_duplicates=True
+
         )
 
         # INITIALIZE THE RESOLUTION OF THE OPTIMIZATION PROBLEM
@@ -110,6 +111,7 @@ class Optimizer:
             termination=termination,
             seed=42,
             verbose=True,
+            save_history = True
         )
 
         return res

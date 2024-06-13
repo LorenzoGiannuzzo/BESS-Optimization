@@ -21,6 +21,7 @@ from objective_function import termination
 from objective_function import time_window
 from objective_function import soc_0
 
+from Plots import EnergyPlots
 
 def comp_by_cv_then_random(pop, P, **kwargs):
     S = np.full(P.shape[0], np.nan)
@@ -176,66 +177,9 @@ PUN_timeseries = PUN_timeseries
 rev = - (discharged_energy * PUN_timeseries / 1000) - (charged_energy * PUN_timeseries / 1000)
 print("\nRevenus for optimized time window [EUROs]:\n\n", rev.sum())
 
+plots = EnergyPlots(time_window, soc, charged_energy, discharged_energy, PUN_timeseries)
 
-
-
-
-import matplotlib
-
-matplotlib.use('Agg')
-
-# Creazione degli istogrammi
-time_steps = np.arange(time_window)
-
-# Istogramma di SoC
-plt.figure(figsize=(12, 8))
-plt.bar(time_steps, soc, color='lightblue')
-plt.title('State of Charge (SoC) [%]')
-plt.xlabel('Time step')
-plt.ylabel('SoC')
-plt.savefig(os.path.join("Plots", "SoC_hist.png"))
-plt.close()
-
-# Istogramma di charged energy
-plt.figure(figsize=(12, 8))
-plt.bar(time_steps, charged_energy, color='g')
-plt.title('Charged Energy')
-plt.xlabel('Time step')
-plt.ylabel('Charged Energy')
-plt.savefig(os.path.join("Plots", "Charged_Energy_hist.png"))
-plt.close()
-
-# Istogramma di discharged energy
-plt.figure(figsize=(12, 8))
-plt.bar(time_steps, discharged_energy, color='r')
-plt.title('Discharged Energy')
-plt.xlabel('Time step')
-plt.ylabel('Discharged Energy')
-plt.savefig(os.path.join("Plots", "Discharged_Energy_hist.png"))
-plt.close()
-
-num_values = time_window
-time_steps_24 = time_steps[:num_values]
-charged_energy_24 = charged_energy[:num_values]
-discharged_energy_24 = discharged_energy[:num_values]
-pun_values_24 = PUN_timeseries[:num_values]
-
-# Istogramma combinato di charged energy e discharged energy
-fig, ax1 = plt.subplots(figsize=(12, 8))
-width = 0.4
-ax1.bar(time_steps_24 - width / 2, charged_energy_24, width=width, color='g', label='Charged Energy [kWh]')
-ax1.bar(time_steps_24 + width / 2, discharged_energy_24, width=width, color='r', label='Discharged Energy [kWh]')
-ax1.set_xlabel('Time step')
-ax1.set_ylabel('Energy [kWh]')
-ax1.set_title('Charged and Discharged Energy with PUN')
-ax1.legend(loc='upper left')
-
-# Aggiungi un secondo asse y per i valori PUN
-ax2 = ax1.twinx()
-ax2.plot(time_steps_24, pun_values_24, color='black', label='PUN [Euro/MWh]')
-ax2.set_ylabel('PUN Value')
-ax2.legend(loc='upper right')
-
-fig.tight_layout()
-plt.savefig(os.path.join("Plots", "Charged_and_Discharged_Energy_with_PUN.png"))
-plt.close()
+plots.plot_soc()
+plots.plot_charged_energy()
+plots.plot_discharged_energy()
+plots.plot_combined_energy_with_pun(num_values=time_window)

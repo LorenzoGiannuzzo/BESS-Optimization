@@ -4,6 +4,7 @@ from BESS_parameters import size
 from Economic_parameters import PUN_timeseries
 from BESS_parameters import charge_rate_interpolated_func, discharge_rate_interpolated_func
 from pymoo.termination import get_termination
+from Economic_parameters import time_window
 
 
 ''' 
@@ -21,10 +22,10 @@ OPTIMIZATION PARAMETERS:
 
 # DEFINE OPTIMIZATION PARAMETERS
 
-time_window = 48  # Define time window optimization
+time_window = time_window  # Defined in Economic_parameters.py
 soc_0 = 0.2  # Define initial SoC in %
 pop_size = 100 # Define the population size, which is the number of genes of the NSGA-III
-termination = get_termination("n_gen",100)
+termination = get_termination("n_gen",100) # to do: convergence with tolerance
 
 
 # DEFINE OPTIMIZATION PROBLEM

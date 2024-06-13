@@ -5,8 +5,8 @@ import os
 
 
 # DEFINE OPTIMIZATION TIME WINDOW
-
-time_window_e = 48
+time_window = 72
+time_window_e = time_window
 
 # IMPORT PUN TIMESERIES
 

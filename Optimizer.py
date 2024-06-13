@@ -1,5 +1,3 @@
-import os
-import matplotlib.pyplot as plt
 import numpy as np
 
 from pymoo.algorithms.moo.nsga3 import NSGA3
@@ -130,56 +128,3 @@ class Optimizer:
 # ...
 #  pool.close()
 
-
-# STATEMENT OF THE OBJECTIVE FUNCTION
-
-objective_function = Revenues()#size=size, pop_size=pop_size, file_path2=file_path2, sheetname3=sheetname3)  # elementwise_runner=runner)
-
-
-# LAUNCH THE OPTIMIZER
-
-optimizer = Optimizer(objective_function=objective_function, pop_size=pop_size)
-
-# GET SOLUTION OF THE OPTIMIZATION PROBLEM
-
-solution = optimizer.maximize_revenues()
-
-# GET THE BEST X-ARRAY FROM SOLUTIONS AND RE-APPLY THE PHYSICAL CONSTRAINTS OF THE BESS
-c_d_timeseries = solution.X
-
-soc = [0.0] * time_window
-charged_energy = [0.0] * time_window
-discharged_energy = [0.0] * time_window
-soc[0] = soc_0
-
-c_func = charge_rate_interpolated_func
-d_func = discharge_rate_interpolated_func
-
-for index in range(48 - 1):
-    if c_d_timeseries[index] >= 0:
-        c_d_timeseries[index] = min(c_d_timeseries[index], min(c_func(soc[index]), 0.9 - soc[index]))
-    else:
-        c_d_timeseries[index] = max(c_d_timeseries[index], max(-d_func(soc[index]), -soc[index] + 0.1))
-
-    if c_d_timeseries[index] >= 0:
-        charged_energy[index] = c_d_timeseries[index] * size
-    else:
-        discharged_energy[index] = c_d_timeseries[index] * size
-
-        # UPDATE SoC
-    if c_d_timeseries[index] >= 0:
-        soc[index + 1] = min(0.9, soc[index] + charged_energy[index] / size)
-    else:
-        soc[index + 1] = max(0.1, soc[index] + discharged_energy[index] / size)
-
-PUN_timeseries = PUN_timeseries
-
-rev = - (discharged_energy * PUN_timeseries / 1000) - (charged_energy * PUN_timeseries / 1000)
-print("\nRevenus for optimized time window [EUROs]:\n\n", rev.sum())
-
-plots = EnergyPlots(time_window, soc, charged_energy, discharged_energy, PUN_timeseries)
-
-plots.plot_soc()
-plots.plot_charged_energy()
-plots.plot_discharged_energy()
-plots.plot_combined_energy_with_pun(num_values=time_window)

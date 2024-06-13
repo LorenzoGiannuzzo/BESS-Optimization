@@ -1,4 +1,4 @@
-# BESS-Optimization 
+# BESS Optimization For Energy Trading
 ### BESS Optimization using NSGA-III.
 
 Overview This repository contains the code and data for optimizing Battery Energy Storage Systems (BESS) using evolutionary algorithms. The project focuses on maximizing revenues by optimizing charge and discharge cycles.

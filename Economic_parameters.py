@@ -3,7 +3,6 @@ from BESS_parameters import file_path, file_path2, sheetname, sheetname2, sheetn
 import matplotlib.pyplot as plt
 import os
 
-
 # DEFINE OPTIMIZATION TIME WINDOW
 time_window = 72
 time_window_e = time_window

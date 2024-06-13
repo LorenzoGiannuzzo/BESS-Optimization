@@ -1,11 +1,4 @@
-import pandas as pd
-import numpy as np
-import ExcelOpener
-import matplotlib.pyplot as plt
-import  matplotlib
-import os
 from scipy.interpolate import interp1d
-
 
 class DataInterpolator:
     def __init__(self, df, x_col, y_col):

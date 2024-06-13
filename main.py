@@ -9,7 +9,8 @@ import numpy as np
 class Main:
     def __init__(self):
         """
-        Initializes the Main object. Creates an instance of the objective function (Revenues) and the optimizer (Optimizer).
+        Initializes the Main object. Creates an instance of the objective function (Revenues) and the optimizer
+        (Optimizer).
         """
         self.objective_function = Revenues()
         self.optimizer = Optimizer(objective_function=self.objective_function, pop_size=pop_size)
@@ -109,4 +110,3 @@ if __name__ == "__main__":
     main = Main()
     # Execute the optimization
     main.run_optimization()
-

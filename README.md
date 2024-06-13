@@ -3,9 +3,7 @@
 
 Overview This repository contains the code and data for optimizing Battery Energy Storage Systems (BESS) using evolutionary algorithms. The project focuses on maximizing revenues by optimizing charge and discharge cycles.
 ###### Table of Contents 
-- [Overview](#overview) 
 - [Installation](#installation) 
-- [Usage](#usage) 
 - [Project Structure](#project-structure) 
 
 ## Installation - Clone the repository: 

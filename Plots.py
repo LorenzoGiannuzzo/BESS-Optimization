@@ -85,3 +85,39 @@ class EnergyPlots:
         fig.tight_layout()
         plt.savefig(os.path.join(self.plots_dir, "C_D_Energy_with_PUN_and_SOC.png"))
         plt.close()
+
+def convergence(n_gen,timewindow,pop_size,X):
+    # Definisci i timesteps
+    timesteps = np.arange(0, n_gen)  # Da 1 a 200
+
+    # Crea una figura e una griglia di sottotrame
+    fig, axes = plt.subplots(9, 8, figsize=(20, 18))  # 9 righe e 8 colonne di subplots
+
+    # Appiattiamo l'array degli assi per iterarci sopra
+    axes = axes.flatten()
+
+    # Itera su ogni subplot
+    for k in range(timewindow):
+        ax = axes[k]
+        for i in range(pop_size):
+            ax.scatter(timesteps, X[:, i, k], s=10, alpha=0.6)
+        ax.set_title(f'Element {k + 1}')
+        ax.set_xlabel('Generations')
+        ax.set_ylabel('% of C/D')
+        ax.grid(True)
+
+    # Nascondi eventuali subplots vuoti se presenti
+    for k in range(timewindow, len(axes)):
+        fig.delaxes(axes[k])
+
+    # Aggiungi spaziatura tra i subplots
+    plt.tight_layout()
+
+    # Verifica se la cartella "Plots" esiste, altrimenti creala
+    output_dir = 'Plots'
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
+
+    # Salva la figura nella cartella "Plots"
+    output_path = os.path.join(output_dir, 'convergence.png')
+    fig.savefig(output_path)

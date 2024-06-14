@@ -90,7 +90,7 @@ class Optimizer:
             # prob=1.0: The probability of crossover being applied. A probability of 1.0 means crossover is always
             # applied.
 
-            crossover=SBX(eta=30, prob=1.0),
+            crossover=SBX(eta=30, prob=0.3),
 
             # mutation: This parameter specifies the mutation operator used for generating variation in offspring.
             # PM: Polynomial Mutation (PM) is a common mutation method for real-valued variables.

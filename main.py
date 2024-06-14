@@ -1,10 +1,11 @@
-from Optimizer import Optimizer
+import numpy as np
+import Plots
 from BESS_parameters import charge_rate_interpolated_func, discharge_rate_interpolated_func, size
 from Economic_parameters import PUN_timeseries
-from objective_function import Revenues, pop_size, time_window, soc_0
+from Optimizer import Optimizer
 from Plots import EnergyPlots
-import numpy as np
-
+from objective_function import Revenues, pop_size, time_window, soc_0
+from objective_function import n_gen
 
 
 class Main:
@@ -112,3 +113,16 @@ if __name__ == "__main__":
     main = Main()
     # Execute the optimization
     main.run_optimization()
+
+    # POSTPROCESSING
+
+    # Algorithm convergence
+
+    X = []
+    for j in range(200):
+        X.append([])  # Aggiungi una nuova lista per ogni j
+        for i in range(pop_size):
+            X[j].append(main.history[j].pop[i].get('X'))  # Aggiungi il valore alla lista interna
+
+    X = np.array(X)
+    Plots.convergence(n_gen,time_window, pop_size, X)

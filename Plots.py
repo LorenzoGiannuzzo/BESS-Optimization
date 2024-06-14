@@ -101,7 +101,7 @@ def convergence(n_gen,timewindow,pop_size,X):
         ax = axes[k]
         for i in range(pop_size):
             ax.scatter(timesteps, X[:, i, k], s=10, alpha=0.6)
-        ax.set_title(f'Element {k + 1}')
+        ax.set_title(f'C/D Energy % at {k + 1}h')
         ax.set_xlabel('Generations')
         ax.set_ylabel('% of C/D')
         ax.grid(True)

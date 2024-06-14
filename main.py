@@ -120,9 +120,9 @@ if __name__ == "__main__":
 
     X = []
     for j in range(200):
-        X.append([])  # Aggiungi una nuova lista per ogni j
+        X.append([])
         for i in range(pop_size):
-            X[j].append(main.history[j].pop[i].get('X'))  # Aggiungi il valore alla lista interna
+            X[j].append(main.history[j].pop[i].get('X'))
 
     X = np.array(X)
     Plots.convergence(n_gen,time_window, pop_size, X)

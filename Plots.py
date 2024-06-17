@@ -1,8 +1,12 @@
 import os
-import numpy as np
-import matplotlib.pyplot as plt
+import pandas as pd
 import matplotlib
+import matplotlib.pyplot as plt
+import numpy as np
+import matplotlib.colors as mcolors
+
 from matplotlib.colors import Normalize
+
 
 matplotlib.use('Agg')
 
@@ -57,7 +61,7 @@ class EnergyPlots:
 
         # Normalize SoC values to be in the range [0, 1] for the colormap
         norm = Normalize(vmin=min(soc_24), vmax=max(soc_24))
-        cmap = matplotlib.colors.LinearSegmentedColormap.from_list("", ["darkred","gold","limegreen"])
+        cmap = matplotlib.colors.LinearSegmentedColormap.from_list("", ["darkred", "gold", "limegreen"])
 
         # Plot SoC with gradient colored bars based on value
         for i in range(len(time_steps_24)):
@@ -68,7 +72,8 @@ class EnergyPlots:
 
         # Plot charged and discharged energy with PUN on the second subplot
         width = 0.4
-        ax1.bar(time_steps_24 - width / 2, charged_energy_24, width=width, color='limegreen', label='Charged Energy [kWh]')
+        ax1.bar(time_steps_24 - width / 2, charged_energy_24, width=width, color='limegreen',
+                label='Charged Energy [kWh]')
         ax1.bar(time_steps_24 + width / 2, discharged_energy_24, width=width, color='darkred',
                 label='Discharged Energy [kWh]')
         ax1.set_ylabel('Energy [kWh]')
@@ -86,58 +91,175 @@ class EnergyPlots:
         plt.savefig(os.path.join(self.plots_dir, "C_D_Energy_with_PUN_and_SOC.png"))
         plt.close()
 
-def convergence(n_gen, timewindow, pop_size, X, Y):
+    @staticmethod
+    def c_d_plot(charge_rate, discharge_rate, charge_rate_interpolated_func, discharge_rate_interpolated_func ):
+        # Plotting for charge_rate
+        plt.figure(figsize=(10, 6))
+        plt.plot(charge_rate['SoC [%]'], charge_rate['Charge Rate [kWh/(kWhp*h)]'], label='Charge Rate')
+        plt.xlabel('SoC [%]')
+        plt.ylabel('Charge Rate [kWh/(kWhp*h)]')
+        plt.title('Charge Rate vs SoC')
+        plt.legend()
+        plt.grid(True)
 
-    # Define the timesteps
-    timesteps = np.arange(0, n_gen)
+    # Save the plot as a PNG file
+        plt.savefig("Plots/charge_rate_plot.png")
+        plt.close()
 
-    # Create a figure and a grid of subplots
-    fig, axes = plt.subplots(9, 8, figsize=(20, 18))
+    # Plotting
+        plt.figure(figsize=(10, 6))
 
-    # Flatten the array of axes to iterate over them
-    axes = axes.flatten()
+    # Plot for charge_rate
+        plt.plot(charge_rate['SoC [%]'], charge_rate['Charge Rate [kWh/(kWhp*h)]'], 'o', label='Charge Rate')
+        plt.plot(charge_rate['SoC [%]'], charge_rate_interpolated_func(charge_rate['SoC [%]']), '-',
+             label='Interpolated Charge Rate')
 
-    # Create a colormap based on a range of darker colors
-    cmap = matplotlib.colors.LinearSegmentedColormap.from_list("", ["orange", "darkorchid", "indigo"])
+    # Plot for discharge_rate
+        plt.plot(discharge_rate['SoC [%]'], discharge_rate['Discharge Rate [kWh/(kWhp*h)]'], 'o', color='red',
+             label='Discharge Rate')
+        plt.plot(discharge_rate['SoC [%]'], discharge_rate_interpolated_func(discharge_rate['SoC [%]']), '-',
+             color='green', label='Interpolated Discharge rate')
 
-    # Normalize Y using a logarithmic scale to improve color distribution
-    norm = Normalize(vmin=np.min(Y), vmax=np.max(Y))
+        plt.xlabel('SoC [%]')
+        plt.ylabel('Rate [kWh/(kWhp*h)]')
+        plt.title('Interpolated Functions')
+        plt.legend()
+        plt.grid(True)
 
-    # Iterate over each subplot
-    for k in range(timewindow):
-        ax = axes[k]
+    # Save the plot as a PNG file
+        if not os.path.exists("Plots"):
+            os.makedirs("Plots")
+        plt.savefig("Plots/interpolated_functions.png")
+    # Close the figure to release memory
+        plt.close()
 
-        # Prepare data for the current subplot
-        for i in range(pop_size):
-            # Calculate colors based on normalized Y values for individual i,
-            # scaled by a factor of 10000
-            colors = cmap(norm(Y[:, i]) * 10000)
-            ax.scatter(timesteps, X[:, i, k], s=10, alpha=0.8, c=colors)
+    # Plotting for charge_rate
+        plt.figure(figsize=(10, 6))
+        plt.plot(charge_rate['SoC [%]'], charge_rate['Charge Rate [kWh/(kWhp*h)]'], label='Charge Rate')
+        plt.xlabel('SoC [%]')
+        plt.ylabel('Charge Rate [kWh/(kWhp*h)]')
+        plt.title('Charge Rate vs SoC')
+        plt.legend()
+        plt.grid(True)
 
-        # Set title and labels for the subplot
-        ax.set_title(f'C/D Energy % at {k + 1}h')
-        ax.set_xlabel('Generations')
-        ax.set_ylabel('% of C/D')
-        ax.grid(True)
+        # Save the plot as a PNG file
+        plt.savefig("Plots/charge_rate_plot.png")
+        plt.close()
 
-    # Hide any empty subplots if present
-    for k in range(timewindow, len(axes)):
-        fig.delaxes(axes[k])
+        # Plotting for discharge_rate
+        plt.figure(figsize=(10, 6))
+        plt.plot(discharge_rate['SoC [%]'], discharge_rate['Discharge Rate [kWh/(kWhp*h)]'], color='red',
+                 label='Discharge Rate')
+        plt.xlabel('SoC [%]')
+        plt.ylabel('Discharge Rate [kWh/(kWhp*h)]')
+        plt.title('Discharge Rate vs SoC')
+        plt.legend()
+        plt.grid(True)
 
-    # Remove the colorbar (commented out section)
-    # sm = plt.cm.ScalarMappable(cmap=cmap, norm=norm)
-    # sm.set_array([])
-    # cbar = fig.colorbar(sm, ax=axes.tolist(), orientation='vertical', fraction=0.02, pad=0.01)
-    # cbar.set_label('Normalized Y values')
+        # Save the plot as a PNG file
+        plt.savefig("Plots/discharge_rate_plot.png")
+        plt.close()
 
-    # Add spacing between subplots
-    plt.tight_layout()
+    @staticmethod
+    def total_convergence(n_gen, timewindow, pop_size, X, Y):
+        # Convert Y to a DataFrame (if not already)
+        Y = pd.DataFrame(Y)
 
-    # Check if the "Plots" folder exists, create it if not
-    output_dir = 'Plots'
-    if not os.path.exists(output_dir):
-        os.makedirs(output_dir)
+        # Calculate statistics of Y
+        Y_stats = Y.transpose().describe()
+        Y_stats = Y_stats.transpose()
+        # Create a new figure and axis
+        fig, ax = plt.subplots(figsize=(10, 6))
 
-    # Save the figure in the "Plots" folder
-    output_path = os.path.join(output_dir, 'convergence.png')
-    fig.savefig(output_path)
+        # Define a custom colormap
+        cmap_colors = ["orange", "darkorchid", "indigo"]
+        cmap = mcolors.LinearSegmentedColormap.from_list("", cmap_colors)
+
+        # Plot the mean from Y_stats with customization
+        Y_stats['mean'].plot(ax=ax, color=cmap(0.5), linestyle='-', linewidth=2,
+                             label='Mean Fitness Value of Population')  # Customize the plot with linestyle, linewidth, and label
+        ax.legend()
+
+        # Add titles and axis labels
+        ax.set_title('Statistics of Fitness', fontsize=16)  # Title of the plot
+        ax.set_xlabel('Categories', fontsize=14)  # X-axis label
+        ax.set_ylabel('Values', fontsize=14)  # Y-axis label
+
+        # Customize background and grid
+        ax.set_facecolor('whitesmoke')  # Background color
+        ax.grid(True, linestyle='--', linewidth=0.5,
+                color='white')  # Dashed grid lines with 0.5 linewidth and gray color
+
+        # Save the figure
+        plt.savefig('Plots/total_convergence.png')
+
+    @staticmethod
+    def PUN_plot(PUN_timeseries):
+        # Line plot dei valori PUN (terza colonna del DataFrame)
+        pun_values = PUN_timeseries  # Estrazione della terza colonna (indice 2)
+        plt.figure(figsize=(12, 8))
+        plt.plot(pun_values, marker='o', color='b')
+        plt.title('PUN Values')
+        plt.xlabel('Time step')
+        plt.ylabel('PUN Value')
+        plt.savefig(os.path.join("Plots", "PUN_values_plot.png"))
+        plt.close()
+
+    @staticmethod
+    def convergence(n_gen, timewindow, pop_size, X, Y):
+        # Define the timesteps
+        timesteps = np.arange(0, n_gen)
+
+        # Create a figure and a grid of subplots
+        fig, axes = plt.subplots(9, 8, figsize=(20, 18))
+
+        # Flatten the array of axes to iterate over them
+        axes = axes.flatten()
+
+        # Create a colormap based on a range of darker colors
+        cmap = matplotlib.colors.LinearSegmentedColormap.from_list("", ["orange", "darkorchid", "indigo"])
+
+        # Normalize Y using a logarithmic scale to improve color distribution
+        norm = Normalize(vmin=np.min(Y), vmax=np.max(Y))
+
+        # Iterate over each subplot
+        for k in range(timewindow):
+            ax = axes[k]
+
+            # Prepare data for the current subplot
+            for i in range(pop_size):
+                # Calculate colors based on normalized Y values for individual i,
+                # scaled by a factor of 10000
+                colors = cmap(norm(Y[:, i]) * 10000)
+                ax.scatter(timesteps, X[:, i, k], s=10, alpha=0.8, c=colors)
+
+            # Set title and labels for the subplot
+            ax.set_title(f'C/D Energy % at {k + 1}h')
+            ax.set_xlabel('Generations')
+            ax.set_ylabel('% of C/D')
+            ax.grid(True)
+
+        # Hide any empty subplots if present
+        for k in range(timewindow, len(axes)):
+            fig.delaxes(axes[k])
+
+        # Remove the colorbar (commented out section)
+        # sm = plt.cm.ScalarMappable(cmap=cmap, norm=norm)
+        # sm.set_array([])
+        # cbar = fig.colorbar(sm, ax=axes.tolist(), orientation='vertical', fraction=0.02, pad=0.01)
+        # cbar.set_label('Normalized Y values')
+
+        # Add spacing between subplots
+        plt.tight_layout()
+
+        # Check if the "Plots" folder exists, create it if not
+        output_dir = 'Plots'
+        if not os.path.exists(output_dir):
+            os.makedirs(output_dir)
+
+        # Save the figure in the "Plots" folder
+        output_path = os.path.join(output_dir, 'convergence.png')
+        fig.savefig(output_path)
+
+
+

@@ -1,4 +1,5 @@
 import numpy as np
+
 from pymoo.core.problem import ElementwiseProblem
 from BESS_parameters import size
 from Economic_parameters import PUN_timeseries
@@ -24,14 +25,13 @@ OPTIMIZATION PARAMETERS:
 # DEFINE OPTIMIZATION PARAMETERS
 
 time_window = time_window  # Defined in Economic_parameters.py
-# n_gen=200
+# n_gen=200 # replaced by tolerance
 tolerance = 0.1 # tolerance on the objective function
 period = 5# number of iteration in which tolerance is evaluated
 soc_0 = 0.2  # Define initial SoC in %
 pop_size = 100  # Define the population size, which is the number of genes of the NSGA-III
-# termination = get_termination("n_gen", n_gen)  # to do: convergence with tolerance
+# termination = get_termination("n_gen", n_gen)  # replaced by tolerance
 termination = RobustTermination(DesignSpaceTermination(tol=tolerance), period=period)
-
 
 
 # DEFINE OPTIMIZATION PROBLEM

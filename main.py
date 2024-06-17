@@ -1,9 +1,7 @@
 import numpy as np
-import Plots
 
-from postprocessing import total_convergence
 from objective_function import Revenues, pop_size, time_window, soc_0
-from BESS_parameters import charge_rate_interpolated_func, discharge_rate_interpolated_func, size
+from BESS_parameters import charge_rate_interpolated_func, discharge_rate_interpolated_func, size, charge_rate, discharge_rate
 from Economic_parameters import PUN_timeseries
 from Optimizer import Optimizer
 from Plots import EnergyPlots
@@ -135,7 +133,12 @@ if __name__ == "__main__":
     X = np.array(X)
     Y = np.array(Y)
 
-    Plots.convergence(len(main.history),time_window, pop_size, X, Y)
-    total_convergence(len(main.history), time_window, pop_size, X, Y)
+    # PLOTS
+
+    EnergyPlots.PUN_plot(PUN_timeseries)
+    EnergyPlots.convergence(len(main.history),time_window, pop_size, X, Y)
+    EnergyPlots.c_d_plot(charge_rate, discharge_rate, charge_rate_interpolated_func, discharge_rate_interpolated_func)
+    EnergyPlots.total_convergence(len(main.history), time_window, pop_size, X, Y)
+
 
 

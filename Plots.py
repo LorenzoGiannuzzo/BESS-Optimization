@@ -7,9 +7,7 @@ import matplotlib.colors as mcolors
 
 from matplotlib.colors import Normalize
 
-
 matplotlib.use('Agg')
-
 
 class EnergyPlots:
     def __init__(self, time_window, soc, charged_energy, discharged_energy, PUN_timeseries):

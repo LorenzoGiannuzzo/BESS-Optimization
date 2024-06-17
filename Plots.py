@@ -86,21 +86,38 @@ class EnergyPlots:
         plt.savefig(os.path.join(self.plots_dir, "C_D_Energy_with_PUN_and_SOC.png"))
         plt.close()
 
-def convergence(n_gen,timewindow,pop_size,X):
+
+def convergence(n_gen, timewindow, pop_size, X, Y):
+    Y = Y
+
     # Definisci i timesteps
-    timesteps = np.arange(0, n_gen)  # Da 1 a 200
+    timesteps = np.arange(0, n_gen)
 
     # Crea una figura e una griglia di sottotrame
-    fig, axes = plt.subplots(9, 8, figsize=(20, 18))  # 9 righe e 8 colonne di subplots
+    fig, axes = plt.subplots(9, 8, figsize=(20, 18))
 
     # Appiattiamo l'array degli assi per iterarci sopra
     axes = axes.flatten()
 
+    # Crea una colormap basata su una gamma di colori più scura
+    cmap = matplotlib.colors.LinearSegmentedColormap.from_list("", ["orange","darkorchid","indigo"])
+
+
+
+
+    # Normalizza Y utilizzando una scala logaritmica per migliorare la distribuzione dei colori
+    norm = Normalize(vmin=np.min(Y), vmax=np.max(Y))
+
+
     # Itera su ogni subplot
     for k in range(timewindow):
         ax = axes[k]
+
+        # Prepara i dati per il subplot corrente
         for i in range(pop_size):
-            ax.scatter(timesteps, X[:, i, k], s=10, alpha=0.6)
+            colors = cmap(norm(Y[:, i])*10000)  # Colori basati sui valori normalizzati di Y per l'individuo i
+            ax.scatter(timesteps, X[:, i, k], s=10, alpha=0.8, c=colors)
+
         ax.set_title(f'C/D Energy % at {k + 1}h')
         ax.set_xlabel('Generations')
         ax.set_ylabel('% of C/D')
@@ -109,6 +126,12 @@ def convergence(n_gen,timewindow,pop_size,X):
     # Nascondi eventuali subplots vuoti se presenti
     for k in range(timewindow, len(axes)):
         fig.delaxes(axes[k])
+
+    # Rimuovi la colorbar
+    # sm = plt.cm.ScalarMappable(cmap=cmap, norm=norm)
+    # sm.set_array([])
+    # cbar = fig.colorbar(sm, ax=axes.tolist(), orientation='vertical', fraction=0.02, pad=0.01)
+    # cbar.set_label('Normalized Y values')
 
     # Aggiungi spaziatura tra i subplots
     plt.tight_layout()

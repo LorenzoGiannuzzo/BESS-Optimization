@@ -57,7 +57,7 @@ class EnergyPlots:
 
         # Normalize SoC values to be in the range [0, 1] for the colormap
         norm = Normalize(vmin=min(soc_24), vmax=max(soc_24))
-        cmap = plt.get_cmap('RdYlGn')
+        cmap = matplotlib.colors.LinearSegmentedColormap.from_list("", ["darkred","gold","limegreen"])
 
         # Plot SoC with gradient colored bars based on value
         for i in range(len(time_steps_24)):
@@ -68,8 +68,8 @@ class EnergyPlots:
 
         # Plot charged and discharged energy with PUN on the second subplot
         width = 0.4
-        ax1.bar(time_steps_24 - width / 2, charged_energy_24, width=width, color='g', label='Charged Energy [kWh]')
-        ax1.bar(time_steps_24 + width / 2, discharged_energy_24, width=width, color='r',
+        ax1.bar(time_steps_24 - width / 2, charged_energy_24, width=width, color='limegreen', label='Charged Energy [kWh]')
+        ax1.bar(time_steps_24 + width / 2, discharged_energy_24, width=width, color='darkred',
                 label='Discharged Energy [kWh]')
         ax1.set_ylabel('Energy [kWh]')
         ax1.set_title('Charged and Discharged Energy with PUN')

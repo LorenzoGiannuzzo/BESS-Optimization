@@ -18,9 +18,7 @@ def total_convergence(n_gen, timewindow, pop_size, X, Y):
 
     # Plot the mean from Y_stats with customization
     Y_stats['mean'].plot(ax=ax, color=cmap(0.5), linestyle='-', linewidth=2,
-                         label='Mean of Population Values')  # Customize the plot with linestyle, linewidth, and label
-    ax.fill_between(Y_stats.index, Y_stats['25%'], Y_stats['75%'], color='lightblue', alpha=0.3,
-                    label='Interquartile Range')  # Fill the area between 25th and 75th percentile with a light blue color
+                         label='Mean Fitness Value of Population')  # Customize the plot with linestyle, linewidth, and label
     ax.legend()
 
     # Add titles and axis labels
@@ -30,7 +28,7 @@ def total_convergence(n_gen, timewindow, pop_size, X, Y):
 
     # Customize background and grid
     ax.set_facecolor('whitesmoke')  # Background color
-    ax.grid(True, linestyle='--', linewidth=0.5, color='gray')  # Dashed grid lines with 0.5 linewidth and gray color
+    ax.grid(True, linestyle='--', linewidth=0.5, color='white')  # Dashed grid lines with 0.5 linewidth and gray color
 
     # Save the figure
     plt.savefig('Plots/total_convergence.png')

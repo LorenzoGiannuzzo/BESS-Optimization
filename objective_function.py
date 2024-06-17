@@ -7,8 +7,6 @@ from Economic_parameters import time_window
 from pymoo.termination.robust import RobustTermination
 from pymoo.termination.xtol import DesignSpaceTermination
 
-
-
 ''' 
 OPTIMIZATION PARAMETERS:
 

@@ -3,7 +3,6 @@ from pymoo.core.problem import ElementwiseProblem
 from BESS_parameters import size
 from Economic_parameters import PUN_timeseries
 from BESS_parameters import charge_rate_interpolated_func, discharge_rate_interpolated_func
-from pymoo.termination import get_termination
 from Economic_parameters import time_window
 from pymoo.termination.robust import RobustTermination
 from pymoo.termination.xtol import DesignSpaceTermination

@@ -26,8 +26,6 @@ class Optimizer:
 
         '''
 
-        ref_dirs = configuration.ref_dirs
-
         # ALGORITHM AND HYPERPARAMETERS DEFINITION
 
         algorithm = configuration.algorithm

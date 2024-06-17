@@ -4,34 +4,19 @@ from pymoo.core.problem import ElementwiseProblem
 from BESS_parameters import size
 from Economic_parameters import PUN_timeseries
 from BESS_parameters import charge_rate_interpolated_func, discharge_rate_interpolated_func
-from Economic_parameters import time_window
-from pymoo.termination.robust import RobustTermination
-from pymoo.termination.xtol import DesignSpaceTermination
 
-''' 
-OPTIMIZATION PARAMETERS:
+from configuration import time_window, tolerance, period, soc_0, pop_size, termination, n_gen
 
-   1) Time window
-   2) State of Charge (SoC) Initialization
-   3) Population
-   4) n_var = number of variables to be optimized to minimize/maximize the objective function
-   5) n_obj = number of objects to be minimized/maximized
-   6) xl = lower bound constraints for the n_var variables
-   7) xu = upper bound constraints for the n_var variables
-   8) n_gen number of generations of genes created
-
-'''
 
 # DEFINE OPTIMIZATION PARAMETERS
 
-time_window = time_window  # Defined in Economic_parameters.py
-# n_gen=200 # replaced by tolerance
-tolerance = 0.1 # tolerance on the objective function
-period = 5# number of iteration in which tolerance is evaluated
-soc_0 = 0.2  # Define initial SoC in %
-pop_size = 100  # Define the population size, which is the number of genes of the NSGA-III
-# termination = get_termination("n_gen", n_gen)  # replaced by tolerance
-termination = RobustTermination(DesignSpaceTermination(tol=tolerance), period=period)
+time_window = time_window
+n_gen= n_gen
+tolerance = tolerance
+period = period
+soc_0 = soc_0
+pop_size = pop_size
+termination = termination
 
 
 # DEFINE OPTIMIZATION PROBLEM

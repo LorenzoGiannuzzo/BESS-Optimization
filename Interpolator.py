@@ -1,5 +1,4 @@
 from scipy.interpolate import interp1d
-
 class DataInterpolator:
     def __init__(self, df, x_col, y_col):
         self.df = df

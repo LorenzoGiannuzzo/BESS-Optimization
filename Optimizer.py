@@ -1,41 +1,13 @@
-import numpy as np
+import configuration
 
-from pymoo.algorithms.moo.nsga3 import NSGA3
-from pymoo.operators.crossover.sbx import SBX
-from pymoo.operators.mutation.pm import PM
-from pymoo.operators.sampling.rnd import FloatRandomSampling
-from pymoo.operators.selection.tournament import TournamentSelection, compare
 from pymoo.optimize import minimize
-from pymoo.util.ref_dirs import get_reference_directions
-
-
 from objective_function import Revenues
-from objective_function import pop_size
-from objective_function import termination
 
-
-def comp_by_cv_then_random(pop, P, **kwargs):
-    S = np.full(P.shape[0], np.nan)
-
-    for i in range(P.shape[0]):
-        a, b = P[i, 0], P[i, 1]
-
-        # if at least one solution is infeasible
-        if pop[a].CV > 0.0 or pop[b].CV > 0.0:
-            S[i] = compare(a, pop[a].CV, b, pop[b].CV, method='smaller_is_better', return_random_if_equal=True)
-
-        # both solutions are feasible just set random
-        else:
-            S[i] = np.random.choice([a, b])
-
-    return S[:, None].astype(int)
-
-
-# OPTIMIZER DEFINITION
+# OPTIMIZER CREATION
 
 class Optimizer:
 
-    def __init__(self, objective_function: Revenues, pop_size: pop_size):
+    def __init__(self, objective_function: Revenues, pop_size: configuration.pop_size):
         self._objective_function = objective_function
         self.pop_size = pop_size
 
@@ -54,57 +26,21 @@ class Optimizer:
 
         '''
 
-        ref_dirs = get_reference_directions("das-dennis", 1, n_partitions=20)
+        ref_dirs = configuration.ref_dirs
 
         # ALGORITHM AND HYPERPARAMETERS DEFINITION
 
-        algorithm = NSGA3(
-
-            pop_size=self.pop_size,
-            ref_dirs=ref_dirs,
-
-            # sampling: This parameter specifies the method used to initialize the population. FloatRandomSampling
-            # generates random floating-point values for the initial solutions, providing a diverse starting point.
-
-            sampling=FloatRandomSampling(),
-
-            # selection: This defines the selection mechanism used to choose parents for reproduction.
-            # TournamentSelection selects individuals based on a comparison function.
-            # func_comp=comp_by_cv_then_random: This comparison function first considers constraint violations (cv) and
-            # then applies a random selection if necessary. This helps prioritize feasible solutions.
-
-            selection=TournamentSelection(func_comp=comp_by_cv_then_random),
-
-            # crossover: This parameter specifies the crossover operator used for generating offspring.
-            # SBX: Simulated Binary Crossover (SBX) is a common crossover method in genetic algorithms, particularly
-            # suited for real-valued variables.
-            # eta=30: The distribution index for SBX. A higher value of eta results in offspring closer to their
-            # parents, while a lower value results in more variation.
-            # prob=1.0: The probability of crossover being applied. A probability of 1.0 means crossover is always
-            # applied.
-
-            crossover=SBX(eta=30, prob=0.3),
-
-            # mutation: This parameter specifies the mutation operator used for generating variation in offspring.
-            # PM: Polynomial Mutation (PM) is a common mutation method for real-valued variables.
-            # eta=20: The distribution index for PM. Similar to SBX, a higher value of eta results in smaller mutations,
-            # while a lower value results in larger mutations.
-
-            mutation=PM(eta=20),
-
-            eliminate_duplicates=True
-
-        )
+        algorithm = configuration.algorithm
 
         # INITIALIZE THE RESOLUTION OF THE OPTIMIZATION PROBLEM
 
         res = minimize(
             self._objective_function,
             algorithm,
-            termination=termination,
+            termination=configuration.termination,
             seed=42,
             verbose=True,
-            save_history = True
+            save_history=True
         )
 
         return res

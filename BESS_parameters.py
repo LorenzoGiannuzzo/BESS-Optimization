@@ -1,11 +1,13 @@
 from utils import Get_data
 from utils import BESS
 
+
 # FILE PATH DATA
+
 file_path = "BESS Data.xlsx"
-file_path2 = "PUN.xlsx"
 sheetname = "BESS Properties"
 sheetname2 = "Li-ion ChargeDischarge Curve 10"
+file_path2 = "PUN.xlsx"
 sheetname3 = "PUN"
 
 '''

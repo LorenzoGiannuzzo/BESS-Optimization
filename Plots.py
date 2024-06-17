@@ -30,7 +30,7 @@ class EnergyPlots:
 
     def plot_charged_energy(self):
         plt.figure(figsize=(12, 8))
-        plt.bar(self.time_steps, self.charged_energy, color='g')
+        plt.bar(self.time_steps, self.charged_energy, color='limegreen')
         plt.title('Charged Energy')
         plt.xlabel('Time Window [h]')
         plt.ylabel('Charged Energy [kWh]')
@@ -39,7 +39,7 @@ class EnergyPlots:
 
     def plot_discharged_energy(self):
         plt.figure(figsize=(12, 8))
-        plt.bar(self.time_steps, self.discharged_energy, color='r')
+        plt.bar(self.time_steps, self.discharged_energy, color='darkred')
         plt.title('Discharged Energy')
         plt.xlabel('Time Window [h]')
         plt.ylabel('Discharged Energy [kWh]')
@@ -86,61 +86,58 @@ class EnergyPlots:
         plt.savefig(os.path.join(self.plots_dir, "C_D_Energy_with_PUN_and_SOC.png"))
         plt.close()
 
-
 def convergence(n_gen, timewindow, pop_size, X, Y):
-    Y = Y
 
-    # Definisci i timesteps
+    # Define the timesteps
     timesteps = np.arange(0, n_gen)
 
-    # Crea una figura e una griglia di sottotrame
+    # Create a figure and a grid of subplots
     fig, axes = plt.subplots(9, 8, figsize=(20, 18))
 
-    # Appiattiamo l'array degli assi per iterarci sopra
+    # Flatten the array of axes to iterate over them
     axes = axes.flatten()
 
-    # Crea una colormap basata su una gamma di colori più scura
-    cmap = matplotlib.colors.LinearSegmentedColormap.from_list("", ["orange","darkorchid","indigo"])
+    # Create a colormap based on a range of darker colors
+    cmap = matplotlib.colors.LinearSegmentedColormap.from_list("", ["orange", "darkorchid", "indigo"])
 
-
-
-
-    # Normalizza Y utilizzando una scala logaritmica per migliorare la distribuzione dei colori
+    # Normalize Y using a logarithmic scale to improve color distribution
     norm = Normalize(vmin=np.min(Y), vmax=np.max(Y))
 
-
-    # Itera su ogni subplot
+    # Iterate over each subplot
     for k in range(timewindow):
         ax = axes[k]
 
-        # Prepara i dati per il subplot corrente
+        # Prepare data for the current subplot
         for i in range(pop_size):
-            colors = cmap(norm(Y[:, i])*10000)  # Colori basati sui valori normalizzati di Y per l'individuo i
+            # Calculate colors based on normalized Y values for individual i,
+            # scaled by a factor of 10000
+            colors = cmap(norm(Y[:, i]) * 10000)
             ax.scatter(timesteps, X[:, i, k], s=10, alpha=0.8, c=colors)
 
+        # Set title and labels for the subplot
         ax.set_title(f'C/D Energy % at {k + 1}h')
         ax.set_xlabel('Generations')
         ax.set_ylabel('% of C/D')
         ax.grid(True)
 
-    # Nascondi eventuali subplots vuoti se presenti
+    # Hide any empty subplots if present
     for k in range(timewindow, len(axes)):
         fig.delaxes(axes[k])
 
-    # Rimuovi la colorbar
+    # Remove the colorbar (commented out section)
     # sm = plt.cm.ScalarMappable(cmap=cmap, norm=norm)
     # sm.set_array([])
     # cbar = fig.colorbar(sm, ax=axes.tolist(), orientation='vertical', fraction=0.02, pad=0.01)
     # cbar.set_label('Normalized Y values')
 
-    # Aggiungi spaziatura tra i subplots
+    # Add spacing between subplots
     plt.tight_layout()
 
-    # Verifica se la cartella "Plots" esiste, altrimenti creala
+    # Check if the "Plots" folder exists, create it if not
     output_dir = 'Plots'
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
 
-    # Salva la figura nella cartella "Plots"
+    # Save the figure in the "Plots" folder
     output_path = os.path.join(output_dir, 'convergence.png')
     fig.savefig(output_path)

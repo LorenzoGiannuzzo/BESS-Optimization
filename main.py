@@ -119,7 +119,7 @@ if __name__ == "__main__":
     # Algorithm convergence
 
     X = []
-    Y  =[]
+    Y = []
 
     for j in range(len(main.history)):
         X.append([])

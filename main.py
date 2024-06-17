@@ -3,6 +3,7 @@ import numpy as np
 import pandas as pd
 import Plots
 
+from postprocessing import total_convergence
 from objective_function import Revenues, pop_size, time_window, soc_0
 from BESS_parameters import charge_rate_interpolated_func, discharge_rate_interpolated_func, size
 from Economic_parameters import PUN_timeseries
@@ -137,31 +138,6 @@ if __name__ == "__main__":
     Y = np.array(Y)
 
     Plots.convergence(len(main.history),time_window, pop_size, X, Y)
+    total_convergence(len(main.history), time_window, pop_size, X, Y)
 
-    # Convert Y to a DataFrame (if not already)
-    Y = pd.DataFrame(Y)
-
-    # Calculate statistics of Y
-    Y_stats = Y.transpose().describe()
-
-    Y_stats = Y_stats.transpose()
-
-    # Create a new figure and axis
-    fig, ax = plt.subplots(figsize=(10, 6))
-
-    # Plot the mean from Y_stats with customization
-    Y_stats['mean'].plot(ax=ax, color="indigo", linestyle='-', linewidth=2,
-                         label='Mean Value of Population')
-    ax.fill_between(Y_stats.index, Y_stats['25%'], Y_stats['75%'], color='lightblue', alpha=0.3,
-                    label='Interquartile Range')
-    ax.legend()
-
-    ax.set_title('Total Convergence', fontsize=16)
-    ax.set_xlabel('Generations', fontsize=14)
-    ax.set_ylabel('Values', fontsize=14)
-
-    ax.set_facecolor('whitesmoke')
-    ax.grid(True, linestyle='--', linewidth=0.5,
-            color='gray')
-    plt.savefig('Plots/total_convergence.png')
 

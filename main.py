@@ -1,11 +1,12 @@
 import numpy as np
 import Plots
+
+from objective_function import Revenues, pop_size, time_window, soc_0
+from objective_function import n_gen
 from BESS_parameters import charge_rate_interpolated_func, discharge_rate_interpolated_func, size
 from Economic_parameters import PUN_timeseries
 from Optimizer import Optimizer
 from Plots import EnergyPlots
-from objective_function import Revenues, pop_size, time_window, soc_0
-from objective_function import n_gen
 
 
 class Main:

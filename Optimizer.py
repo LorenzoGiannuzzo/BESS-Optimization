@@ -8,18 +8,11 @@ from pymoo.operators.selection.tournament import TournamentSelection, compare
 from pymoo.optimize import minimize
 from pymoo.util.ref_dirs import get_reference_directions
 
-from BESS_parameters import charge_rate_interpolated_func, discharge_rate_interpolated_func
-from BESS_parameters import size
-
-from Economic_parameters import PUN_timeseries
 
 from objective_function import Revenues
 from objective_function import pop_size
 from objective_function import termination
-from objective_function import time_window
-from objective_function import soc_0
 
-from Plots import EnergyPlots
 
 def comp_by_cv_then_random(pop, P, **kwargs):
     S = np.full(P.shape[0], np.nan)

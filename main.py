@@ -119,7 +119,7 @@ if __name__ == "__main__":
     # Algorithm convergence
 
     X = []
-    for j in range(200):
+    for j in range(len(main.history)):
         X.append([])
         for i in range(pop_size):
             X[j].append(main.history[j].pop[i].get('X'))

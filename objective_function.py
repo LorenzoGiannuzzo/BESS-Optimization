@@ -11,7 +11,7 @@ from configuration import time_window, tolerance, period, soc_0, pop_size, termi
 # DEFINE OPTIMIZATION PARAMETERS
 
 time_window = time_window
-n_gen= n_gen
+n_gen = n_gen
 tolerance = tolerance
 period = period
 soc_0 = soc_0

@@ -1,7 +1,7 @@
 import numpy as np
 
-from objective_function import Revenues, pop_size, time_window, soc_0
-from BESS_parameters import charge_rate_interpolated_func, discharge_rate_interpolated_func, size, charge_rate, discharge_rate
+from objective_function import Revenues
+from configuration import charge_rate_interpolated_func, discharge_rate_interpolated_func, size, charge_rate, discharge_rate, pop_size, soc_0, time_window
 from Economic_parameters import PUN_timeseries
 from Optimizer import Optimizer
 from Plots import EnergyPlots

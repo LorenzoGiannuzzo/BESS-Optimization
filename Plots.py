@@ -69,7 +69,7 @@ class EnergyPlots:
         ax0.set_ylabel('SoC')
 
         # Plot charged and discharged energy with PUN on the second subplot
-        width = 0.8
+        width = 0.4
         ax1.bar(time_steps_24 - width / 2, charged_energy_24, width=width, color='limegreen',
                 label='Charged Energy [kWh]')
         ax1.bar(time_steps_24 + width / 2, discharged_energy_24, width=width, color='darkred',

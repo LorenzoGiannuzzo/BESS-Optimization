@@ -4,6 +4,8 @@ import Economic_parameters
 
 from pymoo.core.problem import ElementwiseProblem
 from BESS_model import BESS_model
+from BESS_model import charge_rate_interpolated_func, discharge_rate_interpolated_func, size
+
 
 
 # DEFINE OPTIMIZATION PROBLEM
@@ -24,21 +26,21 @@ class Revenues(ElementwiseProblem):
         # DEFINE REVENUES ATTRIBUTES FROM IMPORTER PARAMETERS
 
         self.PUN_timeseries = Economic_parameters.PUN_timeseries
-        self.c_func, self.d_func = configuration.charge_rate_interpolated_func, configuration.discharge_rate_interpolated_func
+        self.c_func, self.d_func = charge_rate_interpolated_func, discharge_rate_interpolated_func
 
         # DEFINE OBJECTIVE FUNCTION PARAMETERS
 
         self.soc = np.zeros((len(self.PUN_timeseries)))
         self.charged_energy = np.zeros((len(self.PUN_timeseries)))
         self.discharged_energy = np.zeros((len(self.PUN_timeseries)))
-        self.c_func, self.d_func = configuration.charge_rate_interpolated_func, configuration.discharge_rate_interpolated_func
+
 
         # INITIALIZE SoC AT t=0
 
         self.soc[0] = configuration.soc_0
 
         self.time_window = configuration.time_window
-        self.size = configuration.size
+        self.size = size
 
 
     # OBJECTIVE FUNCTION DEFINITION

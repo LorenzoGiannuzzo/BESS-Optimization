@@ -204,15 +204,9 @@ class EnergyPlots:
         plt.close()
 
     @staticmethod
-    def convergence(n_gen, timewindow, pop_size, X, Y):
+    def convergence(n_gen, timewindow, pop_size, X, Y, max_subplots_per_figure=72):
         # Define the timesteps
         timesteps = np.arange(0, n_gen)
-
-        # Create a figure and a grid of subplots
-        fig, axes = plt.subplots(9, 8, figsize=(20, 18))
-
-        # Flatten the array of axes to iterate over them
-        axes = axes.flatten()
 
         # Create a colormap based on a range of darker colors
         cmap = matplotlib.colors.LinearSegmentedColormap.from_list("", ["orange", "darkorchid", "indigo"])
@@ -220,44 +214,57 @@ class EnergyPlots:
         # Normalize Y using a logarithmic scale to improve color distribution
         norm = Normalize(vmin=np.min(Y), vmax=np.max(Y))
 
-        # Iterate over each subplot
-        for k in range(timewindow):
-            ax = axes[k]
+        # Number of figures needed
+        num_figures = (timewindow + max_subplots_per_figure - 1) // max_subplots_per_figure
 
-            # Prepare data for the current subplot
-            for i in range(pop_size):
-                # Calculate colors based on normalized Y values for individual i,
-                # scaled by a factor of 10000
-                colors = cmap(norm(Y[:, i]) * 10000)
-                ax.scatter(timesteps, X[:, i, k], s=10, alpha=0.8, c=colors)
+        for fig_num in range(num_figures):
+            # Determine the number of subplots in this figure
+            start = fig_num * max_subplots_per_figure
+            end = min(start + max_subplots_per_figure, timewindow)
+            num_subplots = end - start
 
-            # Set title and labels for the subplot
-            ax.set_title(f'C/D Energy % at {k + 1}h')
-            ax.set_xlabel('Generations')
-            ax.set_ylabel('% of C/D')
-            ax.grid(True)
+            # Determine the grid size for the subplots
+            rows = int(np.ceil(np.sqrt(num_subplots)))
+            cols = int(np.ceil(num_subplots / rows))
 
-        # Hide any empty subplots if present
-        for k in range(timewindow, len(axes)):
-            fig.delaxes(axes[k])
+            # Create a figure and a grid of subplots
+            fig, axes = plt.subplots(rows, cols, figsize=(20, 18))
 
-        # Remove the colorbar (commented out section)
-        # sm = plt.cm.ScalarMappable(cmap=cmap, norm=norm)
-        # sm.set_array([])
-        # cbar = fig.colorbar(sm, ax=axes.tolist(), orientation='vertical', fraction=0.02, pad=0.01)
-        # cbar.set_label('Normalized Y values')
+            # Flatten the array of axes to iterate over them
+            axes = axes.flatten()
 
-        # Add spacing between subplots
-        plt.tight_layout()
+            # Iterate over each subplot in the current figure
+            for k in range(num_subplots):
+                ax = axes[k]
 
-        # Check if the "Plots" folder exists, create it if not
-        output_dir = 'Plots'
-        if not os.path.exists(output_dir):
-            os.makedirs(output_dir)
+                # Prepare data for the current subplot
+                for i in range(pop_size):
+                    # Calculate colors based on normalized Y values for individual i
+                    colors = cmap(norm(Y[:, i])*10)
+                    ax.scatter(timesteps, X[:, i, start + k], s=10, alpha=0.8, c=colors)
 
-        # Save the figure in the "Plots" folder
-        output_path = os.path.join(output_dir, 'convergence.png')
-        fig.savefig(output_path)
+                # Set title and labels for the subplot
+                ax.set_title(f'C/D Energy % at {start + k + 1}h')
+                ax.set_xlabel('Generations')
+                ax.set_ylabel('% of C/D')
+                ax.grid(True)
+
+            # Hide any empty subplots if present
+            for k in range(num_subplots, len(axes)):
+                fig.delaxes(axes[k])
+
+            # Add spacing between subplots
+            plt.tight_layout()
+
+            # Check if the "Plots" folder exists, create it if not
+            output_dir = 'Plots'
+            if not os.path.exists(output_dir):
+                os.makedirs(output_dir)
+
+            # Save the figure in the "Plots" folder
+            output_path = os.path.join(output_dir, f'convergence_{fig_num + 1}.png')
+            fig.savefig(output_path)
+            plt.close(fig)
 
 
 

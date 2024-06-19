@@ -48,7 +48,7 @@ def comp_by_cv_then_random(pop, P, **kwargs):
 
 # 1) Time Windos
 
-time_window = 96
+time_window = 72
 
 # 2) State of Charge Initialization
 

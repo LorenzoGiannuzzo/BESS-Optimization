@@ -25,8 +25,8 @@ DEFINE BESS PARAMETERS:
 # BESS Parameters
 
 technology = "Li-ion"     #Define BESS Technology
-se_sp = 10   #Define Nominal Capacity / Nominal Power - Parameter
-size = 2500  #Define BESS size (Nominal Capacity) in kWh
+se_sp = 10   # Define Nominal Capacity / Nominal Power - Parameter
+size = 2500  # Define BESS size (Nominal Capacity) in kWh
 
 # LOADING FILES
 

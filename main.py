@@ -1,11 +1,13 @@
 import numpy as np
 
+
 from objective_function import Revenues
 from configuration import pop_size, soc_0, time_window
 from BESS_model import charge_rate_interpolated_func, discharge_rate_interpolated_func, size, charge_rate, discharge_rate
 from Economic_parameters import PUN_timeseries
 from Optimizer import Optimizer
 from Plots import EnergyPlots
+
 
 
 class Main:
@@ -23,8 +25,9 @@ class Main:
         """
         # Execute the optimization and get the solution
         solution = self.optimizer.maximize_revenues()
+
         self.history = solution.history
-        # self.history[i].pop[p].get(a) dove i= iterazione, p= individuo della popolazione, a=attributo tipi X o f
+
         # Get the charge/discharge time series from the solution
         c_d_timeseries = solution.X
 

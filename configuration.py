@@ -48,7 +48,7 @@ def comp_by_cv_then_random(pop, P, **kwargs):
 
 # 1) Time Windos
 
-time_window = 72
+time_window = 48
 
 # 2) State of Charge Initialization
 
@@ -80,8 +80,8 @@ n_gen = 500
 
 # 8-bis) Tolerance and period number
 
-tolerance = 0.1 # tolerance on the objective function
-period = 5 # number of iteration in which tolerance is evaluated
+tolerance = 0.5  # tolerance on the objective function
+period = 5  # number of iteration in which tolerance is evaluated
 
 # 9) Termination
 

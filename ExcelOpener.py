@@ -7,7 +7,7 @@ class import_file:
         # Attempt to load the excel file into a Pandas DataFrame
         try:
             data = pd.read_excel(file_path, sheet_name = sheetname)
-            print(f"File '{file_path}' loaded successfully.")
+            #print(f"File '{file_path}' loaded successfully.")
         except FileNotFoundError:
             # Handle FileNotFoundError, print an error message
             print(f"Error: The file '{file_path}' was not found.")

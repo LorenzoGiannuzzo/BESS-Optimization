@@ -25,7 +25,7 @@ class Revenues(ElementwiseProblem):
 
         # DEFINE REVENUES ATTRIBUTES FROM IMPORTER PARAMETERS
 
-        self.PUN_timeseries = Economic_parameters.PUN_timeseries
+        self.PUN_timeseries = Economic_parameters.PUN_timeseries[:,1]
         self.c_func, self.d_func = charge_rate_interpolated_func, discharge_rate_interpolated_func
 
         # DEFINE OBJECTIVE FUNCTION PARAMETERS

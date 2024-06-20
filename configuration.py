@@ -1,5 +1,7 @@
 import numpy as np
 
+from Economic_parameters import time_window
+
 from pymoo.termination.robust import RobustTermination
 from pymoo.termination.xtol import DesignSpaceTermination
 from pymoo.algorithms.moo.nsga3 import NSGA3
@@ -15,7 +17,7 @@ from pymoo.termination import get_termination
 ''' 
 OPTIMIZATION PARAMETERS:
 
-   1) Time window
+   1) Time window (which is set in Economic_parameters
    2) State of Charge (SoC) Initialization
    3) Population
    4) n_var = number of variables to be optimized to minimize/maximize the objective function
@@ -48,8 +50,7 @@ def comp_by_cv_then_random(pop, P, **kwargs):
 
 # 1) Time Windos
 
-time_window = 48
-
+time_window = time_window
 # 2) State of Charge Initialization
 
 soc_0 = 0.2  # Define initial SoC

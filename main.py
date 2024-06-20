@@ -1,11 +1,13 @@
 import numpy as np
-
+import json
 
 from objective_function import Revenues
 from configuration import pop_size, soc_0, time_window
 from BESS_model import charge_rate_interpolated_func, discharge_rate_interpolated_func, size, charge_rate, discharge_rate
 from Economic_parameters import PUN_timeseries
 from Optimizer import Optimizer
+
+from BESS_model import size, technology
 from Plots import EnergyPlots
 
 
@@ -89,7 +91,7 @@ class Main:
             charged_energy (list): Charged energy for each time step.
             discharged_energy (list): Discharged energy for each time step.
         """
-        PUN_ts = PUN_timeseries  # Time series of energy prices
+        PUN_ts = PUN_timeseries[:,1]  # Time series of energy prices
         # Calculate revenues by summing the costs of charging and discharging
         rev = - (np.array(discharged_energy) * PUN_ts / 1000) - (np.array(charged_energy) * PUN_ts / 1000)
         # Print total revenues
@@ -104,11 +106,11 @@ class Main:
             charged_energy (list): Charged energy for each time step.
             discharged_energy (list): Discharged energy for each time step.
         """
-        plots = EnergyPlots(time_window, soc, charged_energy, discharged_energy, PUN_timeseries)
-        plots.plot_soc()
-        plots.plot_charged_energy()
-        plots.plot_discharged_energy()
-        plots.plot_combined_energy_with_pun(num_values=time_window)
+        #plots = EnergyPlots(time_window, soc, charged_energy, discharged_energy, PUN_timeseries)
+        #plots.plot_soc()
+        #plots.plot_charged_energy()
+        #plots.plot_discharged_energy()
+        #plots.plot_combined_energy_with_pun(num_values=time_window)
 
 
 if __name__ == "__main__":
@@ -116,6 +118,8 @@ if __name__ == "__main__":
     main = Main()
     # Execute the optimization
     main.run_optimization()
+
+
 
     # POSTPROCESSING
 
@@ -139,10 +143,32 @@ if __name__ == "__main__":
 
     # PLOTS
 
-    EnergyPlots.PUN_plot(PUN_timeseries)
-    EnergyPlots.convergence(len(main.history),time_window, pop_size, X, Y)
-    EnergyPlots.c_d_plot(charge_rate, discharge_rate, charge_rate_interpolated_func, discharge_rate_interpolated_func)
-    EnergyPlots.total_convergence(len(main.history), time_window, pop_size, X, Y)
+    # EnergyPlots.PUN_plot(PUN_timeseries)
+    # EnergyPlots.convergence(len(main.history),time_window, pop_size, X, Y)
+    # EnergyPlots.c_d_plot(charge_rate, discharge_rate, charge_rate_interpolated_func, discharge_rate_interpolated_func)
+    # EnergyPlots.total_convergence(len(main.history), time_window, pop_size, X, Y)
+
+    SoC = main.objective_function.soc
+    c_d_energy = main.objective_function.c_d_timeseries
+    revenues = c_d_energy * PUN_timeseries[:,1]
+
+    data = []
+    for i in range(len(PUN_timeseries[:,1])):
+        entry = {
+            "datetime": PUN_timeseries[i, 0].isoformat(),
+            "value": int(PUN_timeseries[i, 1]*1000000),
+            "soc": SoC[i],
+            "c_d_energy": c_d_energy[i],
+            "revenues": revenues[i],
+            "technology": technology,
+            "size": size,
+            "source": PUN_timeseries[i, 2]
+        }
+        data.append(entry)
+
+        json_file_path = r'C:\Users\lorenzo.giannuzzo\PycharmProjects\BESS-Optimization\output.json'
+        with open(json_file_path, 'w') as json_file:
+            json.dump(data, json_file, indent=4)
 
 
 

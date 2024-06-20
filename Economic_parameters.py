@@ -1,12 +1,13 @@
-from utils import Get_data
-from configuration import time_window
-
-file_path2 = "PUN.xlsx"
-sheetname3 = "PUN"
+import pandas as pd
 
 # IMPORT PUN TIMESERIES
 
-data = Get_data.get_data(file_path2, sheetname3)
-PUN_timeseries = data.iloc[:time_window, 2].to_numpy()
+json_file_path = r'C:\Users\lorenzo.giannuzzo\PycharmProjects\BESS-Optimization\pun.json'
+df = pd.read_json(json_file_path)
+df['value'] = df['value'] / 1000000
 
+PUN_timeseries = df
+
+PUN_timeseries = PUN_timeseries.to_numpy()
+time_window = len(PUN_timeseries[:,1])
 

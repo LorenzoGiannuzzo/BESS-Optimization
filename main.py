@@ -13,7 +13,7 @@ from Plots import EnergyPlots
 class Main:
     def __init__(self):
         """
-        Initializes the Main object. Creates an instance of the objective function (Revenues) and the optimizer
+        Initializes the main object. Creates an instance of the objective function (Revenues) and the optimizer
         (Optimizer).
         """
         self.objective_function = Revenues()

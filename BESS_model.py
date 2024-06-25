@@ -7,11 +7,10 @@ from argparser import size, technology
 
 # FILE PATH DATA
 
-file_path = "BESS Data.xlsx"
+file_path = r"Input\BESS Data.xlsx"
 sheetname = "BESS Properties"
 sheetname2 = "Li-ion ChargeDischarge Curve 10"
-file_path2 = "PUN.xlsx"
-sheetname3 = "PUN"
+
 
 '''
 DEFINE BESS PARAMETERS:

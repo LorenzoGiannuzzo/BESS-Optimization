@@ -1,11 +1,14 @@
 import numpy as np
 import json
 
+
 from objective_function import Revenues
 from configuration import pop_size, soc_0, time_window
 from BESS_model import charge_rate_interpolated_func, discharge_rate_interpolated_func, size, charge_rate, discharge_rate
 from Economic_parameters import PUN_timeseries
 from Optimizer import Optimizer
+
+from argparser import output_json_path
 
 from BESS_model import size, technology
 from Plots import EnergyPlots
@@ -114,6 +117,8 @@ class Main:
 
 
 if __name__ == "__main__":
+
+
     # Create an instance of the Main class
     main = Main()
     # Execute the optimization
@@ -166,7 +171,7 @@ if __name__ == "__main__":
         }
         data.append(entry)
 
-        json_file_path = r'C:\Users\lorenzo.giannuzzo\PycharmProjects\BESS-Optimization\output.json'
+        json_file_path = output_json_path
         with open(json_file_path, 'w') as json_file:
             json.dump(data, json_file, indent=4)
 

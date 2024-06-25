@@ -1,8 +1,9 @@
 import pandas as pd
+from argparser import input_json_path
 
 # IMPORT PUN TIMESERIES
 
-json_file_path = r'C:\Users\lorenzo.giannuzzo\PycharmProjects\BESS-Optimization\pun.json'
+json_file_path = input_json_path
 df = pd.read_json(json_file_path)
 df['value'] = df['value'] / 1000000
 

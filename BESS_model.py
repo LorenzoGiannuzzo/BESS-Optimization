@@ -3,6 +3,8 @@ import numpy as np
 from utils import Get_data
 from utils import BESS
 
+from argparser import size, technology
+
 # FILE PATH DATA
 
 file_path = "BESS Data.xlsx"
@@ -24,14 +26,13 @@ DEFINE BESS PARAMETERS:
 
 # BESS Parameters
 
-technology = "Li-ion"     # Define BESS Technology
+technology = technology  # Define BESS Technology
 se_sp = 10   # Define Nominal Capacity / Nominal Power - Parameter
-size = 2500  # Define BESS size (Nominal Capacity) in kWh
+size = size  # Define BESS size (Nominal Capacity) in kWh
 
 # LOADING FILES
 
 properties = Get_data.get_data(file_path, sheetname)
-PUN = Get_data.get_data(file_path2, sheetname3)
 load_curve = Get_data.get_data(file_path, sheetname2)
 
 
@@ -49,7 +50,6 @@ BESS_Parameters = BESS.get_bess(technology, properties, se_sp, size)
 # INTERPOLATE CHARGE AND DISCHARGE FUNCTIONS FROM CHARGE AND DISCHARGE RATE
 
 charge_rate_interpolated_func, discharge_rate_interpolated_func = BESS.get_c_d_functions(load_curve)
-
 
 
 class BESS_model:

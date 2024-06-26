@@ -109,11 +109,11 @@ class Main:
             charged_energy (list): Charged energy for each time step.
             discharged_energy (list): Discharged energy for each time step.
         """
-        #plots = EnergyPlots(time_window, soc, charged_energy, discharged_energy, PUN_timeseries)
+        plots = EnergyPlots(time_window, soc, charged_energy, discharged_energy, PUN_timeseries[:,1])
         #plots.plot_soc()
         #plots.plot_charged_energy()
         #plots.plot_discharged_energy()
-        #plots.plot_combined_energy_with_pun(num_values=time_window)
+        plots.plot_combined_energy_with_pun(num_values=time_window)
 
 
 if __name__ == "__main__":
@@ -148,10 +148,10 @@ if __name__ == "__main__":
 
     # PLOTS
 
-    # EnergyPlots.PUN_plot(PUN_timeseries)
-    # EnergyPlots.convergence(len(main.history),time_window, pop_size, X, Y)
-    # EnergyPlots.c_d_plot(charge_rate, discharge_rate, charge_rate_interpolated_func, discharge_rate_interpolated_func)
-    # EnergyPlots.total_convergence(len(main.history), time_window, pop_size, X, Y)
+    EnergyPlots.PUN_plot(PUN_timeseries[:,1])
+    EnergyPlots.convergence(len(main.history),time_window, pop_size, X, Y)
+    EnergyPlots.c_d_plot(charge_rate, discharge_rate, charge_rate_interpolated_func, discharge_rate_interpolated_func)
+    EnergyPlots.total_convergence(len(main.history), time_window, pop_size, X, Y)
 
     SoC = main.objective_function.soc
     c_d_energy = main.objective_function.c_d_timeseries

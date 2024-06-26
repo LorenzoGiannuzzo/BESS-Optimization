@@ -180,8 +180,8 @@ class EnergyPlots:
 
         # Add titles and axis labels
         ax.set_title('Statistics of Fitness', fontsize=16)  # Title of the plot
-        ax.set_xlabel('Categories', fontsize=14)  # X-axis label
-        ax.set_ylabel('Values', fontsize=14)  # Y-axis label
+        ax.set_xlabel('Generations', fontsize=14)  # X-axis label
+        ax.set_ylabel('OF Mean Value', fontsize=14)  # Y-axis label
 
         # Customize background and grid
         ax.set_facecolor('whitesmoke')  # Background color

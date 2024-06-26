@@ -31,7 +31,7 @@ class Optimizer:
             save_history=True,
             elementwise_evaluator=runner
         )
-        print('Execution TIme:', res.exec_time)
+        print('Execution Time:', res.exec_time)
 
         pool.close()
         pool.join()

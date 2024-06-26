@@ -160,7 +160,7 @@ if __name__ == "__main__":
     data = []
     for i in range(len(PUN_timeseries[:,1])):
         entry = {
-            "datetime": PUN_timeseries[i, 0].isoformat(),
+            "datetime": PUN_timeseries[i, 0].isoformat() + "Z",
             "value": int(PUN_timeseries[i, 1]*1000000),
             "soc": SoC[i],
             "c_d_energy": c_d_energy[i],

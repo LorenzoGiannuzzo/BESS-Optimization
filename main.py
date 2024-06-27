@@ -19,7 +19,6 @@ from BESS_model import size, technology
 from Plots import EnergyPlots
 
 
-
 class Main:
     def __init__(self, multiprocessing=True):
         """
@@ -44,9 +43,9 @@ class Main:
         """
         # Execute the optimization and get the solution
         solution = self.optimizer.maximize_revenues()
-        if self.multiprocessing:
-            #self.pool.join()
-            pass
+
+        if multiprocessing:
+            self.pool.close()
 
         self.history = solution.history
 
@@ -142,6 +141,7 @@ if __name__ == "__main__":
     main = Main(multiprocessing=True)
     # Execute the optimization
     main.run_optimization()
+
 
     plot = False
 

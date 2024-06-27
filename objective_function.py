@@ -20,7 +20,8 @@ class Revenues(ElementwiseProblem):
             n_obj=configuration.n_obj,
             xl=[-1] * configuration.time_window,
             xu=[1] * configuration.time_window,
-            vtype=float, **kwargs,
+            vtype=float,
+            **kwargs,
 
         )
 
@@ -34,7 +35,6 @@ class Revenues(ElementwiseProblem):
         self.soc = np.zeros((len(self.PUN_timeseries)))
         self.charged_energy = np.zeros((len(self.PUN_timeseries)))
         self.discharged_energy = np.zeros((len(self.PUN_timeseries)))
-
 
         # INITIALIZE SoC AT t=0
 

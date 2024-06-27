@@ -57,7 +57,7 @@ soc_0 = 0.2  # Define initial SoC
 
 # 3) Population
 
-pop_size = 1000  # Define the population size, which is the number of genes of the NSGA-III
+pop_size = 100  # Define the population size, which is the number of genes of the NSGA-III
 
 # 4) n_var
 

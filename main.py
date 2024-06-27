@@ -128,11 +128,11 @@ class Main:
             charged_energy (list): Charged energy for each time step.
             discharged_energy (list): Discharged energy for each time step.
         """
-        plots = EnergyPlots(time_window, soc, charged_energy, discharged_energy, PUN_timeseries[:,1])
+        #plots = EnergyPlots(time_window, soc, charged_energy, discharged_energy, PUN_timeseries[:,1])
         #plots.plot_soc()
         #plots.plot_charged_energy()
         #plots.plot_discharged_energy()
-        plots.plot_combined_energy_with_pun(num_values=time_window)
+        #plots.plot_combined_energy_with_pun(num_values=time_window)
 
 
 if __name__ == "__main__":

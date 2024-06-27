@@ -8,7 +8,7 @@ from multiprocessing import cpu_count
 
 
 from objective_function import Revenues
-from configuration import pop_size, soc_0, time_window
+from configuration import pop_size, soc_0, time_window, plot
 from BESS_model import charge_rate_interpolated_func, discharge_rate_interpolated_func, size, charge_rate, discharge_rate
 from Economic_parameters import PUN_timeseries
 from Optimizer import Optimizer
@@ -128,11 +128,12 @@ class Main:
             charged_energy (list): Charged energy for each time step.
             discharged_energy (list): Discharged energy for each time step.
         """
-        #plots = EnergyPlots(time_window, soc, charged_energy, discharged_energy, PUN_timeseries[:,1])
-        #plots.plot_soc()
-        #plots.plot_charged_energy()
-        #plots.plot_discharged_energy()
-        #plots.plot_combined_energy_with_pun(num_values=time_window)
+        if plot:
+            plots = EnergyPlots(time_window, soc, charged_energy, discharged_energy, PUN_timeseries[:,1])
+            plots.plot_soc()
+            plots.plot_charged_energy()
+            plots.plot_discharged_energy()
+            plots.plot_combined_energy_with_pun(num_values=time_window)
 
 
 if __name__ == "__main__":
@@ -141,9 +142,6 @@ if __name__ == "__main__":
     main = Main(multiprocessing=True)
     # Execute the optimization
     main.run_optimization()
-
-
-    plot = False
 
     # POSTPROCESSING
     # Algorithm convergence
@@ -167,7 +165,6 @@ if __name__ == "__main__":
     # PLOTS
 
     if plot:
-
         EnergyPlots.PUN_plot(PUN_timeseries[:,1])
         EnergyPlots.convergence(len(main.history),time_window, pop_size, X, Y)
         EnergyPlots.c_d_plot(charge_rate, discharge_rate, charge_rate_interpolated_func, discharge_rate_interpolated_func)
@@ -179,6 +176,7 @@ if __name__ == "__main__":
     revenues = c_d_energy * PUN_timeseries[:,1]
 
     data = []
+
     for i in range(len(PUN_timeseries[:,1])):
         entry = {
             "datetime": PUN_timeseries[i, 0].isoformat() + "Z",

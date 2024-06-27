@@ -28,6 +28,7 @@ OPTIMIZATION PARAMETERS:
    9) Termination
    10) Reference Distances
    11) Algorithm and hyperparameters
+   12) Plot (boolean value to enable plots)
 
 '''
 def comp_by_cv_then_random(pop, P, **kwargs):
@@ -143,5 +144,9 @@ algorithm = NSGA3(
     eliminate_duplicates=True
 
 )
+
+# 12 Plots, boolean value to enable or not plots
+
+plot = False
 
 

@@ -60,7 +60,7 @@ class Main:
         self.calculate_and_print_revenues(charged_energy, discharged_energy)
 
         # Generate plots of the results
-        self.plot_results(soc, charged_energy, discharged_energy)
+        #self.plot_results(soc, charged_energy, discharged_energy)
 
 
 

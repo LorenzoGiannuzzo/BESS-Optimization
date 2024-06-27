@@ -1,10 +1,9 @@
 import configuration
+import multiprocessing
 
-from multiprocessing.pool import ThreadPool
 from pymoo.optimize import minimize
 from pymoo.core.problem import StarmapParallelization
 from objective_function import Revenues
-import multiprocessing
 from multiprocessing import cpu_count
 
 

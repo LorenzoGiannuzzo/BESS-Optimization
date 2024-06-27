@@ -3,10 +3,10 @@ import configuration
 import Economic_parameters
 
 from pymoo.core.problem import ElementwiseProblem
-from BESS_model import BESS_model
-from BESS_model import charge_rate_interpolated_func, discharge_rate_interpolated_func, size
+from BESS_model import BESS_model, charge_rate_interpolated_func, discharge_rate_interpolated_func, size
 
 # DEFINE OPTIMIZATION PROBLEM
+
 class Revenues(ElementwiseProblem):
     def __init__(
             self,
@@ -41,7 +41,6 @@ class Revenues(ElementwiseProblem):
         self.time_window = configuration.time_window
         self.size = size
 
-
     # OBJECTIVE FUNCTION DEFINITION
 
     def _evaluate(self, x, out, *args, **kwargs):
@@ -53,9 +52,11 @@ class Revenues(ElementwiseProblem):
         # EVALUATE THE CHARGED AND DISCHARGED ENERGY AND UPDATE THE SoC FOR EACH TIMESTEP t
 
         # Create an instance of BESS_model
+
         bess_model = BESS_model(self.time_window, self.PUN_timeseries, self.soc, self.size, self.c_func, self.d_func)
 
         # Run the simulation
+
         self.charged_energy, self.discharged_energy = bess_model.run_simulation(self.c_d_timeseries)
 
         # EVALUATE THE REVENUES OBTAINED FOR EACH TIMESTEP t

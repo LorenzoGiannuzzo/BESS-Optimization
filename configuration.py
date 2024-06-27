@@ -1,7 +1,6 @@
 import numpy as np
 
 from Economic_parameters import time_window
-
 from pymoo.termination.robust import RobustTermination
 from pymoo.termination.xtol import DesignSpaceTermination
 from pymoo.algorithms.moo.nsga3 import NSGA3
@@ -32,16 +31,19 @@ OPTIMIZATION PARAMETERS:
 
 '''
 def comp_by_cv_then_random(pop, P, **kwargs):
+
     S = np.full(P.shape[0], np.nan)
 
     for i in range(P.shape[0]):
         a, b = P[i, 0], P[i, 1]
 
         # if at least one solution is infeasible
+
         if pop[a].CV > 0.0 or pop[b].CV > 0.0:
             S[i] = compare(a, pop[a].CV, b, pop[b].CV, method='smaller_is_better', return_random_if_equal=True)
 
         # both solutions are feasible just set random
+
         else:
             S[i] = np.random.choice([a, b])
 
@@ -52,6 +54,7 @@ def comp_by_cv_then_random(pop, P, **kwargs):
 # 1) Time Windos
 
 time_window = time_window
+
 # 2) State of Charge Initialization
 
 soc_0 = 0.2  # Define initial SoC

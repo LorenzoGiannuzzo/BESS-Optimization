@@ -6,8 +6,6 @@ from pymoo.core.problem import ElementwiseProblem
 from BESS_model import BESS_model
 from BESS_model import charge_rate_interpolated_func, discharge_rate_interpolated_func, size
 
-
-
 # DEFINE OPTIMIZATION PROBLEM
 class Revenues(ElementwiseProblem):
     def __init__(

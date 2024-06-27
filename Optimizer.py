@@ -33,6 +33,7 @@ class Optimizer:
 
             )
             print('Execution Time:', res.exec_time)
+
         else:
             problem = self._objective_function
 

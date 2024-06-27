@@ -7,34 +7,46 @@ from multiprocessing import cpu_count
 
 
 class Optimizer:
-    def __init__(self, objective_function: Revenues, pop_size: int):
+    def __init__(self, objective_function: Revenues, pop_size: int, multiprocessing = True):
         self._objective_function = objective_function
         self.pop_size = pop_size
+        self.multiprocessing = multiprocessing
 
     def maximize_revenues(self):
-        n_processes = 8  # Set the number of processes
-        pool = multiprocessing.Pool(processes=n_processes)
-        runner = StarmapParallelization(pool.starmap)
+        if self.multiprocessing:
 
-        problem = self._objective_function
+            problem = self._objective_function
 
-        algorithm = configuration.algorithm
+            algorithm = configuration.algorithm
 
-        termination = configuration.termination
+            termination = configuration.termination
 
-        res = minimize(
-            problem,
-            algorithm,
-            termination,
-            seed=42,
-            verbose=True,
-            save_history=True,
-            elementwise_evaluator=runner
-        )
-        print('Execution Time:', res.exec_time)
+            res = minimize(
+                problem,
+                algorithm,
+                termination,
+                seed=42,
+                verbose=True,
+                save_history=True,
 
-        pool.close()
-        pool.join()
+            )
+            print('Execution Time:', res.exec_time)
+        else:
+            problem = self._objective_function
+
+            algorithm = configuration.algorithm
+
+            termination = configuration.termination
+
+            res = minimize(
+                problem,
+                algorithm,
+                termination,
+                seed=42,
+                verbose=True,
+                save_history=True,
+            )
+            print('Execution Time:', res.exec_time)
 
         return res
 

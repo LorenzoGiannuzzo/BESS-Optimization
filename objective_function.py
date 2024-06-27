@@ -20,7 +20,8 @@ class Revenues(ElementwiseProblem):
             n_obj=configuration.n_obj,
             xl=[-1] * configuration.time_window,
             xu=[1] * configuration.time_window,
-            vtype=float, **kwargs
+            vtype=float, **kwargs,
+
         )
 
         # DEFINE REVENUES ATTRIBUTES FROM IMPORTER PARAMETERS

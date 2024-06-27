@@ -57,7 +57,7 @@ soc_0 = 0.2  # Define initial SoC
 
 # 3) Population
 
-pop_size = 100  # Define the population size, which is the number of genes of the NSGA-III
+pop_size = 1000  # Define the population size, which is the number of genes of the NSGA-III
 
 # 4) n_var
 
@@ -81,7 +81,7 @@ n_gen = 500
 
 # 8-bis) Tolerance and period number
 
-tolerance = 0.5  # tolerance on the objective function
+tolerance = 0.5 # tolerance on the objective function
 period = 5  # number of iteration in which tolerance is evaluated
 
 # 9) Termination

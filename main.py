@@ -1,5 +1,10 @@
+import multiprocessing
+
 import numpy as np
 import json
+from pymoo.core.problem import StarmapParallelization
+from multiprocessing import Pool
+from multiprocessing import cpu_count
 
 
 from objective_function import Revenues
@@ -16,13 +21,22 @@ from Plots import EnergyPlots
 
 
 class Main:
-    def __init__(self):
+    def __init__(self, multiprocessing=True):
         """
         Initializes the main object. Creates an instance of the objective function (Revenues) and the optimizer
         (Optimizer).
         """
-        self.objective_function = Revenues()
-        self.optimizer = Optimizer(objective_function=self.objective_function, pop_size=pop_size)
+        self.multiprocessing = multiprocessing
+        if self.multiprocessing:
+            n_processes = cpu_count() - 1
+            print(n_processes)# Set the number of processes
+            self.pool = Pool(processes=n_processes)
+            runner = StarmapParallelization(self.pool.starmap)
+            self.objective_function = Revenues(elementwise_runner=runner,elementwise=True)
+        else:
+            self.objective_function = Revenues()
+
+        self.optimizer = Optimizer(objective_function=self.objective_function, pop_size=pop_size, multiprocessing=multiprocessing)
 
     def run_optimization(self):
         """
@@ -30,6 +44,9 @@ class Main:
         """
         # Execute the optimization and get the solution
         solution = self.optimizer.maximize_revenues()
+        if self.multiprocessing:
+            #self.pool.join()
+            pass
 
         self.history = solution.history
 
@@ -37,13 +54,16 @@ class Main:
         c_d_timeseries = solution.X
 
         # Apply physical constraints to the charge/discharge time series
-        soc, charged_energy, discharged_energy = self.apply_physical_constraints(c_d_timeseries)
+        soc, charged_energy, discharged_energy, c_d_timeseries = self.apply_physical_constraints(c_d_timeseries)
+        self.c_d_timeseries_final = c_d_timeseries
 
         # Calculate and print revenues
         self.calculate_and_print_revenues(charged_energy, discharged_energy)
 
         # Generate plots of the results
         self.plot_results(soc, charged_energy, discharged_energy)
+
+
 
     def apply_physical_constraints(self, c_d_timeseries):
         """
@@ -84,7 +104,7 @@ class Main:
             else:
                 soc[index + 1] = max(0.1, soc[index] + discharged_energy[index] / size)
 
-        return soc, charged_energy, discharged_energy
+        return soc, charged_energy, discharged_energy, c_d_timeseries
 
     def calculate_and_print_revenues(self, charged_energy, discharged_energy):
         """
@@ -109,25 +129,23 @@ class Main:
             charged_energy (list): Charged energy for each time step.
             discharged_energy (list): Discharged energy for each time step.
         """
-        #plots = EnergyPlots(time_window, soc, charged_energy, discharged_energy, PUN_timeseries[:,1])
+        plots = EnergyPlots(time_window, soc, charged_energy, discharged_energy, PUN_timeseries[:,1])
         #plots.plot_soc()
         #plots.plot_charged_energy()
         #plots.plot_discharged_energy()
-        #plots.plot_combined_energy_with_pun(num_values=time_window)
+        plots.plot_combined_energy_with_pun(num_values=time_window)
 
 
 if __name__ == "__main__":
 
-
     # Create an instance of the Main class
-    main = Main()
+    main = Main(multiprocessing=True)
     # Execute the optimization
     main.run_optimization()
 
-
+    plot = False
 
     # POSTPROCESSING
-
     # Algorithm convergence
 
     X = []
@@ -148,20 +166,23 @@ if __name__ == "__main__":
 
     # PLOTS
 
-    #EnergyPlots.PUN_plot(PUN_timeseries[:,1])
-    #EnergyPlots.convergence(len(main.history),time_window, pop_size, X, Y)
-    #EnergyPlots.c_d_plot(charge_rate, discharge_rate, charge_rate_interpolated_func, discharge_rate_interpolated_func)
-    #EnergyPlots.total_convergence(len(main.history), time_window, pop_size, X, Y)
+    if plot:
+
+        EnergyPlots.PUN_plot(PUN_timeseries[:,1])
+        EnergyPlots.convergence(len(main.history),time_window, pop_size, X, Y)
+        EnergyPlots.c_d_plot(charge_rate, discharge_rate, charge_rate_interpolated_func, discharge_rate_interpolated_func)
+        EnergyPlots.total_convergence(len(main.history), time_window, pop_size, X, Y)
+
 
     SoC = main.objective_function.soc
-    c_d_energy = main.objective_function.c_d_timeseries
+    c_d_energy = main.c_d_timeseries_final  #main.objective_function.c_d_timeseries
     revenues = c_d_energy * PUN_timeseries[:,1]
 
     data = []
     for i in range(len(PUN_timeseries[:,1])):
         entry = {
             "datetime": PUN_timeseries[i, 0].isoformat() + "Z",
-            "value": int(PUN_timeseries[i, 1]*1000000),
+            "value": int(PUN_timeseries[i, 1]*1000000), # da dare PUN in euro/kwh, aggiungere soc iniziale, input togleire source, aggiungere velocità di carica
             "soc": SoC[i],
             "c_d_energy": c_d_energy[i],
             "revenues": revenues[i],

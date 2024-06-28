@@ -67,6 +67,9 @@ class Main:
         soc, charged_energy, discharged_energy, c_d_timeseries = self.apply_physical_constraints(c_d_timeseries)
 
         self.c_d_timeseries_final = c_d_timeseries
+        self.soc = soc
+        self.charged_energy = charged_energy
+        self.discharged_energy = discharged_energy
 
         # Calculate and print revenues
 
@@ -129,11 +132,11 @@ class Main:
 
             if c_d_timeseries[index] >= 0:
 
-                soc[index + 1] = min(0.9, soc[index] + charged_energy[index] / size)
+                soc[index + 1] = min(0.9, soc[index] + charged_energy[index]/size)
 
             else:
 
-                soc[index + 1] = max(0.1, soc[index] + discharged_energy[index] / size)
+                soc[index + 1] = max(0.1, soc[index] + discharged_energy[index]/size)
 
         return soc, charged_energy, discharged_energy, c_d_timeseries
 
@@ -220,9 +223,9 @@ if __name__ == "__main__":
         EnergyPlots.c_d_plot(charge_rate, discharge_rate, charge_rate_interpolated_func, discharge_rate_interpolated_func)
         EnergyPlots.total_convergence(len(main.history), time_window, pop_size, X, Y)
 
-    SoC = main.objective_function.soc
-    c_d_energy = main.c_d_timeseries_final  #main.objective_function.c_d_timeseries
-    revenues = c_d_energy * PUN_timeseries[:,1]
+    SoC = main.soc
+    c_d_energy = main.c_d_timeseries_final
+    revenues = -c_d_energy * PUN_timeseries[:,1]
     data = []
 
     for i in range(len(PUN_timeseries[:,1])):

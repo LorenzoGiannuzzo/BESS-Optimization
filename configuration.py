@@ -86,8 +86,8 @@ n_gen = 500
 
 # 8-bis) Tolerance and period number
 
-tolerance = 0.5 # tolerance on the objective function
-period = 5  # number of iteration in which tolerance is evaluated
+tolerance = 0.3  # tolerance on the objective function
+period = 20  # number of iteration in which tolerance is evaluated
 
 # 9) Termination
 

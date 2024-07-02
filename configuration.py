@@ -1,5 +1,6 @@
 import numpy as np
 
+from argparser import soc
 from Economic_parameters import time_window
 from pymoo.termination.robust import RobustTermination
 from pymoo.termination.xtol import DesignSpaceTermination
@@ -57,7 +58,7 @@ time_window = time_window
 
 # 2) State of Charge Initialization
 
-soc_0 = 0.2  # Define initial SoC
+soc_0 = soc  # Define initial SoC
 
 # 3) Population
 

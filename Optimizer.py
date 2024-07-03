@@ -5,6 +5,7 @@ from pymoo.optimize import minimize
 from pymoo.core.problem import StarmapParallelization
 from objective_function import Revenues
 from multiprocessing import cpu_count
+from configuration import plot
 
 
 class Optimizer:
@@ -14,6 +15,11 @@ class Optimizer:
         self.multiprocessing = multiprocessing
 
     def maximize_revenues(self):
+        if plot:
+            history = True
+        else:
+            history = False
+
         if self.multiprocessing:
 
             problem = self._objective_function
@@ -28,7 +34,7 @@ class Optimizer:
                 termination,
                 seed=42,
                 verbose=True,
-                save_history=True,
+                save_history=history,
 
             )
             print('Execution Time:', res.exec_time)

@@ -30,11 +30,8 @@ Run the main script to start the optimization process:
 
 ### Example:
 
-`python main.py --input_json C:\path\to\input\pun.json --output_json C:\path\to\output\output.json --technology "Li-ion" --size 2500`
-
-This command runs the optimization script using a Lithium-ion battery with a size of 2500 kWh, taking input data from `pun.json` and saving the results in `output.json`.
-
-The results, including the state of charge (SoC) and revenue calculations, are summarized in a .json file saved in the specified "absolute_path_to_output_json" absolute path, given as input through command line.
+`python main.py --input_json C:\Users\lorenzo.giannuzzo\PycharmProjects\BESS-Optimization\Input\pun2.json --output_json C:\Users\lorenzo.giannuzzo\PycharmProjects\BESS-Optimization\Output\output.json --technology Li-ion --size 2500 --power 250  --soc 0.9
+`
 
 ## Project Structure
 

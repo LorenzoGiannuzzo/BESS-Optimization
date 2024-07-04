@@ -10,15 +10,17 @@ input_json_default = r"C:\Users\lorenzo.giannuzzo\PycharmProjects\BESS-Optimizat
 output_json_default =  r"C:\Users\lorenzo.giannuzzo\PycharmProjects\BESS-Optimization\Output\output.json"
 technology_default = "Li-ion"
 size_default = 2500
+power_default = size_default/10
 soc_default = 0.2
 
 # Aggiungere gli argomenti
 parser.add_argument('--input_json', type=str, required=False,default=input_json_default,
-                    help='Path assoluto del file .json da cui estrarre la timeseries del PUN')
-parser.add_argument('--output_json', type=str, required=False,default=output_json_default, help='Path assoluto del file .json di output')
-parser.add_argument('--technology', type=str, required=False, default=technology_default, help='Technology del BESS')
-parser.add_argument('--size', type=float, required=False,default=size_default, help='Size del BESS in kWh')
-parser.add_argument('--soc', type=float, required=False,default=soc_default, help='Soc iniziale del BESS in %')
+                    help='Absolute paht of the file .json for PUN values as input')
+parser.add_argument('--output_json', type=str, required=False,default=output_json_default, help='Absolute path of the output file .json')
+parser.add_argument('--technology', type=str, required=False, default=technology_default, help='BESS Technology')
+parser.add_argument('--size', type=float, required=False,default=size_default, help='BESS Size in kWh')
+parser.add_argument('--power', type=float, required=False,default=power_default, help='BES Nominal power in kW')
+parser.add_argument('--soc', type=float, required=False,default=soc_default, help='Soc at step 0 of the BESS in %')
 
 # Parsing degli argomenti
 args = parser.parse_args()

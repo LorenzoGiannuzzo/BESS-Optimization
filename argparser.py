@@ -12,6 +12,7 @@ technology_default = "Li-ion"
 size_default = 2500
 power_default = size_default/10
 soc_default = 0.2
+dod_default = "10-90"
 
 # Aggiungere gli argomenti
 parser.add_argument('--input_json', type=str, required=False,default=input_json_default,
@@ -21,6 +22,8 @@ parser.add_argument('--technology', type=str, required=False, default=technology
 parser.add_argument('--size', type=float, required=False,default=size_default, help='BESS Size in kWh')
 parser.add_argument('--power', type=float, required=False,default=power_default, help='BES Nominal power in kW')
 parser.add_argument('--soc', type=float, required=False,default=soc_default, help='Soc at step 0 of the BESS in %')
+parser.add_argument('--dod', type=str, required=False,default=dod_default, help='minimum soc in %')
+
 
 # Parsing degli argomenti
 args = parser.parse_args()
@@ -31,3 +34,9 @@ output_json_path = args.output_json
 technology = args.technology
 size = args.size
 soc = args.soc
+range_str = args.dod
+
+start_str, end_str = range_str.split('-')
+
+soc_min = float(start_str) / 100
+soc_max = float(end_str) / 100

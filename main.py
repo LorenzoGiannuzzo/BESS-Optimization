@@ -9,8 +9,9 @@ from configuration import pop_size, soc_0, time_window, plot
 from BESS_model import charge_rate_interpolated_func, discharge_rate_interpolated_func, size, charge_rate, discharge_rate, technology
 from Economic_parameters import PUN_timeseries
 from Optimizer import Optimizer
-from argparser import output_json_path
+from argparser import output_json_path, range_str
 from Plots import EnergyPlots
+
 
 
 class Main:
@@ -238,6 +239,7 @@ if __name__ == "__main__":
             "revenues": revenues[i],
             "technology": technology,
             "size": size,
+            "dod": range_str
             #"source": PUN_timeseries[i, 2]
         }
         data.append(entry)

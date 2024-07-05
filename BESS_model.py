@@ -4,6 +4,7 @@ from utils import Get_data
 from utils import BESS
 
 from argparser import size, technology
+from argparser import soc_min, soc_max
 
 # FILE PATH DATA
 
@@ -69,10 +70,10 @@ class BESS_model:
         for index in range(len(self.PUN_timeseries) - 1):
             if self.c_d_timeseries[index] >= 0.0:
                 self.c_d_timeseries[index] = np.minimum(self.c_d_timeseries[index],
-                                                        np.minimum(self.c_func(self.soc[index]), 0.9 - self.soc[index]))
+                                                        np.minimum(self.c_func(self.soc[index]), soc_max - self.soc[index]))
             else:
                 self.c_d_timeseries[index] = np.maximum(self.c_d_timeseries[index],
-                                                        np.maximum(-self.d_func(self.soc[index]), 0.1 - self.soc[index]))
+                                                        np.maximum(-self.d_func(self.soc[index]), soc_min - self.soc[index]))
 
             if self.c_d_timeseries[index] >= 0:
                 self.charged_energy[index] = self.c_d_timeseries[index] * self.size

@@ -22,7 +22,7 @@ parser.add_argument('--technology', type=str, required=False, default=technology
 parser.add_argument('--size', type=float, required=False,default=size_default, help='BESS Size in kWh')
 parser.add_argument('--power', type=float, required=False,default=power_default, help='BES Nominal power in kW')
 parser.add_argument('--soc', type=float, required=False,default=soc_default, help='Soc at step 0 of the BESS in %')
-parser.add_argument('--dod', type=str, required=False,default=dod_default, help='minimum soc in %')
+parser.add_argument('--dod', type=str, required=False,default=dod_default, help='SoC range in %')
 
 
 # Parsing degli argomenti

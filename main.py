@@ -245,7 +245,7 @@ if __name__ == "__main__":
     # PLOTS
 
     if plot:
-        EnergyPlots.PUN_plot(PUN_timeseries[:,1])
+        EnergyPlots.PUN_plot(PUN_timeseries[:,1]) #
         EnergyPlots.convergence(len(main.history),time_window, pop_size, X, Y)
         EnergyPlots.c_d_plot(charge_rate, discharge_rate, charge_rate_interpolated_func, discharge_rate_interpolated_func)
         EnergyPlots.total_convergence(len(main.history), time_window, pop_size, X, Y)

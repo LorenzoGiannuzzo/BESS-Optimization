@@ -53,7 +53,7 @@ charge_rate_interpolated_func, discharge_rate_interpolated_func = BESS.get_c_d_f
 
 
 class BESS_model:
-    def __init__(self, time_window, PUN_timeseries, soc, size, c_func, d_func):
+    def __init__(self, time_window, PUN_timeseries, soc, size, c_func, d_func, alpha):
         self.time_window = time_window
         self.PUN_timeseries = PUN_timeseries
         self.soc = soc
@@ -63,17 +63,19 @@ class BESS_model:
         self.charged_energy = np.zeros(len(PUN_timeseries))
         self.discharged_energy = np.zeros(len(PUN_timeseries))
         self.c_d_timeseries = None
+        self.alpha = None
 
-    def run_simulation(self, c_d_timeseries):
+    def run_simulation(self, c_d_timeseries,alpha):
         self.c_d_timeseries = np.array(c_d_timeseries).reshape(self.time_window)
+        self.alpha = np.array(alpha)
 
         for index in range(len(self.PUN_timeseries) - 1):
             if self.c_d_timeseries[index] >= 0.0:
-                self.c_d_timeseries[index] = np.minimum(self.c_d_timeseries[index],
-                                                        np.minimum(self.c_func(self.soc[index]), soc_max - self.soc[index]))
+                self.c_d_timeseries[index] = np.minimum(self.c_d_timeseries[index]*abs(self.alpha[index]),
+                                                        np.minimum(self.c_func(self.soc[index])*abs(self.alpha[index]), soc_max - self.soc[index]* abs(self.alpha[index])))
             else:
-                self.c_d_timeseries[index] = np.maximum(self.c_d_timeseries[index],
-                                                        np.maximum(-self.d_func(self.soc[index]), soc_min - self.soc[index]))
+                self.c_d_timeseries[index] = np.maximum(self.c_d_timeseries[index]*abs(self.alpha[index]),
+                                                        np.maximum(-self.d_func(self.soc[index])*abs(self.alpha[index]), soc_min - self.soc[index]*abs(self.alpha[index])))
 
             if self.c_d_timeseries[index] >= 0:
                 self.charged_energy[index] = self.c_d_timeseries[index] * self.size

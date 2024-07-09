@@ -14,10 +14,10 @@ class Revenues(ElementwiseProblem):
 
     ) -> None:
         super().__init__(
-            n_var= configuration.time_window,
+            n_var= configuration.n_var,
             n_obj=configuration.n_obj,
-            xl=[-1] * configuration.time_window,
-            xu=[1] * configuration.time_window,
+            xl= configuration.xl,
+            xu= configuration.xu,
             vtype=float,
             **kwargs,
 
@@ -47,17 +47,18 @@ class Revenues(ElementwiseProblem):
 
         # SET X-VECTOR TO BE OPTIMIZED AS THE % OF CHARGED AND DISCHARGED ENERGY FROM BESS
 
-        self.c_d_timeseries = np.array(x).reshape(configuration.time_window)
+        self.c_d_timeseries = np.array(x[:self.time_window]).reshape(configuration.time_window)
+        self.alpha = np.array(x[self.time_window:self.time_window*2])
 
         # EVALUATE THE CHARGED AND DISCHARGED ENERGY AND UPDATE THE SoC FOR EACH TIMESTEP t
 
         # Create an instance of BESS_model
 
-        bess_model = BESS_model(self.time_window, self.PUN_timeseries, self.soc, self.size, self.c_func, self.d_func)
+        bess_model = BESS_model(self.time_window, self.PUN_timeseries, self.soc, self.size, self.c_func, self.d_func,self.alpha)
 
         # Run the simulation
 
-        self.charged_energy, self.discharged_energy = bess_model.run_simulation(self.c_d_timeseries)
+        self.charged_energy, self.discharged_energy = bess_model.run_simulation(self.c_d_timeseries, self.alpha)
 
         # EVALUATE THE REVENUES OBTAINED FOR EACH TIMESTEP t
 
@@ -71,7 +72,8 @@ class Revenues(ElementwiseProblem):
         # CORRECT THE VALUES OF THE REVENUES IN ORDER TO MINIMIZE THE OBJECTIVE FUNCTION
 
         final_revenues = -total_revenue
+        alpha = np.mean(self.alpha)
 
         # DEFINE THE OUTPUT OF THE OPTIMIZATION PROBLEM
 
-        out["F"] = final_revenues
+        out["F"] = [final_revenues, alpha]

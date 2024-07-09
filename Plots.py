@@ -266,5 +266,51 @@ class EnergyPlots:
             fig.savefig(output_path)
             plt.close(fig)
 
+    @staticmethod
+    def plot_alpha_vs_timewindow(time_window, alpha, PUN_timeseries):
+        """
+        Creates a bar plot of the values of alpha and a line plot of PUN_timeseries from 1 to time_window
+        with different y-axes scales.
+
+        Parameters:
+        - time_window (int): The length of the time window.
+        - alpha (array-like): The alpha values to plot. The length of alpha should be equal to time_window.
+        - PUN_timeseries (array-like): The PUN_timeseries values to plot. Should have the same length as alpha.
+
+        Returns:
+        - None: Displays the plot.
+        """
+        if len(alpha) != time_window or len(PUN_timeseries) != time_window:
+            raise ValueError("The lengths of alpha and PUN_timeseries must be equal to time_window")
+
+        # Creating the time vector from 1 to time_window
+        time_vector = range(1, time_window + 1)
+
+        # Creating the figure and the first subplot for alpha (bar plot)
+        fig, ax1 = plt.subplots(figsize=(10, 6))
+        ax1.bar(time_vector, alpha, color='green', label='Alpha Values')
+        ax1.set_xlabel('Time')
+        ax1.set_ylabel('Alpha Values', color='green')
+        ax1.tick_params(axis='y', labelcolor='green')
+        ax1.grid(False)
+
+        # Creating the second subplot for PUN_timeseries (line plot)
+        ax2 = ax1.twinx()
+        ax2.plot(time_vector, PUN_timeseries, linestyle='-', color='black', label='PUN_timeseries')
+        ax2.set_ylabel('PUN_timeseries Values', color='black')
+        ax2.tick_params(axis='y', labelcolor='black')
+
+        # Adding title and legend
+        plt.title('Alpha and PUN_timeseries Values over Time Window')
+        ax1.legend(loc='upper left')
+        ax2.legend(loc='upper right')
+
+        # Saving the plot to a file
+        output_dir = 'Plots'
+        os.makedirs(output_dir, exist_ok=True)
+        output_path = os.path.join(output_dir, 'Alpha_and_PUN_timeseries.png')
+        plt.savefig(output_path)
+
+
 
 

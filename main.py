@@ -12,6 +12,8 @@ from Optimizer import Optimizer
 from argparser import output_json_path, range_str
 from Plots import EnergyPlots
 
+from pymoo.decomposition.asf import ASF
+
 
 
 class Main:
@@ -56,16 +58,37 @@ class Main:
 
             self.pool.close()
 
-
         self.history = solution.history
 
         # Get the charge/discharge time series from the solution
 
-        c_d_timeseries = solution.X
+        #c_d_timeseries = solution.X
+        #c_d_timeseries = c_d_timeseries[13,:time_window]
+        #alpha_mean = np.mean(solution.X[13,time_window:time_window*2])
+        #alpha = solution.X[13,time_window:time_window*2]
+
+        alpha_var = np.var(solution.X[:, time_window:time_window * 2], axis=1)
+
+        # Trova l'indice della riga con la varianza più alta
+        max_var_index = np.argmax(alpha_var)
+
+        # Usa questo indice per selezionare le righe corrispondenti
+        c_d_timeseries = solution.X[max_var_index, :time_window]
+        alpha = solution.X[max_var_index, time_window:time_window * 2]
+        alpha_mean = np.mean(alpha)
+
+        #weights = np.array([0.5, 0.5])
+        #decomp = ASF()
+        #prova = decomp(solution.X, weights).argmin()
+
+        #print(solution.X)
+        #print(c_d_timeseries.shape)
+        print(alpha_mean)
+        print(alpha)
 
         # Apply physical constraints to the charge/discharge time series
 
-        soc, charged_energy, discharged_energy, c_d_timeseries = self.apply_physical_constraints(c_d_timeseries)
+        soc, charged_energy, discharged_energy, c_d_timeseries = self.apply_physical_constraints(c_d_timeseries,alpha)
 
         self.c_d_timeseries_final = c_d_timeseries
         self.soc = soc
@@ -83,7 +106,7 @@ class Main:
             self.plot_results(soc, charged_energy, discharged_energy)
 
 
-    def apply_physical_constraints(self, c_d_timeseries):
+    def apply_physical_constraints(self, c_d_timeseries,alpha):
 
         """
         Applies the physical constraints of the BESS to the charge/discharge time series.
@@ -109,13 +132,13 @@ class Main:
 
                 # Limit charge based on charge capacity and SoC
 
-                c_d_timeseries[index] = min(c_d_timeseries[index], min(c_func(soc[index]), 0.9 - soc[index]))
+                c_d_timeseries[index] = min(c_d_timeseries[index]*alpha[index], min(c_func(soc[index])*alpha[index], 0.9 - soc[index]*alpha[index]))
 
             else:
 
                 # Limit discharge based on discharge capacity and SoC
 
-                c_d_timeseries[index] = max(c_d_timeseries[index], max(-d_func(soc[index]), - soc[index] + 0.1))
+                c_d_timeseries[index] = max(c_d_timeseries[index]*alpha[index], max(-d_func(soc[index])*alpha[index], - soc[index]*alpha[index] + 0.1))
 
             if c_d_timeseries[index] >= 0:
 

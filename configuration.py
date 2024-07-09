@@ -66,23 +66,23 @@ pop_size = 100  # Define the population size, which is the number of genes of th
 
 # 4) n_var
 
-n_var = time_window
+n_var = time_window*2
 
 # 5) n_obj
 
-n_obj = 1
+n_obj = 2
 
 # 6) xl
 
-xl = [-1] * time_window
+xl = [-1] * (time_window) + [0.5] * (time_window)
 
 # 7) xu
 
-xu = [1] * time_window
+xu = [1] * (time_window) + [2] *  (time_window)
 
 # 8) n_gen
 
-n_gen = 500
+n_gen = 1000
 
 # 8-bis) Tolerance and period number
 
@@ -107,7 +107,7 @@ indicates the number of gaps between two consecutive points along an objective a
 
 '''
 
-ref_dirs = get_reference_directions("das-dennis", 1, n_partitions=20)
+ref_dirs = get_reference_directions("das-dennis", 2, n_partitions=20)
 
 # 11) Algorithm: Sampling, Selection, Crossover, Mutation
 
@@ -151,6 +151,6 @@ algorithm = NSGA3(
 
 # 12 Plots, boolean value to enable or not plots
 
-plot = False
+plot = True
 
 

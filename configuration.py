@@ -74,11 +74,11 @@ n_obj = 2
 
 # 6) xl
 
-xl = [-1] * (time_window) + [0.5] * (time_window)
+xl = [-1] * (time_window) + [0.2] * (time_window)
 
 # 7) xu
 
-xu = [1] * (time_window) + [2] *  (time_window)
+xu = [1] * (time_window) + [1] *  (time_window)
 
 # 8) n_gen
 

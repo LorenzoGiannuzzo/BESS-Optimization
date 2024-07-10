@@ -7,7 +7,7 @@ from multiprocessing import Pool, cpu_count
 from objective_function import Revenues
 from configuration import pop_size, soc_0, time_window, plot
 from BESS_model import charge_rate_interpolated_func, discharge_rate_interpolated_func, size, charge_rate, discharge_rate, technology
-from Economic_parameters import PUN_timeseries
+from Economic_parameters import PUN_timeseries, time_window
 from Optimizer import Optimizer
 from argparser import output_json_path, range_str
 from Plots import EnergyPlots
@@ -94,6 +94,7 @@ class Main:
         self.soc = soc
         self.charged_energy = charged_energy
         self.discharged_energy = discharged_energy
+        self.alpha = alpha
 
         # Calculate and print revenues
 
@@ -251,7 +252,8 @@ if __name__ == "__main__":
         EnergyPlots.total_convergence(len(main.history), time_window, pop_size, X, Y)
 
     SoC = main.soc
-    c_d_energy = main.c_d_timeseries_final
+    c_d_energy = main.c_d_timeseries_final[:time_window]
+    alpha = main.alpha
     revenues = -c_d_energy * PUN_timeseries[:,1]
     data = []
 
@@ -265,7 +267,8 @@ if __name__ == "__main__":
             "revenues": revenues[i],
             "technology": technology,
             "size": size,
-            "dod": range_str
+            "dod": range_str,
+            "C-rate": alpha[i]
             #"source": PUN_timeseries[i, 2]
         }
         data.append(entry)

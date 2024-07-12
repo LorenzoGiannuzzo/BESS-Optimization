@@ -241,7 +241,7 @@ class EnergyPlots:
                 for i in range(pop_size):
                     # Calculate colors based on normalized Y values for individual i
                     colors = cmap(norm(Y[:, i])*10)
-                    ax.scatter(timesteps, X[:, i, start + k], s=10, alpha=0.8, c=colors)
+                    ax.scatter(timesteps, X[:, i, start + k], s=4, alpha=0.8, c=colors)
 
                 # Set title and labels for the subplot
                 ax.set_title(f'C/D Energy % at {start + k + 1}h')

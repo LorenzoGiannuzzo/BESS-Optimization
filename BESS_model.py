@@ -88,8 +88,8 @@ class BESS_model:
                 self.discharged_energy[index] = 0.0
 
             if self.c_d_timeseries[index] >= 0.0:
-                self.soc[index + 1] = np.minimum(1, self.soc[index] + self.charged_energy[index] / self.size)
+                self.soc[index + 1] = np.minimum(soc_max, self.soc[index] + self.charged_energy[index] / self.size)
             else:
-                self.soc[index + 1] = max(0.0, self.soc[index] + self.discharged_energy[index] / self.size)
+                self.soc[index + 1] = max(soc_min, self.soc[index] + self.discharged_energy[index] / self.size)
 
         return self.charged_energy, self.discharged_energy

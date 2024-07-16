@@ -9,7 +9,7 @@ from configuration import pop_size, soc_0, time_window, plot
 from BESS_model import charge_rate_interpolated_func, discharge_rate_interpolated_func, size, charge_rate, discharge_rate, technology
 from Economic_parameters import PUN_timeseries, time_window
 from Optimizer import Optimizer
-from argparser import output_json_path, range_str, minimize_C
+from argparser import output_json_path, range_str, minimize_C, soc_min, soc_max
 from Plots import EnergyPlots
 
 from pymoo.decomposition.asf import ASF
@@ -63,44 +63,35 @@ class Main:
         # Get the charge/discharge time series from the solution
 
         if minimize_C:
-            alpha_var = np.var(solution.X[:, time_window:time_window * 2], axis=1)
 
-            # Trova l'indice della riga con la varianza più alta
-            max_var_index = np.argmax(alpha_var)
+            # PARETO FRONT HANDLER
 
-            # Usa questo indice per selezionare le righe corrispondenti
-            c_d_timeseries = solution.X[max_var_index, :time_window]
-            alpha = solution.X[max_var_index, time_window:time_window * 2]
+            of_values = np.array(solution.F[:,0])
+            max_revenue_index = np.argmin(of_values)
+
+            c_d_timeseries = solution.X[max_revenue_index, :time_window]
+            alpha = solution.X[max_revenue_index, time_window:time_window * 2]
             alpha_mean = np.mean(alpha)
 
             print("\nAverage C/D reduction factor [%]:\n\n",alpha_mean*100)
-            #print(alpha)
+
+            print(np.min(of_values))
 
             # Apply physical constraints to the charge/discharge time series
 
-            soc, charged_energy, discharged_energy, c_d_timeseries = self.apply_physical_constraints(c_d_timeseries,alpha)
-
-            self.c_d_timeseries_final = c_d_timeseries
-            self.soc = soc
-            self.charged_energy = charged_energy
-            self.discharged_energy = discharged_energy
-            self.alpha = alpha
         else:
-            alpha=np.ones(time_window)
+            alpha = np.ones(time_window)
             c_d_timeseries = solution.X
-
 
             # Apply physical constraints to the charge/discharge time series
 
         soc, charged_energy, discharged_energy, c_d_timeseries = self.apply_physical_constraints(c_d_timeseries,
                                                                                                      alpha)
-
         self.c_d_timeseries_final = c_d_timeseries
         self.soc = soc
         self.charged_energy = charged_energy
         self.discharged_energy = discharged_energy
         self.alpha = alpha
-
 
         # Calculate and print revenues
 
@@ -139,13 +130,13 @@ class Main:
 
                 # Limit charge based on charge capacity and SoC
 
-                c_d_timeseries[index] = min(c_d_timeseries[index]*alpha[index], min(c_func(soc[index])*alpha[index], 0.9 - soc[index]*alpha[index]))
+                c_d_timeseries[index] = min(c_d_timeseries[index]*alpha[index], min(c_func(soc[index])*alpha[index], soc_max - soc[index]*alpha[index]))
 
             else:
 
                 # Limit discharge based on discharge capacity and SoC
 
-                c_d_timeseries[index] = max(c_d_timeseries[index]*alpha[index], max(-d_func(soc[index])*alpha[index], - soc[index]*alpha[index] + 0.1))
+                c_d_timeseries[index] = max(c_d_timeseries[index]*alpha[index], max(-d_func(soc[index])*alpha[index], - soc[index]*alpha[index] + soc_min))
 
             if c_d_timeseries[index] >= 0:
 
@@ -163,11 +154,11 @@ class Main:
 
             if c_d_timeseries[index] >= 0:
 
-                soc[index + 1] = min(0.9, soc[index] + charged_energy[index]/size)
+                soc[index + 1] = min(soc_max, soc[index] + charged_energy[index]/size)
 
             else:
 
-                soc[index + 1] = max(0.1, soc[index] + discharged_energy[index]/size)
+                soc[index + 1] = max(soc_min, soc[index] + discharged_energy[index]/size)
 
         return soc, charged_energy, discharged_energy, c_d_timeseries
 

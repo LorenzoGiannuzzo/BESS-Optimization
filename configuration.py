@@ -94,12 +94,12 @@ else:
 
 # 8) n_gen
 
-n_gen = 1000
+n_gen = 2000
 
 # 8-bis) Tolerance and period number
 
 if minimize_C:
-    tolerance = 0.3
+    tolerance = 0.1
     period = 20
 else:
     tolerance = 0.5  # tolerance on the objective function
@@ -152,7 +152,7 @@ algorithm = NSGA3(
     # The probability of crossover being applied. A probability of 1.0 means crossover is always
     # applied.
 
-    crossover=SBX(eta=10, prob=1),
+    crossover=SBX(eta=1, prob=1),
 
     # mutation: This parameter specifies the mutation operator used for generating variation in offspring.
     # PM: Polynomial Mutation (PM) is a common mutation method for real-valued variables.

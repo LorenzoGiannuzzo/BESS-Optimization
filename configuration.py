@@ -123,7 +123,7 @@ indicates the number of gaps between two consecutive points along an objective a
 
 '''
 
-ref_dirs = get_reference_directions("das-dennis", n_obj, n_partitions=20)
+ref_dirs = get_reference_directions("das-dennis", n_obj, n_partitions=n_obj)
 
 # 11) Algorithm: Sampling, Selection, Crossover, Mutation
 

@@ -12,9 +12,6 @@ from Optimizer import Optimizer
 from argparser import output_json_path, range_str, minimize_C, soc_min, soc_max
 from Plots import EnergyPlots
 
-from pymoo.decomposition.asf import ASF
-
-
 
 class Main:
     def __init__(self, multiprocessing=True):
@@ -68,16 +65,13 @@ class Main:
 
             of_values = np.array(solution.F[:,0])
             max_revenue_index = np.argmin(of_values)
-
             c_d_timeseries = solution.X[max_revenue_index, :time_window]
             alpha = solution.X[max_revenue_index, time_window:time_window * 2]
             alpha_mean = np.mean(alpha)
 
             print("\nAverage C/D reduction factor [%]:\n\n",alpha_mean*100)
 
-            print(np.min(of_values))
-
-            # Apply physical constraints to the charge/discharge time series
+            print(of_values.shape)
 
         else:
             alpha = np.ones(time_window)
@@ -249,7 +243,7 @@ if __name__ == "__main__":
         EnergyPlots.total_convergence(len(main.history), time_window, pop_size, X, Y)
 
     SoC = main.soc
-    c_d_energy = main.c_d_timeseries_final[:time_window]
+    c_d_energy = main.c_d_timeseries_final
     alpha = main.alpha
     revenues = -c_d_energy * PUN_timeseries[:,1]
     data = []

@@ -81,7 +81,7 @@ else:
 # 6) xl
 
 if minimize_C:
-    xl = [-1] * (time_window) + [0.0] * (time_window)
+    xl = [-1] * (time_window) + [0.2] * (time_window)
 else:
     xl = [-1]*time_window
 
@@ -99,8 +99,8 @@ n_gen = 1000
 # 8-bis) Tolerance and period number
 
 if minimize_C:
-    tolerance = 0.5
-    period = 5
+    tolerance = 0.3
+    period = 20
 else:
     tolerance = 0.5  # tolerance on the objective function
     period = 5  # number of iteration in which tolerance is evaluated (0.3 e 20 valori giusti)
@@ -147,19 +147,19 @@ algorithm = NSGA3(
     # crossover: This parameter specifies the crossover operator used for generating offspring.
     # SBX: Simulated Binary Crossover (SBX) is a common crossover method in genetic algorithms, particularly
     # suited for real-valued variables.
-    # eta=30: The distribution index for SBX. A higher value of eta results in offspring closer to their
+    # The distribution index for SBX. A higher value of eta results in offspring closer to their
     # parents, while a lower value results in more variation.
-    # prob=1.0: The probability of crossover being applied. A probability of 1.0 means crossover is always
+    # The probability of crossover being applied. A probability of 1.0 means crossover is always
     # applied.
 
-    crossover=SBX(eta=30, prob=0.3),
+    crossover=SBX(eta=10, prob=1),
 
     # mutation: This parameter specifies the mutation operator used for generating variation in offspring.
     # PM: Polynomial Mutation (PM) is a common mutation method for real-valued variables.
-    # eta=20: The distribution index for PM. Similar to SBX, a higher value of eta results in smaller mutations,
+    # The distribution index for PM. Similar to SBX, a higher value of eta results in smaller mutations,
     # while a lower value results in larger mutations.
 
-    mutation=PM(eta=20),
+    mutation=PM(eta=80),
 
     eliminate_duplicates=True
 

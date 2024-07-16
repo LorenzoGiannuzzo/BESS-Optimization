@@ -97,7 +97,7 @@ class Revenues(ElementwiseProblem):
             # EVALUATE THE REVENUES OBTAINED FOR EACH TIMESTEP t
 
             revenue_column = np.array(-(self.discharged_energy * self.PUN_timeseries / 1000) - (self.charged_energy *
-                                                                                                self.PUN_timeseries / 1000))
+                                                                                              self.PUN_timeseries / 1000))
 
             # EVALUATE THE REVENUES OBTAINED DURING THE OPTIMIZATION TIME WINDOW
 

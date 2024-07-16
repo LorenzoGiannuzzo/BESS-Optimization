@@ -9,7 +9,7 @@ from configuration import pop_size, soc_0, time_window, plot
 from BESS_model import charge_rate_interpolated_func, discharge_rate_interpolated_func, size, charge_rate, discharge_rate, technology
 from Economic_parameters import PUN_timeseries, time_window
 from Optimizer import Optimizer
-from argparser import output_json_path, range_str
+from argparser import output_json_path, range_str, minimize_C
 from Plots import EnergyPlots
 
 from pymoo.decomposition.asf import ASF
@@ -66,35 +66,51 @@ class Main:
         #c_d_timeseries = c_d_timeseries[13,:time_window]
         #alpha_mean = np.mean(solution.X[13,time_window:time_window*2])
         #alpha = solution.X[13,time_window:time_window*2]
+        if minimize_C:
+            alpha_var = np.var(solution.X[:, time_window:time_window * 2], axis=1)
 
-        alpha_var = np.var(solution.X[:, time_window:time_window * 2], axis=1)
+            # Trova l'indice della riga con la varianza più alta
+            max_var_index = np.argmax(alpha_var)
 
-        # Trova l'indice della riga con la varianza più alta
-        max_var_index = np.argmax(alpha_var)
+            # Usa questo indice per selezionare le righe corrispondenti
+            c_d_timeseries = solution.X[max_var_index, :time_window]
+            alpha = solution.X[max_var_index, time_window:time_window * 2]
+            alpha_mean = np.mean(alpha)
 
-        # Usa questo indice per selezionare le righe corrispondenti
-        c_d_timeseries = solution.X[max_var_index, :time_window]
-        alpha = solution.X[max_var_index, time_window:time_window * 2]
-        alpha_mean = np.mean(alpha)
+            #weights = np.array([0.5, 0.5])
+            #decomp = ASF()
+            #prova = decomp(solution.X, weights).argmin()
 
-        #weights = np.array([0.5, 0.5])
-        #decomp = ASF()
-        #prova = decomp(solution.X, weights).argmin()
+            #print(solution.X)
+            #print(c_d_timeseries.shape)
+            print("\nAverage C/D reduction factor [%]:\n\n",alpha_mean*100)
+            #print(alpha)
 
-        #print(solution.X)
-        #print(c_d_timeseries.shape)
-        print("\nAverage C/D reduction factor [%]:\n\n",alpha_mean*100)
-        #print(alpha)
+            # Apply physical constraints to the charge/discharge time series
 
-        # Apply physical constraints to the charge/discharge time series
+            soc, charged_energy, discharged_energy, c_d_timeseries = self.apply_physical_constraints(c_d_timeseries,alpha)
 
-        soc, charged_energy, discharged_energy, c_d_timeseries = self.apply_physical_constraints(c_d_timeseries,alpha)
+            self.c_d_timeseries_final = c_d_timeseries
+            self.soc = soc
+            self.charged_energy = charged_energy
+            self.discharged_energy = discharged_energy
+            self.alpha = alpha
+        else:
+            alpha=np.ones(time_window)
+            c_d_timeseries = solution.X
+
+
+            # Apply physical constraints to the charge/discharge time series
+
+        soc, charged_energy, discharged_energy, c_d_timeseries = self.apply_physical_constraints(c_d_timeseries,
+                                                                                                     alpha)
 
         self.c_d_timeseries_final = c_d_timeseries
         self.soc = soc
         self.charged_energy = charged_energy
         self.discharged_energy = discharged_energy
         self.alpha = alpha
+
 
         # Calculate and print revenues
 

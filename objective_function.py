@@ -4,6 +4,7 @@ import Economic_parameters
 
 from pymoo.core.problem import ElementwiseProblem
 from BESS_model import BESS_model, charge_rate_interpolated_func, discharge_rate_interpolated_func, size
+from argparser import minimize_C
 
 # DEFINE OPTIMIZATION PROBLEM
 
@@ -46,34 +47,68 @@ class Revenues(ElementwiseProblem):
     def _evaluate(self, x, out, *args, **kwargs):
 
         # SET X-VECTOR TO BE OPTIMIZED AS THE % OF CHARGED AND DISCHARGED ENERGY FROM BESS
+        if minimize_C:
+            self.c_d_timeseries = np.array(x[:self.time_window]).reshape(configuration.time_window)
+            self.alpha = np.array(x[self.time_window:self.time_window*2])
 
-        self.c_d_timeseries = np.array(x[:self.time_window]).reshape(configuration.time_window)
-        self.alpha = np.array(x[self.time_window:self.time_window*2])
+            # EVALUATE THE CHARGED AND DISCHARGED ENERGY AND UPDATE THE SoC FOR EACH TIMESTEP t
 
-        # EVALUATE THE CHARGED AND DISCHARGED ENERGY AND UPDATE THE SoC FOR EACH TIMESTEP t
+            # Create an instance of BESS_model
 
-        # Create an instance of BESS_model
+            bess_model = BESS_model(self.time_window, self.PUN_timeseries, self.soc, self.size, self.c_func, self.d_func,self.alpha)
 
-        bess_model = BESS_model(self.time_window, self.PUN_timeseries, self.soc, self.size, self.c_func, self.d_func,self.alpha)
+            # Run the simulation
 
-        # Run the simulation
+            self.charged_energy, self.discharged_energy = bess_model.run_simulation(self.c_d_timeseries, self.alpha)
 
-        self.charged_energy, self.discharged_energy = bess_model.run_simulation(self.c_d_timeseries, self.alpha)
+            # EVALUATE THE REVENUES OBTAINED FOR EACH TIMESTEP t
 
-        # EVALUATE THE REVENUES OBTAINED FOR EACH TIMESTEP t
+            revenue_column = np.array(-(self.discharged_energy * self.PUN_timeseries / 1000) - (self.charged_energy *
+                                                                                                self.PUN_timeseries / 1000))
 
-        revenue_column = np.array(-(self.discharged_energy * self.PUN_timeseries / 1000) - (self.charged_energy *
-                                                                                            self.PUN_timeseries / 1000))
+            # EVALUATE THE REVENUES OBTAINED DURING THE OPTIMIZATION TIME WINDOW
 
-        # EVALUATE THE REVENUES OBTAINED DURING THE OPTIMIZATION TIME WINDOW
+            total_revenue = sum(revenue_column)
 
-        total_revenue = sum(revenue_column)
+            # CORRECT THE VALUES OF THE REVENUES IN ORDER TO MINIMIZE THE OBJECTIVE FUNCTION
 
-        # CORRECT THE VALUES OF THE REVENUES IN ORDER TO MINIMIZE THE OBJECTIVE FUNCTION
+            final_revenues = -total_revenue
+            alpha = np.mean(self.alpha)
 
-        final_revenues = -total_revenue
-        alpha = np.mean(self.alpha)
+            # DEFINE THE OUTPUT OF THE OPTIMIZATION PROBLEM
 
-        # DEFINE THE OUTPUT OF THE OPTIMIZATION PROBLEM
+            out["F"] = [final_revenues, alpha]
 
-        out["F"] = [final_revenues, alpha]
+        else:
+            self.c_d_timeseries = np.array(x[:self.time_window]).reshape(configuration.time_window)
+            self.alpha = np.ones(self.time_window)
+
+            # EVALUATE THE CHARGED AND DISCHARGED ENERGY AND UPDATE THE SoC FOR EACH TIMESTEP t
+
+            # Create an instance of BESS_model
+
+            bess_model = BESS_model(self.time_window, self.PUN_timeseries, self.soc, self.size, self.c_func,
+                                    self.d_func, self.alpha)
+
+            # Run the simulation
+
+            self.charged_energy, self.discharged_energy = bess_model.run_simulation(self.c_d_timeseries, self.alpha)
+
+            # EVALUATE THE REVENUES OBTAINED FOR EACH TIMESTEP t
+
+            revenue_column = np.array(-(self.discharged_energy * self.PUN_timeseries / 1000) - (self.charged_energy *
+                                                                                                self.PUN_timeseries / 1000))
+
+            # EVALUATE THE REVENUES OBTAINED DURING THE OPTIMIZATION TIME WINDOW
+
+            total_revenue = sum(revenue_column)
+
+            # CORRECT THE VALUES OF THE REVENUES IN ORDER TO MINIMIZE THE OBJECTIVE FUNCTION
+
+            final_revenues = -total_revenue
+
+            # DEFINE THE OUTPUT OF THE OPTIMIZATION PROBLEM
+
+            out["F"] = [final_revenues]
+
+

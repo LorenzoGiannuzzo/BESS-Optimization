@@ -1,6 +1,5 @@
 import argparse
 
-import argparser
 
 # Creare il parser degli argomenti
 parser = argparse.ArgumentParser(description='Script per l\'ottimizzazione del BESS.')
@@ -14,6 +13,7 @@ power_default = size_default/10
 soc_default = 0.2
 dod_default = "10-90"
 
+
 # Aggiungere gli argomenti
 parser.add_argument('--input_json', type=str, required=False,default=input_json_default,
                     help='Absolute paht of the file .json for PUN values as input')
@@ -23,6 +23,7 @@ parser.add_argument('--size', type=float, required=False,default=size_default, h
 parser.add_argument('--power', type=float, required=False,default=power_default, help='BES Nominal power in kW')
 parser.add_argument('--soc', type=float, required=False,default=soc_default, help='Soc at step 0 of the BESS in %')
 parser.add_argument('--dod', type=str, required=False,default=dod_default, help='SoC range in %')
+parser.add_argument('--minimize_C', action='store_true', help='Boolean, False = you dont want to minimize c/d velocity, True = you wan to minimize c/d velocity')
 
 
 # Parsing degli argomenti
@@ -35,6 +36,7 @@ technology = args.technology
 size = args.size
 soc = args.soc
 range_str = args.dod
+minimize_C = args.minimize_C
 
 start_str, end_str = range_str.split('-')
 

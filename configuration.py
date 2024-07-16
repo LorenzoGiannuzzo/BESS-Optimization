@@ -62,8 +62,10 @@ time_window = time_window
 soc_0 = soc  # Define initial SoC
 
 # 3) Population
-
-pop_size = 100  # Define the population size, which is the number of genes of the NSGA-III
+if minimize_C:
+    pop_size = 120  # Define the population size, which is the number of genes of the NSGA-III
+else:
+    pop_size = 100
 
 # 4) n_var
 if minimize_C:
@@ -159,7 +161,7 @@ algorithm = NSGA3(
     # The distribution index for PM. Similar to SBX, a higher value of eta results in smaller mutations,
     # while a lower value results in larger mutations.
 
-    mutation=PM(eta=80),
+    mutation=PM(eta=5,prob=1),
 
     eliminate_duplicates=True
 

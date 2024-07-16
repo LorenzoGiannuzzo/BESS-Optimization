@@ -73,7 +73,7 @@ class Revenues(ElementwiseProblem):
             # CORRECT THE VALUES OF THE REVENUES IN ORDER TO MINIMIZE THE OBJECTIVE FUNCTION
 
             final_revenues = -total_revenue
-            alpha = np.mean(self.alpha)
+            alpha = np.sum(self.alpha)
 
             # DEFINE THE OUTPUT OF THE OPTIMIZATION PROBLEM
 

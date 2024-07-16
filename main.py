@@ -73,12 +73,6 @@ class Main:
             alpha = solution.X[max_var_index, time_window:time_window * 2]
             alpha_mean = np.mean(alpha)
 
-            #weights = np.array([0.5, 0.5])
-            #decomp = ASF()
-            #prova = decomp(solution.X, weights).argmin()
-
-            #print(solution.X)
-            #print(c_d_timeseries.shape)
             print("\nAverage C/D reduction factor [%]:\n\n",alpha_mean*100)
             #print(alpha)
 

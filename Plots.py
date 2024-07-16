@@ -6,6 +6,7 @@ import numpy as np
 import matplotlib.colors as mcolors
 
 from matplotlib.colors import Normalize
+from argparser import minimize_C
 
 matplotlib.use('Agg')
 
@@ -17,9 +18,14 @@ class EnergyPlots:
         self.discharged_energy = discharged_energy
         self.PUN_timeseries = PUN_timeseries
         self.time_steps = np.arange(time_window)
-        self.plots_dir = "Plots"
-        if not os.path.exists(self.plots_dir):
-            os.makedirs(self.plots_dir)
+        if minimize_C:
+            self.plots_dir = "Plots/minimize_C_rate"
+            if not os.path.exists(self.plots_dir):
+                os.makedirs(self.plots_dir)
+        else:
+            self.plots_dir = "Plots/optimal_C_rate"
+            if not os.path.exists(self.plots_dir):
+                os.makedirs(self.plots_dir)
 
     def plot_soc(self):
         plt.figure(figsize=(12, 8))
@@ -27,8 +33,11 @@ class EnergyPlots:
         plt.title('State of Charge (SoC) [%]')
         plt.xlabel('Time Window [h]')
         plt.ylabel('SoC')
-        plt.savefig(os.path.join(self.plots_dir, "SoC.png"))
-        plt.close()
+        if minimize_C:
+            plt.savefig(os.path.join(self.plots_dir, "SoC_minC.png"))
+        else:
+            plt.savefig(os.path.join(self.plots_dir, "SoC.png"))
+
 
     def plot_charged_energy(self):
         plt.figure(figsize=(12, 8))
@@ -36,8 +45,11 @@ class EnergyPlots:
         plt.title('Charged Energy')
         plt.xlabel('Time Window [h]')
         plt.ylabel('Charged Energy [kWh]')
-        plt.savefig(os.path.join(self.plots_dir, "Charged_Energy.png"))
-        plt.close()
+        if minimize_C:
+            plt.savefig(os.path.join(self.plots_dir, "Charged_Energy_minC.png"))
+        else:
+            plt.savefig(os.path.join(self.plots_dir, "Charged_Energy.png"))
+
 
     def plot_discharged_energy(self):
         plt.figure(figsize=(12, 8))
@@ -45,8 +57,10 @@ class EnergyPlots:
         plt.title('Discharged Energy')
         plt.xlabel('Time Window [h]')
         plt.ylabel('Discharged Energy [kWh]')
-        plt.savefig(os.path.join(self.plots_dir, "Discharged_Energy.png"))
-        plt.close()
+        if minimize_C:
+            plt.savefig(os.path.join(self.plots_dir, "Disc_Energy_minC.png"))
+        else:
+            plt.savefig(os.path.join(self.plots_dir, "Disc_Energy.png"))
 
     def plot_combined_energy_with_pun(self, num_values):
         time_steps_24 = self.time_steps[:num_values]
@@ -86,8 +100,11 @@ class EnergyPlots:
         ax1.set_xlabel('Time Window [h]')
 
         fig.tight_layout()
-        plt.savefig(os.path.join(self.plots_dir, "C_D_Energy_with_PUN_and_SOC.png"))
-        plt.close()
+        if minimize_C:
+            plt.savefig(os.path.join(self.plots_dir, "C_D_minC.png"))
+        else:
+            plt.savefig(os.path.join(self.plots_dir, "C_D.png"))
+
 
     @staticmethod
     def c_d_plot(charge_rate, discharge_rate, charge_rate_interpolated_func, discharge_rate_interpolated_func ):
@@ -101,7 +118,7 @@ class EnergyPlots:
         plt.grid(True)
 
     # Save the plot as a PNG file
-        plt.savefig("Plots/charge_rate_plot.png")
+        plt.savefig("Plots/charge_rate.png")
         plt.close()
 
     # Plotting
@@ -141,7 +158,7 @@ class EnergyPlots:
         plt.grid(True)
 
         # Save the plot as a PNG file
-        plt.savefig("Plots/charge_rate_plot.png")
+        plt.savefig("Plots/charge_rate.png")
         plt.close()
 
         # Plotting for discharge_rate
@@ -155,8 +172,8 @@ class EnergyPlots:
         plt.grid(True)
 
         # Save the plot as a PNG file
-        plt.savefig("Plots/discharge_rate_plot.png")
-        plt.close()
+        plt.savefig("Plots/disc_rate.png")
+
 
     @staticmethod
     def total_convergence(n_gen, timewindow, pop_size, X, Y):
@@ -189,7 +206,10 @@ class EnergyPlots:
                 color='white')  # Dashed grid lines with 0.5 linewidth and gray color
 
         # Save the figure
-        plt.savefig('Plots/total_convergence.png')
+        if minimize_C:
+            plt.savefig('Plots/minimize_C_rate/total_convergence_minC.png')
+        else:
+            plt.savefig('Plots/optimal_C_rate/total_convergence.png')
 
     @staticmethod
     def PUN_plot(PUN_timeseries):
@@ -200,7 +220,7 @@ class EnergyPlots:
         plt.title('PUN Values')
         plt.xlabel('Time step')
         plt.ylabel('PUN Value')
-        plt.savefig(os.path.join("Plots", "PUN_values_plot.png"))
+        plt.savefig(os.path.join("Plots", "PUN.png"))
         plt.close()
 
     @staticmethod
@@ -257,14 +277,23 @@ class EnergyPlots:
             plt.tight_layout()
 
             # Check if the "Plots" folder exists, create it if not
-            output_dir = 'Plots'
+            if minimize_C:
+                output_dir = 'Plots/minimize_C_rate'
+            else:
+                output_dir = 'Plots/optimal_C_rate'
+
             if not os.path.exists(output_dir):
                 os.makedirs(output_dir)
 
             # Save the figure in the "Plots" folder
-            output_path = os.path.join(output_dir, f'convergence_{fig_num + 1}.png')
-            fig.savefig(output_path)
-            plt.close(fig)
+            if minimize_C:
+                output_path = os.path.join(output_dir, f'convergence_{fig_num + 1}_minC.png')
+                fig.savefig(output_path)
+            else:
+                output_path = os.path.join(output_dir, f'convergence_{fig_num + 1}.png')
+                fig.savefig(output_path)
+
+
 
     @staticmethod
     def plot_alpha_vs_timewindow(time_window, alpha_values, PUN_timeseries):
@@ -307,10 +336,20 @@ class EnergyPlots:
         ax2.legend(loc='upper right')
 
         # Saving the plot to a file
-        output_dir = 'Plots'
+
+        if minimize_C:
+            output_dir = 'Plots/minimize_C_rate'
+        else:
+            output_dir = 'Plots/optimal_C_rate'
+
         os.makedirs(output_dir, exist_ok=True)
-        output_path = os.path.join(output_dir, 'C_rate_and_PUN_timeseries.png')
-        plt.savefig(output_path)
+        if minimize_C:
+            output_path = os.path.join(output_dir, 'C_rate_PUN_minC.png')
+            plt.savefig(output_path)
+        else:
+            output_path = os.path.join(output_dir, 'C_rate_PUN.png')
+            plt.savefig(output_path)
+
 
 
 

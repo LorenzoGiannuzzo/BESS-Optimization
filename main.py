@@ -62,10 +62,6 @@ class Main:
 
         # Get the charge/discharge time series from the solution
 
-        #c_d_timeseries = solution.X
-        #c_d_timeseries = c_d_timeseries[13,:time_window]
-        #alpha_mean = np.mean(solution.X[13,time_window:time_window*2])
-        #alpha = solution.X[13,time_window:time_window*2]
         if minimize_C:
             alpha_var = np.var(solution.X[:, time_window:time_window * 2], axis=1)
 

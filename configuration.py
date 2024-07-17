@@ -101,11 +101,11 @@ n_gen = 2000
 # 8-bis) Tolerance and period number
 
 if minimize_C:
-    tolerance = 0.1
+    tolerance = 0.5
     period = 20
 else:
     tolerance = 0.5  # tolerance on the objective function
-    period = 5  # number of iteration in which tolerance is evaluated (0.3 e 20 valori giusti)
+    period = 5  # number of iteration in which tolerance is evaluated
 
 # 9) Termination
 

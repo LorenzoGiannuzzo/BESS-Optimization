@@ -71,7 +71,7 @@ class Main:
 
             print("\nAverage C/D reduction factor [%]:\n\n",alpha_mean*100)
 
-            print(of_values.shape)
+            print("\nN Solutions in the Pareto-Front:\n\n",of_values.shape)
 
         else:
             alpha = np.ones(time_window)

@@ -95,7 +95,7 @@ class Main:
 
         if plot:
 
-            self.plot_results(soc, charged_energy, discharged_energy,alpha, PUN_timeseries[:,1])
+            self.plot_results(soc, charged_energy, discharged_energy, np.abs(c_d_timeseries), PUN_timeseries[:,1])
 
 
     def apply_physical_constraints(self, c_d_timeseries,alpha):
@@ -178,7 +178,7 @@ class Main:
         print("\nRevenues for optimized time window [EUROs]:\n\n", rev.sum())
 
 
-    def plot_results(self, soc, charged_energy, discharged_energy, alpha, PUN_Timeseries):
+    def plot_results(self, soc, charged_energy, discharged_energy, c_d_energy, PUN_Timeseries):
 
         """
         Generates plots of the state of charge, charged energy, discharged energy, and energy prices.
@@ -196,7 +196,7 @@ class Main:
             plots.plot_charged_energy()
             plots.plot_discharged_energy()
             plots.plot_combined_energy_with_pun(num_values=time_window)
-            plots.plot_alpha_vs_timewindow(time_window,alpha, PUN_Timeseries)
+            plots.plot_alpha_vs_timewindow(time_window, np.abs(c_d_energy), PUN_Timeseries, np.abs(c_d_energy)/self.alpha)
 
 
 
@@ -254,13 +254,12 @@ if __name__ == "__main__":
             "PUN": PUN_timeseries[i, 1]/1000,
             "soc": SoC[i],
             "c_d_energy": c_d_energy[i]*size,
-            "c_d_rate": abs(c_d_energy[i]),
+            "C-rate": abs(c_d_energy[i]),
             "revenues": revenues[i],
             "technology": technology,
             "size": size,
             "dod": range_str,
-            "C-rate": alpha[i]
-            #"source": PUN_timeseries[i, 2]
+             #"source": PUN_timeseries[i, 2]
         }
         data.append(entry)
 

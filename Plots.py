@@ -296,37 +296,48 @@ class EnergyPlots:
 
 
     @staticmethod
-    def plot_alpha_vs_timewindow(time_window, alpha_values, PUN_timeseries):
+    def plot_alpha_vs_timewindow(time_window, alpha_values, PUN_timeseries, new_alpha_values):
         """
-        Creates a bar plot of the values of alpha and a line plot of PUN_timeseries from 1 to time_window
+        Creates a bar plot of the values of alpha and new_alpha_values, and a line plot of PUN_timeseries from 1 to time_window
         with different y-axes scales.
 
         Parameters:
         - time_window (int): The length of the time window.
         - alpha_values (array-like): The alpha values to plot. The length of alpha should be equal to time_window.
         - PUN_timeseries (array-like): The PUN_timeseries values to plot. Should have the same length as alpha.
+        - new_alpha_values (array-like): The new alpha values to plot alongside the existing ones.
 
         Returns:
         - None: Displays the plot.
         """
-        if len(alpha_values) != time_window or len(PUN_timeseries) != time_window:
-            raise ValueError("The lengths of alpha and PUN_timeseries must be equal to time_window")
+        if len(alpha_values) != time_window or len(PUN_timeseries) != time_window or len(
+                new_alpha_values) != time_window:
+            raise ValueError("The lengths of alpha, new_alpha_values, and PUN_timeseries must be equal to time_window")
 
         # Creating the time vector from 1 to time_window
         time_vector = range(1, time_window + 1)
 
         # Creating the figure and the first subplot for alpha (bar plot)
         fig, ax1 = plt.subplots(figsize=(10, 6))
-        ax1.bar(time_vector, alpha_values, color='green', alpha=0.5,
-                label='C-rate')  # Set alpha to 0.5 for transparency
+        bar_width = 0.4  # Width of the bars
+
+        # Positions for the bars
+        bar_positions1 = np.arange(time_window - 1)
+        bar_positions2 = bar_positions1 + bar_width
+
+        ax1.bar(bar_positions1, np.abs(alpha_values[:-1]), width=bar_width, color='orange', alpha=0.5,
+                label='C-rate')
+        ax1.bar(bar_positions2, np.abs(new_alpha_values[:-1]), width=bar_width, color='green', alpha=0.5,
+                label='Optimal C-rate')
+
         ax1.set_xlabel('Time')
-        ax1.set_ylabel('C-rate', color='green')
-        ax1.tick_params(axis='y', labelcolor='green')
+        ax1.set_ylabel('C-rate', color='black')
+        ax1.tick_params(axis='y', labelcolor='black')
         ax1.grid(False)
 
         # Creating the second subplot for PUN_timeseries (line plot)
         ax2 = ax1.twinx()
-        ax2.plot(time_vector, PUN_timeseries, linestyle='-', color='black', label='PUN_timeseries')
+        ax2.plot(time_vector, PUN_timeseries, linestyle='-', color='black', label='PUN_timeseries', alpha=0.8)
         ax2.set_ylabel('PUN_timeseries Values', color='black')
         ax2.tick_params(axis='y', labelcolor='black')
 
@@ -336,7 +347,6 @@ class EnergyPlots:
         ax2.legend(loc='upper right')
 
         # Saving the plot to a file
-
         if minimize_C:
             output_dir = 'Plots/minimize_C_rate'
         else:
@@ -345,10 +355,10 @@ class EnergyPlots:
         os.makedirs(output_dir, exist_ok=True)
         if minimize_C:
             output_path = os.path.join(output_dir, 'C_rate_PUN_minC.png')
-            plt.savefig(output_path)
         else:
             output_path = os.path.join(output_dir, 'C_rate_PUN.png')
-            plt.savefig(output_path)
+
+        plt.savefig(output_path)
 
 
 

@@ -18,7 +18,7 @@ install the required packages:
 Run the main script to start the optimization process:
 
 `python main.py --input_json <absolute_path_to_input_json> --output_json <absolute_path_to_output_json> --technology <BESS_technology> --size <BESS_size_in_kWh>`
-### Explanation:
+### Input:
 
 - `python main.py`: Executes the main Python script that performs the BESS optimization.
 - `--input_json <absolute_path_to_input_json>`: Specifies the absolute path to the input JSON file containing the PUN timeseries data.
@@ -30,6 +30,22 @@ Run the main script to start the optimization process:
 - `--dod <Depth_of_Discharge>`: Specifies the range of SoC in %.
 - `--minimize_C <Boolean>`: Parameter that requires no values. Default values is FALSE, is it's in command line, it's set to be True. If TRUE, it changes the optimization problem maximizing revenues and minimizing C-rate
 
+### Output:
+
+The output consists in a .json file structured for each timestep of the considered time_window as follows:\
+{\
+\
+        datetime: --- Expressed as the following format "2024-05-19T22:00:00+00:00Z".\
+        PUN: --- Expressed in EUROs/kWh.\
+        soc: --- State Of Charge (SoC) expressed as a factor between 0 and 1.\
+        c_d_energy: --- Energy which is charged/discharged expressed in kWh. Negative if discharged, positive if charged.\
+        C-rate: --- Charge/Discharge velocity, expressed as % of the total capacity of the BESS.
+        revenues: --- Cash flow resulted from charging/discharging energy from t BESS, expressed in EUROs.
+        technology: --- Typology of BESS.\
+        size: --- Total capacity of the battery, expressed in kWh.\
+        dod: --- Depth of Discharge, expressed as "Min_SoC - Max_SoC".
+
+}
 ### Example:
 
 `python main.py --input_json C:\Users\lorenzo.giannuzzo\PycharmProjects\BESS-Optimization\Input\pun2.json --output_json C:\Users\lorenzo.giannuzzo\PycharmProjects\BESS-Optimization\Output\output.json --technology Li-ion --size 2500 --power 250  --soc 0.9 --dod 20-80

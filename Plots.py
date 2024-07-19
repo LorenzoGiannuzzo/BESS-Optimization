@@ -328,7 +328,7 @@ class EnergyPlots:
         ax1.bar(bar_positions1, np.abs(alpha_values[:-1]), width=bar_width, color='orange', alpha=0.5,
                 label='C-rate')
         ax1.bar(bar_positions2, np.abs(new_alpha_values[:-1]), width=bar_width, color='green', alpha=0.5,
-                label='Optimal C-rate')
+                label='Nominal C-rate')
 
         ax1.set_xlabel('Time')
         ax1.set_ylabel('C-rate', color='black')

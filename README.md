@@ -39,6 +39,7 @@ The output consists in a .json file structured for each timestep of the consider
         PUN: --- Expressed in EUROs/kWh.\
         soc: --- State Of Charge (SoC) expressed as a factor between 0 and 1.\
         c_d_energy: --- Energy which is charged/discharged expressed in kWh. Negative if discharged, positive if charged.\
+        Nominal C-rate --- Nominal Charge/Discharge velocity, expressed as % of the total capacity of the BESS.
         C-rate: --- Charge/Discharge velocity, expressed as % of the total capacity of the BESS.
         revenues: --- Cash flow resulted from charging/discharging energy from t BESS, expressed in EUROs.
         technology: --- Typology of BESS.\

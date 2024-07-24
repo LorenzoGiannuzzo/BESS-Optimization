@@ -169,6 +169,6 @@ algorithm = NSGA3(
 
 # 12 Plots, boolean value to enable or not plots
 
-plot = True
+plot = False
 
 

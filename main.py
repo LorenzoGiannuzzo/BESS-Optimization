@@ -254,6 +254,7 @@ if __name__ == "__main__":
             "PUN": PUN_timeseries[i, 1]/1000,
             "soc": SoC[i],
             "c_d_energy": c_d_energy[i]*size,
+            "Nominal C-rate": np.abs(c_d_energy[i])/alpha[i],
             "C-rate": abs(c_d_energy[i]),
             "revenues": revenues[i],
             "technology": technology,

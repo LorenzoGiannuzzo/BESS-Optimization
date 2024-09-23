@@ -12,6 +12,7 @@ size_default = 2500
 power_default = size_default/10
 soc_default = 0.2
 dod_default = "10-90"
+pv_power_defualt = 0
 
 
 # Aggiungere gli argomenti
@@ -24,7 +25,7 @@ parser.add_argument('--power', type=float, required=False,default=power_default,
 parser.add_argument('--soc', type=float, required=False,default=soc_default, help='Soc at step 0 of the BESS in %')
 parser.add_argument('--dod', type=str, required=False,default=dod_default, help='SoC range in %')
 parser.add_argument('--minimize_C', action='store_true', help='Boolean, False = you dont want to minimize c/d velocity, True = you wan to minimize c/d velocity')
-
+parser.add_argument('--PV_power', type=float, required=False,default=pv_power_defualt, help='PV peak power')
 
 # Parsing degli argomenti
 args = parser.parse_args()
@@ -37,6 +38,7 @@ size = args.size
 soc = args.soc
 range_str = args.dod
 minimize_C = args.minimize_C
+PV_power = args.PV_power
 
 start_str, end_str = range_str.split('-')
 

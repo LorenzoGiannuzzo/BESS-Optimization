@@ -5,6 +5,7 @@ import Economic_parameters
 from pymoo.core.problem import ElementwiseProblem
 from BESS_model import BESS_model, charge_rate_interpolated_func, discharge_rate_interpolated_func, size
 from argparser import minimize_C
+from PV import pv_production
 
 # DEFINE OPTIMIZATION PROBLEM
 
@@ -42,6 +43,8 @@ class Revenues(ElementwiseProblem):
         self.time_window = configuration.time_window
         self.size = size
 
+        self.production = pv_production['P']
+
     # OBJECTIVE FUNCTION DEFINITION
 
     def _evaluate(self, x, out, *args, **kwargs):
@@ -55,15 +58,20 @@ class Revenues(ElementwiseProblem):
 
             # Create an instance of BESS_model
 
-            bess_model = BESS_model(self.time_window, self.PUN_timeseries, self.soc, self.size, self.c_func, self.d_func,self.alpha)
+            bess_model = BESS_model(self.time_window, self.PUN_timeseries, self.soc, self.size, self.c_func, self.d_func, self.alpha)
 
             # Run the simulation
 
             self.charged_energy, self.discharged_energy = bess_model.run_simulation(self.c_d_timeseries, self.alpha)
+            self.charged_energy_grid = np.maximum(self.charged_energy - self.production, 0.0)
+            self.taken_from_pv = self.charged_energy - self.charged_energy_grid
+            self.charged_energy = np.maximum(self.charged_energy - self.production, 0.0)
+
+
 
             # EVALUATE THE REVENUES OBTAINED FOR EACH TIMESTEP t
 
-            revenue_column = np.array(-(self.discharged_energy * self.PUN_timeseries / 1000) - (self.charged_energy *
+            revenue_column = np.array(-(self.discharged_energy * self.PUN_timeseries / 1000) - (self.charged_energy_grid *
                                                                                                 self.PUN_timeseries / 1000))
 
             # EVALUATE THE REVENUES OBTAINED DURING THE OPTIMIZATION TIME WINDOW
@@ -93,15 +101,24 @@ class Revenues(ElementwiseProblem):
             # Run the simulation
 
             self.charged_energy, self.discharged_energy = bess_model.run_simulation(self.c_d_timeseries, self.alpha)
+            self.charged_energy_grid = np.maximum(self.charged_energy - self.production, 0.0)
+            self.taken_from_pv = self.charged_energy - self.charged_energy_grid
+            self.discharged_from_pv = np.minimum(-self.production + self.taken_from_pv, 0.0)
+            self.charged_energy = np.maximum(self.charged_energy - self.production, 0.0)
+
+
+            #print(sum(self.discharged_energy))
+
 
             # EVALUATE THE REVENUES OBTAINED FOR EACH TIMESTEP t
 
             revenue_column = np.array(-(self.discharged_energy * self.PUN_timeseries / 1000) - (self.charged_energy *
-                                                                                              self.PUN_timeseries / 1000))
-
+                                                                                              self.PUN_timeseries / 1000)  -(self.discharged_from_pv * self.PUN_timeseries / 1000))
+#
             # EVALUATE THE REVENUES OBTAINED DURING THE OPTIMIZATION TIME WINDOW
 
             total_revenue = sum(revenue_column)
+
 
             # CORRECT THE VALUES OF THE REVENUES IN ORDER TO MINIMIZE THE OBJECTIVE FUNCTION
 

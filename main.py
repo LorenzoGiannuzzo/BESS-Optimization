@@ -11,6 +11,7 @@ from Economic_parameters import PUN_timeseries, time_window
 from Optimizer import Optimizer
 from argparser import output_json_path, range_str, minimize_C, soc_min, soc_max
 from Plots import EnergyPlots
+from PV import pv_production
 
 
 class Main:
@@ -79,23 +80,26 @@ class Main:
 
             # Apply physical constraints to the charge/discharge time series
 
-        soc, charged_energy, discharged_energy, c_d_timeseries = self.apply_physical_constraints(c_d_timeseries,
+        soc, charged_energy, discharged_energy, c_d_timeseries, taken_from_grid, taken_from_pv = self.apply_physical_constraints(c_d_timeseries,
                                                                                                      alpha)
         self.c_d_timeseries_final = c_d_timeseries
         self.soc = soc
         self.charged_energy = charged_energy
         self.discharged_energy = discharged_energy
         self.alpha = alpha
+        self.taken_from_grid = taken_from_grid
+        self.taken_from_pv = taken_from_pv
+        self.discharged_from_pv = np.minimum(-pv_production['P'] + self.taken_from_pv , 0.0)
 
         # Calculate and print revenues
 
-        self.calculate_and_print_revenues(charged_energy, discharged_energy)
+        self.calculate_and_print_revenues(charged_energy, discharged_energy, self.taken_from_grid, self.discharged_from_pv)
 
         # Generate plots of the results
 
         if plot:
 
-            self.plot_results(soc, charged_energy, discharged_energy, np.abs(c_d_timeseries), PUN_timeseries[:,1])
+            self.plot_results(soc, charged_energy, discharged_energy, np.abs(c_d_timeseries), PUN_timeseries[:,1],taken_from_grid,taken_from_pv)
 
 
     def apply_physical_constraints(self, c_d_timeseries,alpha):
@@ -113,6 +117,8 @@ class Main:
         soc = [0.0] * time_window  # Initialize state of charge
         charged_energy = [0.0] * time_window  # Initialize charged energy
         discharged_energy = [0.0] * time_window  # Initialize discharged energy
+        taken_from_grid = [0.0] * time_window
+        taken_from_pv = [0.0] * time_window
         soc[0] = soc_0  # Initial state of charge
 
         c_func = charge_rate_interpolated_func  # Charge rate function
@@ -125,6 +131,7 @@ class Main:
                 # Limit charge based on charge capacity and SoC
 
                 c_d_timeseries[index] = min(c_d_timeseries[index]*alpha[index], min(c_func(soc[index])*alpha[index], soc_max - soc[index]))
+                #c_d_timeseries[index] = max(c_d_timeseries[index]- pv_production['P'].iloc[index], 0.0)
 
             else:
 
@@ -137,6 +144,8 @@ class Main:
                 # Calculate charged energy
 
                 charged_energy[index] = c_d_timeseries[index] * size
+                taken_from_grid[index] = np.maximum(charged_energy[index]-pv_production['P'].iloc[index], 0.0)
+                taken_from_pv[index] = charged_energy[index] - taken_from_grid[index]
 
             else:
 
@@ -154,9 +163,9 @@ class Main:
 
                 soc[index + 1] = max(soc_min, soc[index] + discharged_energy[index]/size)
 
-        return soc, charged_energy, discharged_energy, c_d_timeseries
+        return soc, charged_energy, discharged_energy, c_d_timeseries, taken_from_grid, taken_from_pv
 
-    def calculate_and_print_revenues(self, charged_energy, discharged_energy):
+    def calculate_and_print_revenues(self, charged_energy, discharged_energy, taken_from_grid, discharged_from_pv):
 
         """
         Calculates and prints total revenues for the optimized period.
@@ -171,14 +180,14 @@ class Main:
 
         # Calculate revenues by summing the costs of charging and discharging
 
-        rev = - (np.array(discharged_energy) * PUN_ts / 1000) - (np.array(charged_energy) * PUN_ts / 1000)
+        rev = - (np.array(discharged_energy) * PUN_ts / 1000) - (taken_from_grid * PUN_ts / 1000) - discharged_from_pv * PUN_ts / 1000
 
         # Print total revenues
 
         print("\nRevenues for optimized time window [EUROs]:\n\n", rev.sum())
 
 
-    def plot_results(self, soc, charged_energy, discharged_energy, c_d_energy, PUN_Timeseries):
+    def plot_results(self, soc, charged_energy, discharged_energy, c_d_energy, PUN_Timeseries, taken_from_grid, taken_from_pv):
 
         """
         Generates plots of the state of charge, charged energy, discharged energy, and energy prices.
@@ -191,7 +200,7 @@ class Main:
         """
         if plot:
 
-            plots = EnergyPlots(time_window, soc, charged_energy, discharged_energy, PUN_timeseries[:,1])
+            plots = EnergyPlots(time_window, soc, charged_energy, discharged_energy, PUN_timeseries[:,1],taken_from_grid,taken_from_pv)
             plots.plot_soc()
             plots.plot_charged_energy()
             plots.plot_discharged_energy()

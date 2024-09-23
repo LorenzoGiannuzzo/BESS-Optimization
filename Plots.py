@@ -11,13 +11,15 @@ from argparser import minimize_C
 matplotlib.use('Agg')
 
 class EnergyPlots:
-    def __init__(self, time_window, soc, charged_energy, discharged_energy, PUN_timeseries):
+    def __init__(self, time_window, soc, charged_energy, discharged_energy, PUN_timeseries, taken_from_grid, taken_from_pv):
         self.time_window = time_window
         self.soc = soc
         self.charged_energy = charged_energy
         self.discharged_energy = discharged_energy
         self.PUN_timeseries = PUN_timeseries
         self.time_steps = np.arange(time_window)
+        self.taken_from_grid = taken_from_grid
+        self.taken_from_pv = taken_from_pv
         if minimize_C:
             self.plots_dir = "Plots/minimize_C_rate"
             if not os.path.exists(self.plots_dir):
@@ -69,6 +71,9 @@ class EnergyPlots:
         pun_values_24 = self.PUN_timeseries[:num_values]
         soc_24 = self.soc[:num_values]
 
+        taken_from_pv_24 = self.taken_from_pv[:num_values]  # Energia da PV
+        taken_from_grid_24 = self.taken_from_grid[:num_values]  # Energia dalla rete
+
         fig, (ax0, ax1) = plt.subplots(2, 1, figsize=(12, 12), sharex=True)
 
         # Normalize SoC values to be in the range [0, 1] for the colormap
@@ -82,16 +87,24 @@ class EnergyPlots:
         ax0.set_title('State of Charge (SoC) [%]')
         ax0.set_ylabel('SoC')
 
-        # Plot charged and discharged energy with PUN on the second subplot
+        # Plot stacked bars for charged energy from PV and grid, and discharged energy
         width = 0.4
-        ax1.bar(time_steps_24 - width / 2, charged_energy_24, width=width, color='limegreen',
-                label='Charged Energy [kWh]')
+
+        # Plot stacked bars for 'taken_from_grid' (green) and 'taken_from_pv' (blue)
+        ax1.bar(time_steps_24 - width / 2, taken_from_grid_24, width=width, color='limegreen',
+                label='Charged from Grid [kWh]')
+        ax1.bar(time_steps_24 - width / 2, taken_from_pv_24, width=width, bottom=taken_from_grid_24, color='blue',
+                label='Charged from PV [kWh]')
+
+        # Plot discharged energy as a separate bar (red)
         ax1.bar(time_steps_24 + width / 2, discharged_energy_24, width=width, color='darkred',
                 label='Discharged Energy [kWh]')
+
         ax1.set_ylabel('Energy [kWh]')
-        ax1.set_title('Charged and Discharged Energy with PUN')
+        ax1.set_title('Charged (from Grid and PV) and Discharged Energy with PUN')
         ax1.legend(loc='upper left')
 
+        # Plot PUN values on the secondary axis
         ax2 = ax1.twinx()
         ax2.plot(time_steps_24, pun_values_24, color='black', label='PUN [Euro/MWh]')
         ax2.set_ylabel('PUN Value')
@@ -100,6 +113,8 @@ class EnergyPlots:
         ax1.set_xlabel('Time Window [h]')
 
         fig.tight_layout()
+
+        # Save the plot based on the minimize_C condition
         if minimize_C:
             plt.savefig(os.path.join(self.plots_dir, "C_D_minC.png"))
         else:

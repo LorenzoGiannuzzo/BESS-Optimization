@@ -96,7 +96,7 @@ else:
 
 # 8) n_gen
 
-n_gen = 2000
+n_gen = 1000
 
 # 8-bis) Tolerance and period number
 
@@ -105,7 +105,7 @@ if minimize_C:
     period = 20
 else:
     tolerance = 0.5  # tolerance on the objective function
-    period = 5  # number of iteration in which tolerance is evaluated
+    period = 20  # number of iteration in which tolerance is evaluated
 
 # 9) Termination
 
@@ -169,6 +169,6 @@ algorithm = NSGA3(
 
 # 12 Plots, boolean value to enable or not plots
 
-plot = False
+plot = True
 
 

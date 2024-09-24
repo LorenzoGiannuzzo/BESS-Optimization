@@ -200,7 +200,7 @@ class Main:
         """
         if plot:
 
-            plots = EnergyPlots(time_window, soc, charged_energy, discharged_energy, PUN_timeseries[:,1],taken_from_grid,taken_from_pv)
+            plots = EnergyPlots(time_window, soc, charged_energy, discharged_energy, PUN_timeseries[:,1],taken_from_grid,taken_from_pv, pv_production['P'])
             plots.plot_soc()
             plots.plot_charged_energy()
             plots.plot_discharged_energy()

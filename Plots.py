@@ -11,7 +11,7 @@ from argparser import minimize_C
 matplotlib.use('Agg')
 
 class EnergyPlots:
-    def __init__(self, time_window, soc, charged_energy, discharged_energy, PUN_timeseries, taken_from_grid, taken_from_pv):
+    def __init__(self, time_window, soc, charged_energy, discharged_energy, PUN_timeseries, taken_from_grid, taken_from_pv, produced_from_pv):
         self.time_window = time_window
         self.soc = soc
         self.charged_energy = charged_energy
@@ -20,6 +20,8 @@ class EnergyPlots:
         self.time_steps = np.arange(time_window)
         self.taken_from_grid = taken_from_grid
         self.taken_from_pv = taken_from_pv
+        self.produced_from_pv = produced_from_pv
+
         if minimize_C:
             self.plots_dir = "Plots/minimize_C_rate"
             if not os.path.exists(self.plots_dir):
@@ -70,6 +72,7 @@ class EnergyPlots:
         discharged_energy_24 = self.discharged_energy[:num_values]
         pun_values_24 = self.PUN_timeseries[:num_values]
         soc_24 = self.soc[:num_values]
+        produced_from_pv = self.produced_from_pv[:num_values]
 
         taken_from_pv_24 = self.taken_from_pv[:num_values]  # Energia da PV
         taken_from_grid_24 = self.taken_from_grid[:num_values]  # Energia dalla rete
@@ -92,13 +95,15 @@ class EnergyPlots:
 
         # Plot stacked bars for 'taken_from_grid' (green) and 'taken_from_pv' (blue)
         ax1.bar(time_steps_24 - width / 2, taken_from_grid_24, width=width, color='limegreen',
-                label='Charged from Grid [kWh]')
-        ax1.bar(time_steps_24 - width / 2, taken_from_pv_24, width=width, bottom=taken_from_grid_24, color='blue',
+                label='Taken from Grid [kWh]')
+        ax1.bar(time_steps_24 - width / 2, taken_from_pv_24, width=width, bottom=taken_from_grid_24, color='darkblue',
                 label='Charged from PV [kWh]')
 
         # Plot discharged energy as a separate bar (red)
         ax1.bar(time_steps_24 + width / 2, discharged_energy_24, width=width, color='darkred',
-                label='Discharged Energy [kWh]')
+                label='Discharged BESS Energy [kWh]')
+        ax1.bar(time_steps_24 + width / 2, -(produced_from_pv - taken_from_pv_24), bottom = discharged_energy_24, width=width, color='orange',
+                label='Sold from PV [kWh]')
 
         ax1.set_ylabel('Energy [kWh]')
         ax1.set_title('Charged (from Grid and PV) and Discharged Energy with PUN')

@@ -19,7 +19,7 @@ __maintainer__ = "Lorenzo Giannuzzo"
 __email__ = "lorenzo.giannuzzo@polito.it"
 __status__ = "in progress"
 __version__ = "v0.2.1"
-__license__ = ""
+__license__ = "MIT 2.0"
 __credits__ = ("Lorenzo Giannuzzo: Creation, Maintenance, Development, Idealization"
                "Daniele Salvatore Schiera: Idealization, Supervision"
                "Marco Massano: Idealization, Supervision")

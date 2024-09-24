@@ -14,6 +14,18 @@ from Plots import EnergyPlots
 from PV import pv_production
 
 
+__author__ = "Lorenzo Giannuzzo"
+__maintainer__ = "Lorenzo Giannuzzo"
+__email__ = "lorenzo.giannuzzo@polito.it"
+__status__ = "in progress"
+__version__ = "v0.2.1"
+__license__ = ""
+__credits__ = ("Lorenzo Giannuzzo: Creation, Maintenance, Development, Idealization"
+               "Daniele Salvatore Schiera: Idealization, Supervision"
+               "Marco Massano: Idealization, Supervision")
+
+# MAIN class creation
+
 class Main:
     def __init__(self, multiprocessing=True):
 

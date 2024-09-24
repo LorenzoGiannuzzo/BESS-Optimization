@@ -1,7 +1,7 @@
 # BESS Optimization For Energy Trading
 ### BESS Optimization using NSGA-III.
 
-Overview This repository contains the code and data for optimizing Battery Energy Storage Systems (BESS) using evolutionary algorithms. The project focuses on maximizing revenues by optimizing charge and discharge cycles.
+Overview This repository contains the code and data for optimizing Battery Energy Storage Systems (BESS) using evolutionary algorithms. The project focuses on maximizing revenues by optimizing charge and discharge cycles based on PV power plants production and the buying/selling price for electrical energy from/to the grid.
 
 ## Installation - Clone the repository: 
 
@@ -29,6 +29,8 @@ Run the main script to start the optimization process:
 - `--soc <SoC_at_step_0>`: Specifies the initial state of charge of the Battery Energy Storage System in %.
 - `--dod <Depth_of_Discharge>`: Specifies the range of SoC in %.
 - `--minimize_C <Boolean>`: Parameter that requires no values. Default values is FALSE, is it's in command line, it's set to be True. If TRUE, it changes the optimization problem maximizing revenues and minimizing C-rate
+- `--PV <Peak_power_in_kW>`: Define the peak power of the PV plants connected to the BESS. Default values is 0 kW. 
+
 
 ### Output:
 
@@ -44,12 +46,16 @@ The output consists in a .json file structured for each timestep of the consider
         revenues: --- Cash flow resulted from charging/discharging energy from t BESS, expressed in EUROs.
         technology: --- Typology of BESS.\
         size: --- Total capacity of the battery, expressed in kWh.\
-        dod: --- Depth of Discharge, expressed as "Min_SoC - Max_SoC".
+        dod: --- Depth of Discharge, expressed as "Min_SoC - Max_SoC".\
+        energy_charged_from_pv --- Energy taken from pv and used to charge the BESS, expressed in kWh.\
+        energy_taken_from_grid --- Energy taken from the electrical grid and used to charge the BESS, expressed in kWh.\
+        energy_sold_from_pv --- Energy produced by PV plants and directly sold to the electrical grid, expressed in kWh.\
+        energy_sold_from_BESS --- Energy discharged from the BESS and sold the electrical grid, expressed in kWh.\
 
 }
 ### Example:
 
-`python main.py --input_json C:\Users\lorenzo.giannuzzo\PycharmProjects\BESS-Optimization\Input\pun2.json --output_json C:\Users\lorenzo.giannuzzo\PycharmProjects\BESS-Optimization\Output\output.json --technology Li-ion --size 2500 --power 250  --soc 0.9 --dod 20-80
+`python main.py --input_json C:\Users\lorenzo.giannuzzo\PycharmProjects\BESS-Optimization\Input\pun2.json --output_json C:\Users\lorenzo.giannuzzo\PycharmProjects\BESS-Optimization\Output\output.json --technology Li-ion --size 2500 --power 250  --soc 0.9 --dod 20-80 --minimize_C --PV_power 1000
 `
 
 ## Project Structure
@@ -66,3 +72,4 @@ The output consists in a .json file structured for each timestep of the consider
 - `objective_function.py`: Defines the objective function for the optimization.
 - `requirements.txt`: Lists the dependencies required to run the project.
 - `utils.py`: Utility functions used across the project.
+- `PV.py`: Import data related to the PV size and production.

@@ -181,7 +181,7 @@ class Main:
         # Calculate revenues by summing the costs of charging and discharging
 
         rev = - (np.array(discharged_energy) * PUN_ts / 1000) - (taken_from_grid * PUN_ts / 1000) - discharged_from_pv * PUN_ts / 1000
-
+        self.rev = rev
         # Print total revenues
 
         print("\nRevenues for optimized time window [EUROs]:\n\n", rev.sum())
@@ -254,7 +254,7 @@ if __name__ == "__main__":
     SoC = main.soc
     c_d_energy = main.c_d_timeseries_final
     alpha = main.alpha
-    revenues = -c_d_energy * PUN_timeseries[:,1]
+    revenues = main.rev
     data = []
 
     for i in range(len(PUN_timeseries[:,1])):
@@ -266,9 +266,15 @@ if __name__ == "__main__":
             "Nominal C-rate": np.abs(c_d_energy[i])/alpha[i],
             "C-rate": abs(c_d_energy[i]),
             "revenues": revenues[i],
+            "rev_BESS": -main.discharged_energy[i] * PUN_timeseries[i,1] / 1000,
+            "rev_PV": (pv_production['P'].iloc[i] - main.taken_from_pv[i])*PUN_timeseries[i,1]/1000,
             "technology": technology,
             "size": size,
             "dod": range_str,
+            "energy_charged_from_PV": main.taken_from_pv[i],
+            "energy_taken_from_grid": main.taken_from_grid[i],
+            "energy_sold_from_PV": pv_production['P'].iloc[i] - main.taken_from_pv[i],
+            "energy_sold_from_BESS": -main.discharged_energy[i]
              #"source": PUN_timeseries[i, 2]
         }
         data.append(entry)

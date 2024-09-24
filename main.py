@@ -12,7 +12,15 @@ from Optimizer import Optimizer
 from argparser import output_json_path, range_str
 from Plots import EnergyPlots
 
-
+__author__ = "Lorenzo Giannuzzo"
+__maintainer__ = "Lorenzo Giannuzzo"
+__email__ = "lorenzo.giannuzzo@polito.it"
+__status__ = "in progress"
+__version__ = "v0.2.1"
+__license__ = "MIT"
+__credits__ = ("Lorenzo Giannuzzo: Creation, Maintenance, Development, Idealization"
+               "Daniele Salvatore Schiera: Idealization, Supervision"
+               "Marco Massano: Idealization, Supervision")
 
 class Main:
     def __init__(self, multiprocessing=True):

@@ -27,13 +27,8 @@ class Main:
         if self.multiprocessing:
 
             n_processes = cpu_count() - 1
-
-            #print(n_processes)# Set the number of processes
-
             self.pool = Pool(processes=n_processes)
-
             runner = StarmapParallelization(self.pool.starmap)
-
             self.objective_function = Revenues(elementwise_runner=runner,elementwise=True)
 
         else:
@@ -53,7 +48,6 @@ class Main:
         solution = self.optimizer.maximize_revenues()
 
         if multiprocessing:
-
             self.pool.close()
 
         self.history = solution.history
@@ -71,14 +65,13 @@ class Main:
             alpha_mean = np.mean(alpha)
 
             print("\nAverage C/D reduction factor [%]:\n\n",alpha_mean*100)
-
             print("\nN Solutions in the Pareto-Front:\n\n",of_values.shape)
 
         else:
             alpha = np.ones(time_window)
             c_d_timeseries = solution.X
 
-            # Apply physical constraints to the charge/discharge time series
+        # Apply physical constraints to the charge/discharge time series
 
         soc, charged_energy, discharged_energy, c_d_timeseries, taken_from_grid, taken_from_pv = self.apply_physical_constraints(c_d_timeseries,
                                                                                                      alpha)
@@ -117,8 +110,8 @@ class Main:
         soc = [0.0] * time_window  # Initialize state of charge
         charged_energy = [0.0] * time_window  # Initialize charged energy
         discharged_energy = [0.0] * time_window  # Initialize discharged energy
-        taken_from_grid = [0.0] * time_window
-        taken_from_pv = [0.0] * time_window
+        taken_from_grid = [0.0] * time_window  # Initialize energy taken from the grid
+        taken_from_pv = [0.0] * time_window  # Initialize energy taken from the pv used to charged the BESS
         soc[0] = soc_0  # Initial state of charge
 
         c_func = charge_rate_interpolated_func  # Charge rate function
@@ -131,7 +124,6 @@ class Main:
                 # Limit charge based on charge capacity and SoC
 
                 c_d_timeseries[index] = min(c_d_timeseries[index]*alpha[index], min(c_func(soc[index])*alpha[index], soc_max - soc[index]))
-                #c_d_timeseries[index] = max(c_d_timeseries[index]- pv_production['P'].iloc[index], 0.0)
 
             else:
 
@@ -156,11 +148,9 @@ class Main:
             # Update SoC for the next time step
 
             if c_d_timeseries[index] >= 0:
-
                 soc[index + 1] = min(soc_max, soc[index] + charged_energy[index]/size)
 
             else:
-
                 soc[index + 1] = max(soc_min, soc[index] + discharged_energy[index]/size)
 
         return soc, charged_energy, discharged_energy, c_d_timeseries, taken_from_grid, taken_from_pv
@@ -208,6 +198,7 @@ class Main:
             plots.plot_alpha_vs_timewindow(time_window, np.abs(c_d_energy), PUN_Timeseries, np.abs(c_d_energy)/self.alpha)
 
 
+# MAIN EXECUTION
 
 if __name__ == "__main__":
 
@@ -257,6 +248,8 @@ if __name__ == "__main__":
     revenues = main.rev
     data = []
 
+    # OUTPUT CREATION
+
     for i in range(len(PUN_timeseries[:,1])):
         entry = {
             "datetime": PUN_timeseries[i, 0].isoformat() + "Z",
@@ -275,10 +268,10 @@ if __name__ == "__main__":
             "energy_taken_from_grid": main.taken_from_grid[i],
             "energy_sold_from_PV": pv_production['P'].iloc[i] - main.taken_from_pv[i],
             "energy_sold_from_BESS": -main.discharged_energy[i]
-             #"source": PUN_timeseries[i, 2]
-        }
-        data.append(entry)
 
+        }
+
+        data.append(entry)
         json_file_path = output_json_path
         with open(json_file_path, 'w') as json_file:
             json.dump(data, json_file, indent=4)

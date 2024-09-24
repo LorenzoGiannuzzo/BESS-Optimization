@@ -81,7 +81,7 @@ class EnergyPlots:
 
         # Normalize SoC values to be in the range [0, 1] for the colormap
         norm = Normalize(vmin=min(soc_24), vmax=max(soc_24))
-        cmap = matplotlib.colors.LinearSegmentedColormap.from_list("", ["darkred", "gold", "limegreen"])
+        cmap = matplotlib.colors.LinearSegmentedColormap.from_list("", ["lightblue", "steelblue", "darkblue"])
 
         # Plot SoC with gradient colored bars based on value
         for i in range(len(time_steps_24)):
@@ -94,15 +94,15 @@ class EnergyPlots:
         width = 0.4
 
         # Plot stacked bars for 'taken_from_grid' (green) and 'taken_from_pv' (blue)
-        ax1.bar(time_steps_24 - width / 2, taken_from_grid_24, width=width, color='limegreen',
+        ax1.bar(time_steps_24 - width / 2, taken_from_grid_24, width=width, color='darkgreen',
                 label='Taken from Grid [kWh]')
-        ax1.bar(time_steps_24 - width / 2, taken_from_pv_24, width=width, bottom=taken_from_grid_24, color='darkblue',
+        ax1.bar(time_steps_24 - width / 2, taken_from_pv_24, width=width, bottom=taken_from_grid_24, color='limegreen',
                 label='Charged from PV [kWh]')
 
         # Plot discharged energy as a separate bar (red)
         ax1.bar(time_steps_24 + width / 2, discharged_energy_24, width=width, color='darkred',
                 label='Discharged BESS Energy [kWh]')
-        ax1.bar(time_steps_24 + width / 2, -(produced_from_pv - taken_from_pv_24), bottom = discharged_energy_24, width=width, color='orange',
+        ax1.bar(time_steps_24 + width / 2, -(produced_from_pv - taken_from_pv_24), bottom = discharged_energy_24, width=width, color='red',
                 label='Sold from PV [kWh]')
 
         ax1.set_ylabel('Energy [kWh]')

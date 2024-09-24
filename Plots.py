@@ -4,6 +4,7 @@ import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
 import matplotlib.colors as mcolors
+import matplotlib.gridspec as gridspec
 
 from matplotlib.colors import Normalize
 from argparser import minimize_C
@@ -73,11 +74,28 @@ class EnergyPlots:
         pun_values_24 = self.PUN_timeseries[:num_values]
         soc_24 = self.soc[:num_values]
         produced_from_pv = self.produced_from_pv[:num_values]
-
         taken_from_pv_24 = self.taken_from_pv[:num_values]  # Energia da PV
         taken_from_grid_24 = self.taken_from_grid[:num_values]  # Energia dalla rete
 
-        fig, (ax0, ax1) = plt.subplots(2, 1, figsize=(12, 12), sharex=True)
+        rev = - (np.array(discharged_energy_24) * pun_values_24 / 1000) - (
+                taken_from_grid_24 * pun_values_24 / 1000) + (
+                      produced_from_pv - taken_from_pv_24) * pun_values_24 / 1000
+
+        rev_pv = (produced_from_pv - taken_from_pv_24) * pun_values_24 / 1000
+        rev_bess = -(np.array(discharged_energy_24) * pun_values_24 / 1000) - (
+                taken_from_grid_24 * pun_values_24 / 1000)
+
+        rev = np.array(rev, dtype=float)
+
+        # Calcolo della cumulata di rev
+        rev_cumulative = np.cumsum(rev)
+
+        # Creazione del layout con 4 box usando gridspec
+        fig = plt.figure(figsize=(24, 12))  # Aumentato il figsize per adattarsi a 4 grafici
+        gs = gridspec.GridSpec(2, 2, width_ratios=[1, 1], height_ratios=[1, 1])
+
+        # Asse per SoC in alto a sinistra
+        ax0 = fig.add_subplot(gs[0, 0])
 
         # Normalize SoC values to be in the range [0, 1] for the colormap
         norm = Normalize(vmin=min(soc_24), vmax=max(soc_24))
@@ -86,36 +104,51 @@ class EnergyPlots:
         # Plot SoC with gradient colored bars based on value
         for i in range(len(time_steps_24)):
             ax0.bar(time_steps_24[i], soc_24[i], color=cmap(norm(soc_24[i])))
+        ax0.set_title('State of Charge (SoC)')
+        ax0.set_ylabel('SoC [%]')
 
-        ax0.set_title('State of Charge (SoC) [%]')
-        ax0.set_ylabel('SoC')
-
-        # Plot stacked bars for charged energy from PV and grid, and discharged energy
+        # Asse per l'energia caricata e scaricata (secondo grafico) in basso a sinistra
+        ax1 = fig.add_subplot(gs[1, 0])
         width = 0.4
-
-        # Plot stacked bars for 'taken_from_grid' (green) and 'taken_from_pv' (blue)
         ax1.bar(time_steps_24 - width / 2, taken_from_grid_24, width=width, color='darkgreen',
-                label='Taken from Grid [kWh]')
+                label='Energy Taken from Grid [kWh]')
         ax1.bar(time_steps_24 - width / 2, taken_from_pv_24, width=width, bottom=taken_from_grid_24, color='limegreen',
-                label='Charged from PV [kWh]')
+                label='Energy Charged from PV [kWh]')
 
-        # Plot discharged energy as a separate bar (red)
         ax1.bar(time_steps_24 + width / 2, discharged_energy_24, width=width, color='darkred',
-                label='Discharged BESS Energy [kWh]')
-        ax1.bar(time_steps_24 + width / 2, -(produced_from_pv - taken_from_pv_24), bottom = discharged_energy_24, width=width, color='red',
-                label='Sold from PV [kWh]')
+                label='Energy Discharged from BESS [kWh]')
+        ax1.bar(time_steps_24 + width / 2, -(produced_from_pv - taken_from_pv_24), bottom=discharged_energy_24,
+                width=width, color='red',
+                label='Energy Sold from PV [kWh]')
 
         ax1.set_ylabel('Energy [kWh]')
-        ax1.set_title('Charged (from Grid and PV) and Discharged Energy with PUN')
+        ax1.set_title('Energy Charged (from Grid/PV) and Discharged by/from BESS based on PUN')
         ax1.legend(loc='upper left')
 
         # Plot PUN values on the secondary axis
-        ax2 = ax1.twinx()
-        ax2.plot(time_steps_24, pun_values_24, color='black', label='PUN [Euro/MWh]')
-        ax2.set_ylabel('PUN Value')
-        ax2.legend(loc='upper right')
+        ax3 = ax1.twinx()
+        ax3.plot(time_steps_24, pun_values_24, color='black', label='PUN')
+        ax3.set_ylabel('PUN [Euro/MWh]')
+        ax3.legend(loc='upper right')
 
         ax1.set_xlabel('Time Window [h]')
+
+        # Asse per la cumulata dei ricavi a destra del primo grafico
+        ax2 = fig.add_subplot(gs[0, 1])  # Usa solo la prima riga nella colonna di destra
+        ax2.plot(time_steps_24, rev_cumulative, color='lightgreen', label='Cumulative Revenues', alpha=1)
+        ax2.set_title('Cumulative Revenues Over Time')
+        ax2.fill_between(time_steps_24, rev_cumulative, color='green', alpha=0.3)  # Area sottesa con alpha 0.3
+        ax2.set_ylabel('Cumulative Revenues [Euros]')
+        ax2.legend(loc='upper left')
+
+        # Nuovo grafico per rev_pv e rev_bess (quarto grafico) in basso a destra
+        ax4 = fig.add_subplot(gs[1, 1])
+        ax4.bar(time_steps_24, rev_pv, width=width, color='darkgreen', label='Revenues from PV')
+        ax4.bar(time_steps_24, rev_bess, width=width, bottom=rev_pv, color='limegreen', label='Revenues from BESS')
+        ax4.set_title('Revenues from PV and BESS')
+        ax4.set_ylabel('Revenues [Euros]')
+        ax4.set_xlabel('Time Window [h]')
+        ax4.legend(loc='upper left')
 
         fig.tight_layout()
 
@@ -124,7 +157,6 @@ class EnergyPlots:
             plt.savefig(os.path.join(self.plots_dir, "C_D_minC.png"))
         else:
             plt.savefig(os.path.join(self.plots_dir, "C_D.png"))
-
 
     @staticmethod
     def c_d_plot(charge_rate, discharge_rate, charge_rate_interpolated_func, discharge_rate_interpolated_func ):
@@ -138,10 +170,12 @@ class EnergyPlots:
         plt.grid(True)
 
     # Save the plot as a PNG file
+
         plt.savefig("Plots/charge_rate.png")
         plt.close()
 
     # Plotting
+
         plt.figure(figsize=(10, 6))
 
     # Plot for charge_rate
@@ -150,6 +184,7 @@ class EnergyPlots:
              label='Interpolated Charge Rate')
 
     # Plot for discharge_rate
+
         plt.plot(discharge_rate['SoC [%]'], discharge_rate['Discharge Rate [kWh/(kWhp*h)]'], 'o', color='red',
              label='Discharge Rate')
         plt.plot(discharge_rate['SoC [%]'], discharge_rate_interpolated_func(discharge_rate['SoC [%]']), '-',
@@ -162,13 +197,17 @@ class EnergyPlots:
         plt.grid(True)
 
     # Save the plot as a PNG file
+
         if not os.path.exists("Plots"):
             os.makedirs("Plots")
         plt.savefig("Plots/interpolated_functions.png")
+
     # Close the figure to release memory
+
         plt.close()
 
     # Plotting for charge_rate
+
         plt.figure(figsize=(10, 6))
         plt.plot(charge_rate['SoC [%]'], charge_rate['Charge Rate [kWh/(kWhp*h)]'], label='Charge Rate')
         plt.xlabel('SoC [%]')
@@ -192,40 +231,51 @@ class EnergyPlots:
         plt.grid(True)
 
         # Save the plot as a PNG file
+
         plt.savefig("Plots/disc_rate.png")
 
 
     @staticmethod
     def total_convergence(n_gen, timewindow, pop_size, X, Y):
+
         # Convert Y to a DataFrame (if not already)
+
         Y = pd.DataFrame(Y)
 
         # Calculate statistics of Y
+
         Y_stats = Y.transpose().describe()
         Y_stats = Y_stats.transpose()
+
         # Create a new figure and axis
+
         fig, ax = plt.subplots(figsize=(10, 6))
 
         # Define a custom colormap
+
         cmap_colors = ["orange", "darkorchid", "indigo"]
         cmap = mcolors.LinearSegmentedColormap.from_list("", cmap_colors)
 
         # Plot the mean from Y_stats with customization
+
         Y_stats['mean'].plot(ax=ax, color=cmap(0.5), linestyle='-', linewidth=2,
                              label='Mean Fitness Value of Population')  # Customize the plot with linestyle, linewidth, and label
         ax.legend()
 
         # Add titles and axis labels
+
         ax.set_title('Statistics of Fitness', fontsize=16)  # Title of the plot
         ax.set_xlabel('Generations', fontsize=14)  # X-axis label
         ax.set_ylabel('OF Mean Value', fontsize=14)  # Y-axis label
 
         # Customize background and grid
+
         ax.set_facecolor('whitesmoke')  # Background color
         ax.grid(True, linestyle='--', linewidth=0.5,
                 color='white')  # Dashed grid lines with 0.5 linewidth and gray color
 
         # Save the figure
+
         if minimize_C:
             plt.savefig('Plots/minimize_C_rate/total_convergence_minC.png')
         else:
@@ -233,7 +283,9 @@ class EnergyPlots:
 
     @staticmethod
     def PUN_plot(PUN_timeseries):
+
         # Line plot dei valori PUN (terza colonna del DataFrame)
+
         pun_values = PUN_timeseries  # Estrazione della terza colonna (indice 2)
         plt.figure(figsize=(12, 8))
         plt.plot(pun_values, marker='o', color='b')
@@ -245,58 +297,76 @@ class EnergyPlots:
 
     @staticmethod
     def convergence(n_gen, timewindow, pop_size, X, Y, max_subplots_per_figure=72):
+
         # Define the timesteps
+
         timesteps = np.arange(0, n_gen)
 
         # Create a colormap based on a range of darker colors
+
         cmap = matplotlib.colors.LinearSegmentedColormap.from_list("", ["orange", "darkorchid", "indigo"])
 
         # Normalize Y using a logarithmic scale to improve color distribution
+
         norm = Normalize(vmin=np.min(Y), vmax=np.max(Y))
 
         # Number of figures needed
+
         num_figures = (timewindow + max_subplots_per_figure - 1) // max_subplots_per_figure
 
         for fig_num in range(num_figures):
+
             # Determine the number of subplots in this figure
+
             start = fig_num * max_subplots_per_figure
             end = min(start + max_subplots_per_figure, timewindow)
             num_subplots = end - start
 
             # Determine the grid size for the subplots
+
             rows = int(np.ceil(np.sqrt(num_subplots)))
             cols = int(np.ceil(num_subplots / rows))
 
             # Create a figure and a grid of subplots
+
             fig, axes = plt.subplots(rows, cols, figsize=(20, 18))
 
             # Flatten the array of axes to iterate over them
+
             axes = axes.flatten()
 
             # Iterate over each subplot in the current figure
+
             for k in range(num_subplots):
                 ax = axes[k]
 
                 # Prepare data for the current subplot
+
                 for i in range(pop_size):
+
                     # Calculate colors based on normalized Y values for individual i
+
                     colors = cmap(norm(Y[:, i])*10)
                     ax.scatter(timesteps, X[:, i, start + k], s=4, alpha=0.8, c=colors)
 
                 # Set title and labels for the subplot
+
                 ax.set_title(f'C/D Energy % at {start + k + 1}h')
                 ax.set_xlabel('Generations')
                 ax.set_ylabel('% of C/D')
                 ax.grid(True)
 
             # Hide any empty subplots if present
+
             for k in range(num_subplots, len(axes)):
                 fig.delaxes(axes[k])
 
             # Add spacing between subplots
+
             plt.tight_layout()
 
             # Check if the "Plots" folder exists, create it if not
+
             if minimize_C:
                 output_dir = 'Plots/minimize_C_rate'
             else:
@@ -306,13 +376,13 @@ class EnergyPlots:
                 os.makedirs(output_dir)
 
             # Save the figure in the "Plots" folder
+
             if minimize_C:
                 output_path = os.path.join(output_dir, f'convergence_{fig_num + 1}_minC.png')
                 fig.savefig(output_path)
             else:
                 output_path = os.path.join(output_dir, f'convergence_{fig_num + 1}.png')
                 fig.savefig(output_path)
-
 
 
     @staticmethod
@@ -335,13 +405,17 @@ class EnergyPlots:
             raise ValueError("The lengths of alpha, new_alpha_values, and PUN_timeseries must be equal to time_window")
 
         # Creating the time vector from 1 to time_window
+
         time_vector = range(1, time_window + 1)
 
         # Creating the figure and the first subplot for alpha (bar plot)
+
         fig, ax1 = plt.subplots(figsize=(10, 6))
+
         bar_width = 0.4  # Width of the bars
 
         # Positions for the bars
+
         bar_positions1 = np.arange(time_window - 1)
         bar_positions2 = bar_positions1 + bar_width
 
@@ -356,17 +430,20 @@ class EnergyPlots:
         ax1.grid(False)
 
         # Creating the second subplot for PUN_timeseries (line plot)
+
         ax2 = ax1.twinx()
         ax2.plot(time_vector, PUN_timeseries, linestyle='-', color='black', label='PUN_timeseries', alpha=0.8)
         ax2.set_ylabel('PUN_timeseries Values', color='black')
         ax2.tick_params(axis='y', labelcolor='black')
 
         # Adding title and legend
+
         plt.title('C-rate and PUN_timeseries Values over Time Window')
         ax1.legend(loc='upper left')
         ax2.legend(loc='upper right')
 
         # Saving the plot to a file
+
         if minimize_C:
             output_dir = 'Plots/minimize_C_rate'
         else:

@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import matplotlib.colors as mcolors
 import matplotlib.gridspec as gridspec
+import matplotlib.patches as mpatches
 
 from matplotlib.colors import Normalize
 from argparser import minimize_C
@@ -118,7 +119,7 @@ class EnergyPlots:
         ax1.bar(time_steps_24 + width / 2, discharged_energy_24, width=width, color='darkred',
                 label='Energy Discharged from BESS [kWh]')
         ax1.bar(time_steps_24 + width / 2, -(produced_from_pv - taken_from_pv_24), bottom=discharged_energy_24,
-                width=width, color='red',
+                width=width, color='darkorange',
                 label='Energy Sold from PV [kWh]')
 
         ax1.set_ylabel('Energy [kWh]')
@@ -142,13 +143,22 @@ class EnergyPlots:
         ax2.legend(loc='upper left')
 
         # Nuovo grafico per rev_pv e rev_bess (quarto grafico) in basso a destra
+        colors_bess = ['red' if total < 0 else 'limegreen' for total in rev_pv]
+
         ax4 = fig.add_subplot(gs[1, 1])
-        ax4.bar(time_steps_24, rev_pv, width=width, color='darkgreen', label='Revenues from PV')
-        ax4.bar(time_steps_24, rev_bess, width=width, bottom=rev_pv, color='limegreen', label='Revenues from BESS')
+        ax4.bar(time_steps_24, rev_pv, width=width, color=['darkred' if total <0 else 'darkgreen' for total in rev_pv], label='Revenues from PV')
+        ax4.bar(time_steps_24, rev_bess, width=width, bottom=rev_pv, color=['red' if total < 0 else 'limegreen' for total in rev_bess], label='Revenues from BESS')
         ax4.set_title('Revenues from PV and BESS')
         ax4.set_ylabel('Revenues [Euros]')
         ax4.set_xlabel('Time Window [h]')
-        ax4.legend(loc='upper left')
+        red_patch = mpatches.Patch(color='red', label='Negative Revenues')
+        handles, labels = ax4.get_legend_handles_labels()
+        handles.append(red_patch)
+        labels.append('Negative Revenues for BESS charge')
+
+        # Aggiungi la nuova legenda
+        ax4.legend(handles=handles, labels=labels, loc='upper left')
+
 
         fig.tight_layout()
 

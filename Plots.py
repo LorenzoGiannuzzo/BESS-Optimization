@@ -110,22 +110,27 @@ class EnergyPlots:
 
         # Asse per l'energia caricata e scaricata (secondo grafico) in basso a sinistra
         ax1 = fig.add_subplot(gs[1, 0])
+
+        # Aggiungi l'area sottesa per 'produced_from_pv' in un giallo più acceso e dietro le barre
+        ax1.fill_between(time_steps_24, 0, produced_from_pv, color='lightblue', alpha=0.3, label='Produced from PV')
+
         width = 0.4
-        ax1.bar(time_steps_24 - width / 2, taken_from_grid_24, width=width, color='darkgreen',
+        ax1.bar(time_steps_24, [-1] * np.array(taken_from_grid_24), width=width, color='darkgreen',
                 label='Energy Taken from Grid [kWh]')
-        ax1.bar(time_steps_24 - width / 2, taken_from_pv_24, width=width, bottom=taken_from_grid_24, color='limegreen',
+        ax1.bar(time_steps_24, taken_from_pv_24, width=width, color='darkblue',
                 label='Energy Charged from PV [kWh]')
 
-        ax1.bar(time_steps_24 + width / 2, discharged_energy_24, width=width, color='darkred',
+        ax1.bar(time_steps_24, discharged_energy_24, width=width, color='limegreen',
+                bottom=[-1] * np.array(taken_from_grid_24),
                 label='Energy Discharged from BESS [kWh]')
-        ax1.bar(time_steps_24 + width / 2, -(produced_from_pv - taken_from_pv_24), bottom=discharged_energy_24,
-                width=width, color='darkorange',
+        ax1.bar(time_steps_24, (produced_from_pv - taken_from_pv_24), bottom=taken_from_pv_24,
+                width=width, color='cornflowerblue',
                 label='Energy Sold from PV [kWh]')
 
         ax1.set_ylabel('Energy [kWh]')
         ax1.set_title('Energy Charged (from Grid/PV) and Discharged by/from BESS based on PUN')
         ax1.legend(loc='upper left')
-        plt.ylim(-size*0.6, size * 0.6)
+        plt.ylim(-size * 0.6, size * 0.6)
 
         # Plot PUN values on the secondary axis
         ax3 = ax1.twinx()
@@ -147,8 +152,10 @@ class EnergyPlots:
         colors_bess = ['red' if total < 0 else 'limegreen' for total in rev_pv]
 
         ax4 = fig.add_subplot(gs[1, 1])
-        ax4.bar(time_steps_24, rev_pv, width=width, color=['darkred' if total <0 else 'darkgreen' for total in rev_pv], label='Revenues from PV')
-        ax4.bar(time_steps_24, rev_bess, width=width, bottom=rev_pv, color=['red' if total < 0 else 'limegreen' for total in rev_bess], label='Revenues from BESS')
+        ax4.bar(time_steps_24, rev_pv, width=width, color=['darkred' if total < 0 else 'darkgreen' for total in rev_pv],
+                label='Revenues from PV')
+        ax4.bar(time_steps_24, rev_bess, width=width, bottom=rev_pv,
+                color=['red' if total < 0 else 'limegreen' for total in rev_bess], label='Revenues from BESS')
         ax4.set_title('Revenues from PV and BESS')
         ax4.set_ylabel('Revenues [Euros]')
         ax4.set_xlabel('Time Window [h]')

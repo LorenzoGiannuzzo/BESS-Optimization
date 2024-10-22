@@ -116,8 +116,8 @@ if minimize_C:
     tolerance = 0.1
     period = 5
 else:
-    tolerance = 0.5  # tolerance on the objective function
-    period = 5  # number of iteration in which tolerance is evaluated
+    tolerance = 0.3  # tolerance on the objective function
+    period = 10  # number of iteration in which tolerance is evaluated
 
 # 9) Termination
 

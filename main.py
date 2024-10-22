@@ -133,13 +133,13 @@ class Main:
 
                 # Limit charge based on charge capacity and SoC
 
-                c_d_timeseries[index] = min(c_d_timeseries[index]*alpha[index], min(c_func(soc[index])*alpha[index], soc_max - soc[index]), power_energy)
+                c_d_timeseries[index] = min(c_d_timeseries[index]*alpha[index], min(c_func(soc[index])*alpha[index], soc_max - soc[index]), power_energy*alpha[index])
 
             else:
 
                 # Limit discharge based on discharge capacity and SoC
 
-                c_d_timeseries[index] = max(c_d_timeseries[index]*alpha[index], max(-d_func(soc[index])*alpha[index], - soc[index] + soc_min), - power_energy)
+                c_d_timeseries[index] = max(c_d_timeseries[index]*alpha[index], max(-d_func(soc[index])*alpha[index], - soc[index] + soc_min), - power_energy*alpha[index])
 
             if c_d_timeseries[index] >= 0:
 

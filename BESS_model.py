@@ -72,10 +72,10 @@ class BESS_model:
         for index in range(len(self.PUN_timeseries) - 1):
             if self.c_d_timeseries[index] >= 0.0:
                 self.c_d_timeseries[index] = np.minimum(self.c_d_timeseries[index]*np.abs(self.alpha[index]),
-                                                        np.minimum(self.c_func(self.soc[index])*np.abs(self.alpha[index]), soc_max - self.soc[index]),np.array(power_energy))
+                                                        np.minimum(self.c_func(self.soc[index])*np.abs(self.alpha[index]), soc_max - self.soc[index]), np.array(np.array(power_energy)*np.abs(self.alpha[index])))
             else:
                 self.c_d_timeseries[index] = np.maximum(self.c_d_timeseries[index]*np.abs(self.alpha[index]),
-                                                        np.maximum(-self.d_func(self.soc[index])*np.abs(self.alpha[index]), soc_min - self.soc[index]), np.array(-power_energy))
+                                                        np.maximum(-self.d_func(self.soc[index])*np.abs(self.alpha[index]), soc_min - self.soc[index]), np.array(np.array(-power_energy)*np.abs(self.alpha[index])))
 
             if self.c_d_timeseries[index] >= 0:
                 self.charged_energy[index] = self.c_d_timeseries[index] * self.size

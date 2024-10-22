@@ -9,7 +9,7 @@ input_json_default = r"C:\Users\lorenzo.giannuzzo\PycharmProjects\BESS-Optimizat
 output_json_default =  r"C:\Users\lorenzo.giannuzzo\PycharmProjects\BESS-Optimization\Output\output.json"
 technology_default = "Li-ion"
 size_default = 2500
-power_default = size_default/10
+power_energy_default = 0
 soc_default = 0.2
 dod_default = "10-90"
 pv_power_defualt = 0
@@ -21,7 +21,7 @@ parser.add_argument('--input_json', type=str, required=False,default=input_json_
 parser.add_argument('--output_json', type=str, required=False,default=output_json_default, help='Absolute path of the output file .json')
 parser.add_argument('--technology', type=str, required=False, default=technology_default, help='BESS Technology')
 parser.add_argument('--size', type=float, required=False,default=size_default, help='BESS Size in kWh')
-parser.add_argument('--power', type=float, required=False,default=power_default, help='BES Nominal power in kW')
+parser.add_argument('--power_energy', type=float, required=False,default=power_energy_default, help='ratio between nominal power and nominal energy capacity')
 parser.add_argument('--soc', type=float, required=False,default=soc_default, help='Soc at step 0 of the BESS in %')
 parser.add_argument('--dod', type=str, required=False,default=dod_default, help='SoC range in %')
 parser.add_argument('--minimize_C', action='store_true', help='Boolean, False = you dont want to minimize c/d velocity, True = you wan to minimize c/d velocity')
@@ -31,6 +31,7 @@ parser.add_argument('--PV_power', type=float, required=False,default=pv_power_de
 args = parser.parse_args()
 
 # Carica i parametri dai comandi
+
 input_json_path = args.input_json
 output_json_path = args.output_json
 technology = args.technology
@@ -39,6 +40,9 @@ soc = args.soc
 range_str = args.dod
 minimize_C = args.minimize_C
 PV_power = args.PV_power
+power_energy = args.power_energy
+BESS_power = size * args.power_energy
+
 
 start_str, end_str = range_str.split('-')
 

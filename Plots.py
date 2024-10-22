@@ -8,7 +8,7 @@ import matplotlib.gridspec as gridspec
 import matplotlib.patches as mpatches
 
 from matplotlib.colors import Normalize
-from argparser import minimize_C
+from argparser import minimize_C, size
 
 matplotlib.use('Agg')
 
@@ -125,6 +125,7 @@ class EnergyPlots:
         ax1.set_ylabel('Energy [kWh]')
         ax1.set_title('Energy Charged (from Grid/PV) and Discharged by/from BESS based on PUN')
         ax1.legend(loc='upper left')
+        plt.ylim(-size*0.6, size * 0.6)
 
         # Plot PUN values on the secondary axis
         ax3 = ax1.twinx()
@@ -158,7 +159,6 @@ class EnergyPlots:
 
         # Aggiungi la nuova legenda
         ax4.legend(handles=handles, labels=labels, loc='upper left')
-
 
         fig.tight_layout()
 

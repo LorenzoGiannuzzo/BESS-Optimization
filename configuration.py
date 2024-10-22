@@ -14,6 +14,18 @@ from pymoo.core.termination import TerminateIfAny
 from pymoo.termination import get_termination
 
 from argparser import minimize_C
+from BESS_model import charge_rate_interpolated_func, discharge_rate_interpolated_func
+
+x = np.linspace(0, 1,1000)
+
+# Calcola i valori delle due funzioni sul vettore x
+charge_values = charge_rate_interpolated_func(x)
+discharge_values = discharge_rate_interpolated_func(x)
+
+# Calcola il massimo elemento per elemento
+max_charge = max(charge_values)
+max_discharge = max(discharge_values)
+
 
 ''' 
 OPTIMIZATION PARAMETERS:
@@ -83,16 +95,16 @@ else:
 # 6) xl
 
 if minimize_C:
-    xl = [-1] * (time_window) + [0.2] * (time_window)
+    xl = [-max_discharge] * (time_window) + [0.0] * (time_window)
 else:
-    xl = [-1]*time_window
+    xl = [-max_discharge]*time_window
 
 # 7) xu
 
 if minimize_C:
-    xu = [1] * (time_window) + [1] *  (time_window)
+    xu = [max_charge] * (time_window) + [1.0] * (time_window)
 else:
-    xu = [1]*time_window
+    xu = [max_charge]*time_window
 
 # 8) n_gen
 

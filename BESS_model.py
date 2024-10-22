@@ -4,7 +4,7 @@ from utils import Get_data
 from utils import BESS
 
 from argparser import size, technology
-from argparser import soc_min, soc_max
+from argparser import soc_min, soc_max, BESS_power, power_energy
 
 # FILE PATH DATA
 
@@ -65,17 +65,17 @@ class BESS_model:
         self.c_d_timeseries = None
         self.alpha = None
 
-    def run_simulation(self, c_d_timeseries,alpha):
+    def run_simulation(self, c_d_timeseries, alpha):
         self.c_d_timeseries = np.array(c_d_timeseries).reshape(self.time_window)
         self.alpha = np.array(alpha)
 
         for index in range(len(self.PUN_timeseries) - 1):
             if self.c_d_timeseries[index] >= 0.0:
                 self.c_d_timeseries[index] = np.minimum(self.c_d_timeseries[index]*np.abs(self.alpha[index]),
-                                                        np.minimum(self.c_func(self.soc[index])*np.abs(self.alpha[index]), soc_max - self.soc[index]))
+                                                        np.minimum(self.c_func(self.soc[index])*np.abs(self.alpha[index]), soc_max - self.soc[index]),np.array(power_energy))
             else:
-                self.c_d_timeseries[index] = np.maximum(self.c_d_timeseries[index]*abs(self.alpha[index]),
-                                                        np.maximum(-self.d_func(self.soc[index])*np.abs(self.alpha[index]), soc_min - self.soc[index]))
+                self.c_d_timeseries[index] = np.maximum(self.c_d_timeseries[index]*np.abs(self.alpha[index]),
+                                                        np.maximum(-self.d_func(self.soc[index])*np.abs(self.alpha[index]), soc_min - self.soc[index]), np.array(-power_energy))
 
             if self.c_d_timeseries[index] >= 0:
                 self.charged_energy[index] = self.c_d_timeseries[index] * self.size

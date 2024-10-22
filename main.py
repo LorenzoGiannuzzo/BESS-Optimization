@@ -9,7 +9,7 @@ from configuration import pop_size, soc_0, time_window, plot
 from BESS_model import charge_rate_interpolated_func, discharge_rate_interpolated_func, size, charge_rate, discharge_rate, technology
 from Economic_parameters import PUN_timeseries, time_window
 from Optimizer import Optimizer
-from argparser import output_json_path, range_str, minimize_C, soc_min, soc_max
+from argparser import output_json_path, range_str, minimize_C, soc_min, soc_max, power_energy
 from Plots import EnergyPlots
 from PV import pv_production
 
@@ -133,13 +133,13 @@ class Main:
 
                 # Limit charge based on charge capacity and SoC
 
-                c_d_timeseries[index] = min(c_d_timeseries[index]*alpha[index], min(c_func(soc[index])*alpha[index], soc_max - soc[index]))
+                c_d_timeseries[index] = min(c_d_timeseries[index]*alpha[index], min(c_func(soc[index])*alpha[index], soc_max - soc[index]), power_energy)
 
             else:
 
                 # Limit discharge based on discharge capacity and SoC
 
-                c_d_timeseries[index] = max(c_d_timeseries[index]*alpha[index], max(-d_func(soc[index])*alpha[index], - soc[index] + soc_min))
+                c_d_timeseries[index] = max(c_d_timeseries[index]*alpha[index], max(-d_func(soc[index])*alpha[index], - soc[index] + soc_min), - power_energy)
 
             if c_d_timeseries[index] >= 0:
 
@@ -205,7 +205,7 @@ class Main:
             plots.plot_charged_energy()
             plots.plot_discharged_energy()
             plots.plot_combined_energy_with_pun(num_values=time_window)
-            plots.plot_alpha_vs_timewindow(time_window, np.abs(c_d_energy), PUN_Timeseries, np.abs(c_d_energy)/self.alpha)
+            plots.plot_alpha_vs_timewindow(time_window, np.abs(c_d_energy), PUN_Timeseries, [power_energy] * (time_window))
 
 
 # MAIN EXECUTION

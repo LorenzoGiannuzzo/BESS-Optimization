@@ -1,12 +1,30 @@
+"""
+
+BESS Optimization using NSGA-III Algorithm
+
+    __author__ = "Lorenzo Giannuzzo"
+    __maintainer__ = "Lorenzo Giannuzzo"
+    __email__ = "lorenzo.giannuzzo@polito.it"
+    __status__ = "in progress"
+    __version__ = "v0.2.1"
+    __license__ = "MIT"
+
+Last Update of current code: 06/11/2024 - 16:06
+
+"""
+
+# IMPORTING LIBRARIES
+
 import argparse
 
+# CREATE PARSER
 
-# Creare il parser degli argomenti
 parser = argparse.ArgumentParser(description='Script per l\'ottimizzazione del BESS.')
 
-# Default values
+# SET DEFAULT VALUES
+
 input_json_default = r"C:\Users\lorenzo.giannuzzo\PycharmProjects\BESS-Optimization\Input\pun2.json"
-output_json_default =  r"C:\Users\lorenzo.giannuzzo\PycharmProjects\BESS-Optimization\Output\output.json"
+output_json_default = r"C:\Users\lorenzo.giannuzzo\PycharmProjects\BESS-Optimization\Output\output.json"
 technology_default = "Li-ion"
 size_default = 2500
 power_energy_default = 0
@@ -14,23 +32,30 @@ soc_default = 0.2
 dod_default = "10-90"
 pv_power_defualt = 0
 
+# GET PARSER ARGUMENTS FROM COMMAND LINE
 
-# Aggiungere gli argomenti
 parser.add_argument('--input_json', type=str, required=False,default=input_json_default,
                     help='Absolute paht of the file .json for PUN values as input')
-parser.add_argument('--output_json', type=str, required=False,default=output_json_default, help='Absolute path of the output file .json')
-parser.add_argument('--technology', type=str, required=False, default=technology_default, help='BESS Technology')
+parser.add_argument('--output_json', type=str, required=False,default=output_json_default,
+                    help='Absolute path of the output file .json')
+parser.add_argument('--technology', type=str, required=False, default=technology_default,
+                    help='BESS Technology')
 parser.add_argument('--size', type=float, required=False,default=size_default, help='BESS Size in kWh')
-parser.add_argument('--power_energy', type=float, required=False,default=power_energy_default, help='ratio between nominal power and nominal energy capacity')
-parser.add_argument('--soc', type=float, required=False,default=soc_default, help='Soc at step 0 of the BESS in %')
+parser.add_argument('--power_energy', type=float, required=False,default=power_energy_default,
+                    help='ratio between nominal power and nominal energy capacity')
+parser.add_argument('--soc', type=float, required=False,default=soc_default,
+                    help='Soc at step 0 of the BESS in %')
 parser.add_argument('--dod', type=str, required=False,default=dod_default, help='SoC range in %')
-parser.add_argument('--minimize_C', action='store_true', help='Boolean, False = you dont want to minimize c/d velocity, True = you wan to minimize c/d velocity')
-parser.add_argument('--PV_power', type=float, required=False,default=pv_power_defualt, help='PV peak power')
+parser.add_argument('--minimize_C', action='store_true',
+                    help='Boolean, False = you dont want to minimize c/d velocity, True = you wan to minimize c/d velocity')
+parser.add_argument('--PV_power', type=float, required=False,default=pv_power_defualt,
+                    help='PV peak power')
 
-# Parsing degli argomenti
+# ARGUMENTS PARSING
+
 args = parser.parse_args()
 
-# Carica i parametri dai comandi
+# GET PARAMETERS
 
 input_json_path = args.input_json
 output_json_path = args.output_json
@@ -42,7 +67,6 @@ minimize_C = args.minimize_C
 PV_power = args.PV_power
 power_energy = args.power_energy
 BESS_power = size * args.power_energy
-
 
 start_str, end_str = range_str.split('-')
 

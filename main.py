@@ -1,6 +1,7 @@
+"""
 
+BESS Optimization using NSGA-III Algorithm
 
-'''
     __author__ = "Lorenzo Giannuzzo"
     __maintainer__ = "Lorenzo Giannuzzo"
     __email__ = "lorenzo.giannuzzo@polito.it"
@@ -8,14 +9,15 @@
     __version__ = "v0.2.1"
     __license__ = "MIT"
 
-Last Update: 06/11/2024 - 16:02
+Last Update of current code: 06/11/2024 - 16:02
 
-'''
+"""
+
+# IMPORTING LIBREARIES AND MODULES FROM PROJECT
 
 import multiprocessing
 import numpy as np
 import json
-
 from pymoo.core.problem import StarmapParallelization
 from multiprocessing import Pool, cpu_count
 from objective_function import Revenues
@@ -28,7 +30,10 @@ from Plots import EnergyPlots
 from PV import pv_production
 
 
-# MAIN class creation
+
+
+# CREATION OF CLASS MAIN
+
 
 class Main:
     def __init__(self, multiprocessing=True):

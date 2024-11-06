@@ -13,7 +13,7 @@ Last Update of current code: 06/11/2024 - 16:02
 
 """
 
-# IMPORTING LIBREARIES AND MODULES FROM PROJECT
+# IMPORTING LIBRARIES AND MODULES FROM PROJECT
 
 import multiprocessing
 import numpy as np

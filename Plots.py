@@ -62,54 +62,92 @@ class EnergyPlots:
 
                 os.makedirs(self.plots_dir)
 
+    # DEFINE SoC PLOT FUNCTION
+
     def plot_soc(self):
+
+        # SET FIG SIZE
+
         plt.figure(figsize=(12, 8))
+
         plt.bar(self.time_steps, self.soc, color='grey')
         plt.title('State of Charge (SoC) [%]')
         plt.xlabel('Time Window [h]')
         plt.ylabel('SoC')
+
+        # TODO This shouldn't be there because of minimize_C delete
         if minimize_C:
+
             plt.savefig(os.path.join(self.plots_dir, "SoC_minC.png"))
+
         else:
+
             plt.savefig(os.path.join(self.plots_dir, "SoC.png"))
 
+    # DEFINE CHARGED ENERGY PLOT FUNCTION
 
     def plot_charged_energy(self):
+
+        # SET FIG SIZE
+
         plt.figure(figsize=(12, 8))
+
         plt.bar(self.time_steps, self.charged_energy, color='limegreen')
         plt.title('Charged Energy')
         plt.xlabel('Time Window [h]')
         plt.ylabel('Charged Energy [kWh]')
+
+        # TODO This shouldn't be there because of minimize_C delete
         if minimize_C:
+
             plt.savefig(os.path.join(self.plots_dir, "Charged_Energy_minC.png"))
+
         else:
+
             plt.savefig(os.path.join(self.plots_dir, "Charged_Energy.png"))
 
 
+    # DEFINE DISCHARGED ENERGY FUNCTION
+
     def plot_discharged_energy(self):
+
         plt.figure(figsize=(12, 8))
+
         plt.bar(self.time_steps, self.discharged_energy, color='darkred')
         plt.title('Discharged Energy')
         plt.xlabel('Time Window [h]')
         plt.ylabel('Discharged Energy [kWh]')
+
         if minimize_C:
+
             plt.savefig(os.path.join(self.plots_dir, "Disc_Energy_minC.png"))
+
         else:
+
             plt.savefig(os.path.join(self.plots_dir, "Disc_Energy.png"))
 
+    # DEFINE COMBINED PLOTS FIGURE FUCNTION
+
     def plot_combined_energy_with_pun(self, num_values):
+
+        # SETTING VALUES
+
         time_steps_24 = self.time_steps[:num_values]
         charged_energy_24 = self.charged_energy[:num_values]
         discharged_energy_24 = self.discharged_energy[:num_values]
         pun_values_24 = self.PUN_timeseries[:num_values]
         soc_24 = self.soc[:num_values]
         produced_from_pv = self.produced_from_pv[:num_values]
-        taken_from_pv_24 = self.taken_from_pv[:num_values]  # Energia da PV
-        taken_from_grid_24 = self.taken_from_grid[:num_values]  # Energia dalla rete
+        taken_from_pv_24 = self.taken_from_pv[:num_values]
+        taken_from_grid_24 = self.taken_from_grid[:num_values]
+
+        # EVALUATE GLOBAL REVENUES
 
         rev = - (np.array(discharged_energy_24) * pun_values_24 / 1000) - (
                 taken_from_grid_24 * pun_values_24 / 1000) + (
                       produced_from_pv - taken_from_pv_24) * pun_values_24 / 1000
+
+        # EVALUATE PV AND BESS REVENUES
 
         rev_pv = (produced_from_pv - taken_from_pv_24) * pun_values_24 / 1000
         rev_bess = -(np.array(discharged_energy_24) * pun_values_24 / 1000) - (
@@ -117,44 +155,45 @@ class EnergyPlots:
 
         rev = np.array(rev, dtype=float)
 
-        # Calcolo della cumulata di rev
+        # EVALUATE CUMULATIVE GLOBAL REVENUES
+
         rev_cumulative = np.cumsum(rev)
 
-        # Creazione del layout con 4 box usando gridspec
-        fig = plt.figure(figsize=(24, 12))  # Aumentato il figsize per adattarsi a 4 grafici
+        # CREATING FIGURE LAYOUT
+
+        fig = plt.figure(figsize=(24, 12))
         gs = gridspec.GridSpec(2, 2, width_ratios=[1, 1], height_ratios=[1, 1])
 
-        # Asse per SoC in alto a sinistra
+        # SET AXIS FOR SoC PLOT (UPPER LEFT)
+
         ax0 = fig.add_subplot(gs[0, 0])
 
         # Normalize SoC values to be in the range [0, 1] for the colormap
+
         norm = Normalize(vmin=min(soc_24), vmax=max(soc_24))
         cmap = matplotlib.colors.LinearSegmentedColormap.from_list("", ["lightblue", "steelblue", "darkblue"])
 
         # Plot SoC with gradient colored bars based on value
+
         for i in range(len(time_steps_24)):
+
             ax0.bar(time_steps_24[i], soc_24[i], color=cmap(norm(soc_24[i])))
+
         ax0.set_title('State of Charge (SoC)')
         ax0.set_ylabel('SoC [%]')
 
-        # Asse per l'energia caricata e scaricata (secondo grafico) in basso a sinistra
+        # SET AXIS FOR BOTTOM LEFT GRAPH
+
         ax1 = fig.add_subplot(gs[1, 0])
 
-        # Aggiungi l'area sottesa per 'produced_from_pv' in un giallo più acceso e dietro le barre
-        #ax1.fill_between(time_steps_24, 0, produced_from_pv, color='lightblue', alpha=0.3, label='Produced from PV')
-
         width = 0.4
+
         ax1.bar(time_steps_24, [1] * np.array(taken_from_grid_24), width=width, color='darkgreen',
                 label='Energy Taken from Grid [kWh]')
-        #ax1.bar(time_steps_24, taken_from_pv_24, width=width, color='darkblue',
-                #label='Energy Charged from PV [kWh]')
 
         ax1.bar(time_steps_24, discharged_energy_24, width=width, color='darkred',
                 bottom= np.array(taken_from_grid_24),
                 label='Energy Discharged from BESS [kWh]')
-        #ax1.bar(time_steps_24, -(produced_from_pv - taken_from_pv_24), bottom=discharged_energy_24,
-                #width=width, color='orange',
-               # label='Energy Sold from PV [kWh]')
 
         ax1.set_ylabel('Energy [kWh]')
         ax1.set_title('Energy Charged (from Grid/PV) and Discharged by/from BESS based on PUN')
@@ -162,6 +201,7 @@ class EnergyPlots:
         plt.ylim(-size * 0.6, size * 0.6)
 
         # Plot PUN values on the secondary axis
+
         ax3 = ax1.twinx()
         ax3.plot(time_steps_24, pun_values_24, color='black', label='PUN')
         ax3.set_ylabel('PUN [Euro/MWh]')
@@ -169,7 +209,7 @@ class EnergyPlots:
 
         ax1.set_xlabel('Time Window [h]')
 
-        # Asse per la cumulata dei ricavi a destra del primo grafico
+
         ax2 = fig.add_subplot(gs[0, 1])  # Usa solo la prima riga nella colonna di destra
         ax2.plot(time_steps_24, rev_cumulative, color='lightgreen', label='Cumulative Revenues', alpha=1)
         ax2.set_title('Cumulative Revenues Over Time')
@@ -177,12 +217,10 @@ class EnergyPlots:
         ax2.set_ylabel('Cumulative Revenues [Euros]')
         ax2.legend(loc='upper left')
 
-        # Nuovo grafico per rev_pv e rev_bess (quarto grafico) in basso a destra
         colors_bess = ['red' if total < 0 else 'limegreen' for total in rev_pv]
 
         ax4 = fig.add_subplot(gs[1, 1])
-        #ax4.bar(time_steps_24, rev_pv, width=width, color=['darkred' if total < 0 else 'darkgreen' for total in rev_pv],
-               # label='Revenues from PV')
+
         ax4.bar(time_steps_24, rev_bess, width=width, #bottom=rev_pv,
                 color=['red' if total < 0 else 'limegreen' for total in rev_bess], label='Revenues from BESS')
         ax4.set_title('Revenues from PV and BESS')
@@ -193,38 +231,43 @@ class EnergyPlots:
         handles.append(red_patch)
         labels.append('Negative Revenues for BESS charge')
 
-        # Aggiungi la nuova legenda
         ax4.legend(handles=handles, labels=labels, loc='upper left')
 
         fig.tight_layout()
 
-        # Save the plot based on the minimize_C condition
+        # TODO Rembemer to fix this
+
         if minimize_C:
+
             plt.savefig(os.path.join(self.plots_dir, "BESS_View_minC.png"))
+
         else:
+
             plt.savefig(os.path.join(self.plots_dir, "BESS_View.png"))
 
     def PV_View(self, num_values):
+
         time_steps_24 = self.time_steps[:num_values]
         charged_energy_24 = self.charged_energy[:num_values]
         discharged_energy_24 = self.discharged_energy[:num_values]
         pun_values_24 = self.PUN_timeseries[:num_values]
         soc_24 = self.soc[:num_values]
         produced_from_pv = self.produced_from_pv[:num_values]
-        taken_from_pv_24 = self.taken_from_pv[:num_values]  # Energia da PV
-        taken_from_grid_24 = self.taken_from_grid[:num_values]  # Energia dalla rete
+        taken_from_pv_24 = self.taken_from_pv[:num_values]
+        taken_from_grid_24 = self.taken_from_grid[:num_values]
 
         rev = - (np.array(discharged_energy_24) * pun_values_24 / 1000) - (
                 taken_from_grid_24 * pun_values_24 / 1000) + (
                       produced_from_pv - taken_from_pv_24) * pun_values_24 / 1000
 
         rev_pv = (produced_from_pv - taken_from_pv_24) * pun_values_24 / 1000
+
         rev_bess = -(np.array(discharged_energy_24) * pun_values_24 / 1000) - (
                 taken_from_grid_24 * pun_values_24 / 1000)
 
         rev = np.array(rev, dtype=float)
 
-        # Calcolo della cumulata di rev
+
         rev_cumulative = np.cumsum(rev)
 
         # Creazione del layout con 4 box usando gridspec
@@ -254,7 +297,7 @@ class EnergyPlots:
         #ax1.bar(time_steps_24, [1] * np.array(taken_from_grid_24), width=width, color='darkgreen',
                 #label='Energy Taken from Grid [kWh]')
         ax1.bar(time_steps_24, taken_from_pv_24, color='darkblue', bottom=(produced_from_pv - taken_from_pv_24),
-                label='Energy Charged from PV [kWh]')
+                label='Energy Charged from PV [kWh]', width=width)
 
         #ax1.bar(time_steps_24, discharged_energy_24, width=width, color='darkred',
               #  bottom= np.array(taken_from_grid_24),

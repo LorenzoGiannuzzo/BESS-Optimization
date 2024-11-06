@@ -125,18 +125,20 @@ class Revenues(ElementwiseProblem):
             revenue_column = np.array(-(self.discharged_energy * self.PUN_timeseries / 1000) - (self.charged_energy_grid *
                                                                                               self.PUN_timeseries / 1000)
                                       -(self.discharged_from_pv * self.PUN_timeseries / 1000))
-#
+
             # EVALUATE THE REVENUES OBTAINED DURING THE OPTIMIZATION TIME WINDOW
 
             total_revenue = sum(revenue_column)
-
 
             # CORRECT THE VALUES OF THE REVENUES IN ORDER TO MINIMIZE THE OBJECTIVE FUNCTION
 
             final_revenues = -total_revenue
 
+            print(final_revenues)
+
             # DEFINE THE OUTPUT OF THE OPTIMIZATION PROBLEM
 
             out["F"] = [final_revenues]
+            out["idx"] = self.taken_from_pv
 
 

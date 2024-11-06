@@ -1,3 +1,17 @@
+
+
+'''
+    __author__ = "Lorenzo Giannuzzo"
+    __maintainer__ = "Lorenzo Giannuzzo"
+    __email__ = "lorenzo.giannuzzo@polito.it"
+    __status__ = "in progress"
+    __version__ = "v0.2.1"
+    __license__ = "MIT"
+
+Last Update: 06/11/2024 - 16:02
+
+'''
+
 import multiprocessing
 import numpy as np
 import json
@@ -6,20 +20,12 @@ from pymoo.core.problem import StarmapParallelization
 from multiprocessing import Pool, cpu_count
 from objective_function import Revenues
 from configuration import pop_size, soc_0, time_window, plot
-from BESS_model import charge_rate_interpolated_func, discharge_rate_interpolated_func, size, charge_rate, discharge_rate, technology
+from BESS_model import charge_rate_interpolated_func, discharge_rate_interpolated_func, size, charge_rate, discharge_rate, technology, BESS_model
 from Economic_parameters import PUN_timeseries, time_window
 from Optimizer import Optimizer
 from argparser import output_json_path, range_str, minimize_C, soc_min, soc_max, power_energy
 from Plots import EnergyPlots
 from PV import pv_production
-
-
-__author__ = "Lorenzo Giannuzzo"
-__maintainer__ = "Lorenzo Giannuzzo"
-__email__ = "lorenzo.giannuzzo@polito.it"
-__status__ = "in progress"
-__version__ = "v0.2.1"
-__license__ = "MIT"
 
 
 # MAIN class creation
@@ -57,6 +63,7 @@ class Main:
 
         solution = self.optimizer.maximize_revenues()
 
+
         if multiprocessing:
             self.pool.close()
 
@@ -83,7 +90,7 @@ class Main:
 
         # Apply physical constraints to the charge/discharge time series
 
-        soc, charged_energy, discharged_energy, c_d_timeseries, taken_from_grid, taken_from_pv = self.apply_physical_constraints(c_d_timeseries,
+        soc, charged_energy, discharged_energy, c_d_timeseries, taken_from_grid, discharged_from_pv, taken_from_pv = self.apply_physical_constraints(c_d_timeseries,
                                                                                                      alpha)
         self.c_d_timeseries_final = c_d_timeseries
         self.soc = soc
@@ -92,7 +99,7 @@ class Main:
         self.alpha = alpha
         self.taken_from_grid = taken_from_grid
         self.taken_from_pv = taken_from_pv
-        self.discharged_from_pv = np.minimum(-pv_production['P'] + self.taken_from_pv , 0.0)
+        self.discharged_from_pv = discharged_from_pv
 
         # Calculate and print revenues
 
@@ -107,53 +114,24 @@ class Main:
 
     def apply_physical_constraints(self, c_d_timeseries,alpha):
 
-        """
-        Applies the physical constraints of the BESS to the charge/discharge time series.
-
-        Args:
-            c_d_timeseries (list): Charge/discharge time series.
-
-        Returns:
-            tuple: State of charge (SoC), charged energy, and discharged energy for each time step.
-        """
-
-        soc = [0.0] * time_window  # Initialize state of charge
-        charged_energy = [0.0] * time_window  # Initialize charged energy
-        discharged_energy = [0.0] * time_window  # Initialize discharged energy
-        taken_from_grid = [0.0] * time_window  # Initialize energy taken from the grid
-        taken_from_pv = [0.0] * time_window  # Initialize energy taken from the pv used to charged the BESS
-        soc[0] = soc_0  # Initial state of charge
-
         c_func = charge_rate_interpolated_func  # Charge rate function
         d_func = discharge_rate_interpolated_func  # Discharge rate function
+        soc = [0.0] * time_window  # Initialize state of charge
+        soc[0] = soc_0  # Initial state of charge
+
+        bess_model = BESS_model(time_window, PUN_timeseries, soc, size, c_func,
+                                d_func, alpha)
+
+        charged_energy, discharged_energy = bess_model.run_simulation(c_d_timeseries, alpha)
+
+        taken_from_pv = np.minimum(charged_energy, pv_production['P'])
+
+        charged_energy_grid = np.maximum(charged_energy - taken_from_pv, 0.0)
+
+        discharged_from_pv = np.minimum(-pv_production['P'] + taken_from_pv, 0.0)
+
 
         for index in range(time_window - 1):
-
-            if c_d_timeseries[index] >= 0:
-
-                # Limit charge based on charge capacity and SoC
-
-                c_d_timeseries[index] = min(c_d_timeseries[index]*alpha[index], min(c_func(soc[index])*alpha[index], soc_max - soc[index]), power_energy*alpha[index])
-
-            else:
-
-                # Limit discharge based on discharge capacity and SoC
-
-                c_d_timeseries[index] = max(c_d_timeseries[index]*alpha[index], max(-d_func(soc[index])*alpha[index], - soc[index] + soc_min), - power_energy*alpha[index])
-
-            if c_d_timeseries[index] >= 0:
-
-                # Calculate charged energy
-
-                charged_energy[index] = c_d_timeseries[index] * size
-                taken_from_grid[index] = np.maximum(charged_energy[index]-pv_production['P'].iloc[index], 0.0)
-                taken_from_pv[index] = charged_energy[index] - taken_from_grid[index]
-
-            else:
-
-                # Calculate discharged energy
-
-                discharged_energy[index] = c_d_timeseries[index] * size
 
             # Update SoC for the next time step
 
@@ -163,7 +141,8 @@ class Main:
             else:
                 soc[index + 1] = max(soc_min, soc[index] + discharged_energy[index]/size)
 
-        return soc, charged_energy, discharged_energy, c_d_timeseries, taken_from_grid, taken_from_pv
+        return soc, charged_energy, discharged_energy, c_d_timeseries, charged_energy_grid, discharged_from_pv, taken_from_pv
+
 
     def calculate_and_print_revenues(self, charged_energy, discharged_energy, taken_from_grid, discharged_from_pv):
 
@@ -182,6 +161,7 @@ class Main:
 
         rev = - (np.array(discharged_energy) * PUN_ts / 1000) - (taken_from_grid * PUN_ts / 1000) - discharged_from_pv * PUN_ts / 1000
         self.rev = rev
+
         # Print total revenues
 
         print("\nRevenues for optimized time window [EUROs]:\n\n", rev.sum())

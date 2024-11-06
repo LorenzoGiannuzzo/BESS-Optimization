@@ -63,16 +63,22 @@ class Revenues(ElementwiseProblem):
             # Run the simulation
 
             self.charged_energy, self.discharged_energy = bess_model.run_simulation(self.c_d_timeseries, self.alpha)
-            self.charged_energy_grid = np.maximum(self.charged_energy - self.production, 0.0)
-            self.taken_from_pv = self.charged_energy - self.charged_energy_grid
-            self.charged_energy = np.maximum(self.charged_energy - self.production, 0.0)
 
+            self.taken_from_pv = np.minimum(self.charged_energy, self.production)
+
+            self.charged_energy_grid = np.maximum(self.charged_energy - self.taken_from_pv, 0.0)
+
+            #self.charged_energy = np.maximum(self.charged_energy - self.production, 0.0)
+
+            self.discharged_from_pv = np.minimum(-self.production + self.taken_from_pv, 0.0)
 
 
             # EVALUATE THE REVENUES OBTAINED FOR EACH TIMESTEP t
 
-            revenue_column = np.array(-(self.discharged_energy * self.PUN_timeseries / 1000) - (self.charged_energy_grid *
-                                                                                                self.PUN_timeseries / 1000))
+            revenue_column = np.array(
+                -(self.discharged_energy * self.PUN_timeseries / 1000) - (self.charged_energy_grid *
+                                                                          self.PUN_timeseries / 1000) - (
+                            self.discharged_from_pv * self.PUN_timeseries / 1000))
 
             # EVALUATE THE REVENUES OBTAINED DURING THE OPTIMIZATION TIME WINDOW
 
@@ -101,10 +107,14 @@ class Revenues(ElementwiseProblem):
             # Run the simulation
 
             self.charged_energy, self.discharged_energy = bess_model.run_simulation(self.c_d_timeseries, self.alpha)
-            self.charged_energy_grid = np.maximum(self.charged_energy - self.production, 0.0)
-            self.taken_from_pv = self.charged_energy - self.charged_energy_grid
+
+            self.taken_from_pv = np.minimum(self.charged_energy, self.production)
+
+            self.charged_energy_grid = np.maximum(self.charged_energy - self.taken_from_pv, 0.0)
+
+            #self.charged_energy = np.maximum(self.charged_energy - self.production, 0.0)
+
             self.discharged_from_pv = np.minimum(-self.production + self.taken_from_pv, 0.0)
-            self.charged_energy = np.maximum(self.charged_energy - self.production, 0.0)
 
 
             #print(sum(self.discharged_energy))
@@ -112,8 +122,9 @@ class Revenues(ElementwiseProblem):
 
             # EVALUATE THE REVENUES OBTAINED FOR EACH TIMESTEP t
 
-            revenue_column = np.array(-(self.discharged_energy * self.PUN_timeseries / 1000) - (self.charged_energy *
-                                                                                              self.PUN_timeseries / 1000)  -(self.discharged_from_pv * self.PUN_timeseries / 1000))
+            revenue_column = np.array(-(self.discharged_energy * self.PUN_timeseries / 1000) - (self.charged_energy_grid *
+                                                                                              self.PUN_timeseries / 1000)
+                                      -(self.discharged_from_pv * self.PUN_timeseries / 1000))
 #
             # EVALUATE THE REVENUES OBTAINED DURING THE OPTIMIZATION TIME WINDOW
 

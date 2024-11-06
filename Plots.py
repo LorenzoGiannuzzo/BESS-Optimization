@@ -1,3 +1,20 @@
+"""
+
+BESS Optimization using NSGA-III Algorithm
+
+    __author__ = "Lorenzo Giannuzzo"
+    __maintainer__ = "Lorenzo Giannuzzo"
+    __email__ = "lorenzo.giannuzzo@polito.it"
+    __status__ = "in progress"
+    __version__ = "v0.2.1"
+    __license__ = "MIT"
+
+Last Update of current code: 06/11/2024 - 17:49
+
+"""
+
+# IMPORT LIBRARIES
+
 import os
 import pandas as pd
 import matplotlib
@@ -6,14 +23,18 @@ import numpy as np
 import matplotlib.colors as mcolors
 import matplotlib.gridspec as gridspec
 import matplotlib.patches as mpatches
-
 from matplotlib.colors import Normalize
 from argparser import minimize_C, size
 
 matplotlib.use('Agg')
 
+
+# DEFINE ENERGY PLOT CLASS
+
 class EnergyPlots:
+
     def __init__(self, time_window, soc, charged_energy, discharged_energy, PUN_timeseries, taken_from_grid, taken_from_pv, produced_from_pv):
+
         self.time_window = time_window
         self.soc = soc
         self.charged_energy = charged_energy
@@ -24,13 +45,21 @@ class EnergyPlots:
         self.taken_from_pv = taken_from_pv
         self.produced_from_pv = produced_from_pv
 
+        #TODO This shouldn't be there because of minimize_C delete
+
         if minimize_C:
+
             self.plots_dir = "Plots/minimize_C_rate"
+
             if not os.path.exists(self.plots_dir):
+
                 os.makedirs(self.plots_dir)
         else:
+
             self.plots_dir = "Plots/optimal_C_rate"
+
             if not os.path.exists(self.plots_dir):
+
                 os.makedirs(self.plots_dir)
 
     def plot_soc(self):

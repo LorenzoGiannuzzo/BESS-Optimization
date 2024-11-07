@@ -25,7 +25,7 @@ from configuration import pop_size, soc_0, time_window, plot
 from BESS_model import charge_rate_interpolated_func, discharge_rate_interpolated_func, size, charge_rate, discharge_rate, technology, BESS_model
 from Economic_parameters import PUN_timeseries, time_window
 from Optimizer import Optimizer
-from argparser import output_json_path, range_str, minimize_C, soc_min, soc_max, power_energy
+from argparser import output_json_path, range_str, minimize_C, soc_min, soc_max, power_energy, POD_power
 from Plots import EnergyPlots
 from PV import pv_production
 
@@ -114,7 +114,7 @@ class Main:
 
         if plot:
 
-            self.plot_results(soc, charged_energy, discharged_energy, np.abs(c_d_timeseries), PUN_timeseries[:,1],taken_from_grid,taken_from_pv)
+            self.plot_results(soc, charged_energy, discharged_energy, np.abs(c_d_timeseries), PUN_timeseries[:,1],taken_from_grid,taken_from_pv,discharged_from_pv)
 
 
     def apply_physical_constraints(self, c_d_timeseries,alpha):
@@ -134,6 +134,19 @@ class Main:
         charged_energy_grid = np.maximum(charged_energy - taken_from_pv, 0.0)
 
         discharged_from_pv = np.minimum(-pv_production['P'] + taken_from_pv, 0.0)
+
+        for i in range(len(discharged_from_pv)):
+
+            if -discharged_from_pv[i] - discharged_energy[i] > POD_power:
+
+                exceed = -discharged_energy[i] - discharged_from_pv[i] - POD_power
+
+                discharged_energy[i] = -max(-discharged_energy[i] - exceed, 0.0)
+
+
+                discharged_from_pv[i] = -min(POD_power, -discharged_from_pv[i])
+
+
 
 
         for index in range(time_window - 1):
@@ -172,7 +185,7 @@ class Main:
         print("\nRevenues for optimized time window [EUROs]:\n\n", rev.sum())
 
 
-    def plot_results(self, soc, charged_energy, discharged_energy, c_d_energy, PUN_Timeseries, taken_from_grid, taken_from_pv):
+    def plot_results(self, soc, charged_energy, discharged_energy, c_d_energy, PUN_Timeseries, taken_from_grid, taken_from_pv,discharged_from_pv):
 
         """
         Generates plots of the state of charge, charged energy, discharged energy, and energy prices.
@@ -185,7 +198,7 @@ class Main:
         """
         if plot:
 
-            plots = EnergyPlots(time_window, soc, charged_energy, discharged_energy, PUN_timeseries[:,1],taken_from_grid,taken_from_pv, pv_production['P'])
+            plots = EnergyPlots(time_window, soc, charged_energy, discharged_energy, PUN_timeseries[:,1],taken_from_grid,taken_from_pv, pv_production['P'],discharged_from_pv)
             plots.plot_soc()
             plots.plot_charged_energy()
             plots.plot_discharged_energy()
@@ -234,7 +247,7 @@ if __name__ == "__main__":
     # PLOTS
 
     if plot:
-        EnergyPlots.PUN_plot(PUN_timeseries[:,1]) #
+        EnergyPlots.PUN_plot(PUN_timeseries[:,1])
         EnergyPlots.convergence(len(main.history),time_window, pop_size, X, Y)
         EnergyPlots.c_d_plot(charge_rate, discharge_rate, charge_rate_interpolated_func, discharge_rate_interpolated_func)
         EnergyPlots.total_convergence(len(main.history), time_window, pop_size, X, Y)

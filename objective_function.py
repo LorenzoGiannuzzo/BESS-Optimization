@@ -4,7 +4,7 @@ import Economic_parameters
 
 from pymoo.core.problem import ElementwiseProblem
 from BESS_model import BESS_model, charge_rate_interpolated_func, discharge_rate_interpolated_func, size
-from argparser import minimize_C
+from argparser import minimize_C, POD_power
 from PV import pv_production
 
 # DEFINE OPTIMIZATION PROBLEM
@@ -112,12 +112,22 @@ class Revenues(ElementwiseProblem):
 
             self.charged_energy_grid = np.maximum(self.charged_energy - self.taken_from_pv, 0.0)
 
-            #self.charged_energy = np.maximum(self.charged_energy - self.production, 0.0)
-
             self.discharged_from_pv = np.minimum(-self.production + self.taken_from_pv, 0.0)
 
+            # APPLY POD CONSTRAINTS
 
-            #print(sum(self.discharged_energy))
+            for i in range(len(self.discharged_from_pv)):
+
+
+                if -self.discharged_from_pv[i] - self.discharged_energy[i] > POD_power:
+
+                    exceed = -self.discharged_energy[i] - self.discharged_from_pv[i] - POD_power
+
+                    self.discharged_energy[i] = -max(-self.discharged_energy[i] - exceed, 0.0)
+
+                    self.discharged_from_pv[i] = -min(POD_power, -self.discharged_from_pv[i])
+
+
 
 
             # EVALUATE THE REVENUES OBTAINED FOR EACH TIMESTEP t
@@ -134,7 +144,7 @@ class Revenues(ElementwiseProblem):
 
             final_revenues = -total_revenue
 
-            print(final_revenues)
+            #print(final_revenues)
 
             # DEFINE THE OUTPUT OF THE OPTIMIZATION PROBLEM
 

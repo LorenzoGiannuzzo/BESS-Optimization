@@ -33,7 +33,7 @@ matplotlib.use('Agg')
 
 class EnergyPlots:
 
-    def __init__(self, time_window, soc, charged_energy, discharged_energy, PUN_timeseries, taken_from_grid, taken_from_pv, produced_from_pv):
+    def __init__(self, time_window, soc, charged_energy, discharged_energy, PUN_timeseries, taken_from_grid, taken_from_pv, produced_from_pv,discharged_from_pv):
 
         self.time_window = time_window
         self.soc = soc
@@ -44,6 +44,7 @@ class EnergyPlots:
         self.taken_from_grid = taken_from_grid
         self.taken_from_pv = taken_from_pv
         self.produced_from_pv = produced_from_pv
+        self.discharged_from_pv = discharged_from_pv
 
         #TODO This shouldn't be there because of minimize_C delete
 
@@ -255,6 +256,7 @@ class EnergyPlots:
         produced_from_pv = self.produced_from_pv[:num_values]
         taken_from_pv_24 = self.taken_from_pv[:num_values]
         taken_from_grid_24 = self.taken_from_grid[:num_values]
+        discharged_from_pv = self.discharged_from_pv[:num_values]
 
         rev = - (np.array(discharged_energy_24) * pun_values_24 / 1000) - (
                 taken_from_grid_24 * pun_values_24 / 1000) + (
@@ -296,14 +298,14 @@ class EnergyPlots:
         width = 0.4
         #ax1.bar(time_steps_24, [1] * np.array(taken_from_grid_24), width=width, color='darkgreen',
                 #label='Energy Taken from Grid [kWh]')
-        ax1.bar(time_steps_24, taken_from_pv_24, color='darkblue', bottom=(produced_from_pv - taken_from_pv_24),
+        ax1.bar(time_steps_24, taken_from_pv_24, color='darkblue', bottom=-discharged_from_pv,
                 label='Energy Charged from PV [kWh]', width=width)
 
         #ax1.bar(time_steps_24, discharged_energy_24, width=width, color='darkred',
               #  bottom= np.array(taken_from_grid_24),
                # label='Energy Discharged from BESS [kWh]')
-        ax1.bar(time_steps_24, (produced_from_pv - taken_from_pv_24),
-                label='Energy Sold from PV [kWh]')
+        ax1.bar(time_steps_24, -discharged_from_pv,
+                label='Energy Sold from PV [kWh]', width=width)
 
         ax1.set_ylabel('Energy [kWh]')
         ax1.set_title('Energy Charged (from Grid/PV) and Discharged by/from BESS based on PUN')
@@ -363,6 +365,7 @@ class EnergyPlots:
         produced_from_pv = self.produced_from_pv[:num_values]
         taken_from_pv_24 = self.taken_from_pv[:num_values]  # Energia da PV
         taken_from_grid_24 = self.taken_from_grid[:num_values]  # Energia dalla rete
+        discharged_from_pv = self.discharged_from_pv
 
         rev = - (np.array(discharged_energy_24) * pun_values_24 / 1000) - (
                 taken_from_grid_24 * pun_values_24 / 1000) + (
@@ -403,14 +406,14 @@ class EnergyPlots:
         width = 0.4
         ax1.bar(time_steps_24, [1] * np.array(taken_from_grid_24), width=width, color='darkgreen',
                 label='Energy Taken from Grid [kWh]')
-        ax1.bar(time_steps_24, taken_from_pv_24, color='darkblue', bottom=(produced_from_pv - taken_from_pv_24), width= width,
+        ax1.bar(time_steps_24, taken_from_pv_24, color='darkblue', bottom=-discharged_from_pv, width= width,
                 label='Energy Charged from PV [kWh]')
 
         ax1.bar(time_steps_24, discharged_energy_24, width=width, color='darkred',
                bottom= np.array(taken_from_grid_24),
                label='Energy Discharged from BESS [kWh]')
-        ax1.bar(time_steps_24, (produced_from_pv - taken_from_pv_24), width= width,
-                label='Energy Sold from PV [kWh]')
+        ax1.bar(time_steps_24, -discharged_from_pv, width= width,
+                label='Energy Sold from PV [kWh]',)
 
         ax1.set_ylabel('Energy [kWh]')
         ax1.set_title('Energy Charged (from Grid/PV) and Discharged by/from BESS based on PUN')

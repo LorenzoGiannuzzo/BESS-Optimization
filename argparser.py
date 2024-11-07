@@ -32,6 +32,8 @@ soc_default = 0.2
 dod_default = "10-90"
 pv_power_defualt = 0
 
+pod_power_default = 100
+
 # GET PARSER ARGUMENTS FROM COMMAND LINE
 
 parser.add_argument('--input_json', type=str, required=False,default=input_json_default,
@@ -50,6 +52,8 @@ parser.add_argument('--minimize_C', action='store_true',
                     help='Boolean, False = you dont want to minimize c/d velocity, True = you wan to minimize c/d velocity')
 parser.add_argument('--PV_power', type=float, required=False,default=pv_power_defualt,
                     help='PV peak power')
+parser.add_argument('--POD_power', type=float, required=False,default=pod_power_default,
+                    help='POD power')
 
 # ARGUMENTS PARSING
 
@@ -67,6 +71,7 @@ minimize_C = args.minimize_C
 PV_power = args.PV_power
 power_energy = args.power_energy
 BESS_power = size * args.power_energy
+POD_power = args.POD_power
 
 start_str, end_str = range_str.split('-')
 

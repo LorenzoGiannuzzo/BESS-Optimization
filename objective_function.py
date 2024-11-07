@@ -127,6 +127,11 @@ class Revenues(ElementwiseProblem):
 
                     self.discharged_from_pv[i] = -min(POD_power, -self.discharged_from_pv[i])
 
+                if self.charged_energy_grid[i] >= POD_power:
+
+                    self.charged_energy_grid[i] = min(self.charged_energy_grid[i], POD_power)
+                    self.charged_energy[i] = self.charged_energy_grid[i] + self.taken_from_pv[i]
+
 
 
 

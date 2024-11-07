@@ -146,6 +146,11 @@ class Main:
 
                 discharged_from_pv[i] = -min(POD_power, -discharged_from_pv[i])
 
+            if charged_energy_grid[i] >= POD_power:
+
+                charged_energy_grid[i] = min(charged_energy_grid[i], POD_power)
+                charged_energy[i] = charged_energy_grid[i] + taken_from_pv[i]
+
 
 
 

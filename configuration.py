@@ -163,8 +163,8 @@ if minimize_C:
 
 else:
 
-    tolerance = 0.3
-    period = 10  # number of iteration in which tolerance is evaluated
+    tolerance = 0.1
+    period = 20  # number of iteration in which tolerance is evaluated
 
 # 9) DEFINITION OF THE TERMINATION CRITERIA
 

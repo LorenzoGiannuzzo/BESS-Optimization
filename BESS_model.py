@@ -96,18 +96,34 @@ class BESS_model:
                 # would like to charge), HOW MUCH THE BESS CAN CHARGE BASED ON ITS ACTUAL SoC
                 # (self.c_func(self.soc[index])), AND HOW MUCH CAN HE CHARGE LEFT (soc_max - self.soc[index])
 
-                self.c_d_timeseries[index] = np.minimum(self.c_d_timeseries[index]*np.abs(self.alpha[index]),
-                                                        np.minimum(self.c_func(self.soc[index])*np.abs(self.alpha[index]), soc_max - self.soc[index]), np.array(np.array(power_energy)*np.abs(self.alpha[index])))
-
+                self.c_d_timeseries[index] = np.minimum(
+                    self.c_d_timeseries[index] * np.abs(self.alpha[index]),
+                    np.minimum(
+                        self.c_func(self.soc[index]) * np.abs(self.alpha[index]),
+                        soc_max - self.soc[index]
+                    )
+                )
+                self.c_d_timeseries[index] = np.minimum(
+                    self.c_d_timeseries[index],
+                    np.array(power_energy) * np.abs(self.alpha[index])
+                )
             # IF BESS IS DISCHARGING (specular case as charging)
 
                 # TODO THIS THING SHOULD BE DONE USING A FUNCTION CONTAINED IN A FILE NAMED CONSTRAINER
 
             else:
 
-                self.c_d_timeseries[index] = np.maximum(self.c_d_timeseries[index]*np.abs(self.alpha[index]),
-                                                        np.maximum(-self.d_func(self.soc[index])*np.abs(self.alpha[index]), soc_min - self.soc[index]), np.array(np.array(-power_energy)*np.abs(self.alpha[index])))
-
+                self.c_d_timeseries[index] = np.maximum(
+                    self.c_d_timeseries[index] * np.abs(self.alpha[index]),
+                    np.maximum(
+                        -self.d_func(self.soc[index]) * np.abs(self.alpha[index]),
+                        soc_min - self.soc[index]
+                    )
+                )
+                self.c_d_timeseries[index] = np.maximum(
+                    self.c_d_timeseries[index],
+                    np.array(-power_energy) * np.abs(self.alpha[index])
+                )
             # IF BESS IS DISCHARGING
 
             if self.c_d_timeseries[index] >= 0:
@@ -158,6 +174,7 @@ class BESS_model:
                 # DECREASE SoC (discharged_energy is negative)
 
                 self.soc[index + 1] = max(soc_min, self.soc[index] + self.discharged_energy[index] / self.size)
+
 
         # RETURN CHARGED AND DISCHARGE ENERGY
 

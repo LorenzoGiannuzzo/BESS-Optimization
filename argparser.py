@@ -77,3 +77,5 @@ start_str, end_str = range_str.split('-')
 
 soc_min = float(start_str) / 100
 soc_max = float(end_str) / 100
+
+

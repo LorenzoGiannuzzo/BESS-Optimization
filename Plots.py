@@ -141,6 +141,7 @@ class EnergyPlots:
         produced_from_pv = self.produced_from_pv[:num_values]
         taken_from_pv_24 = self.taken_from_pv[:num_values]
         taken_from_grid_24 = self.taken_from_grid[:num_values]
+        discharged_from_pv = self.discharged_from_pv
 
         # EVALUATE GLOBAL REVENUES
 
@@ -150,15 +151,16 @@ class EnergyPlots:
 
         # EVALUATE PV AND BESS REVENUES
 
-        rev_pv = (produced_from_pv - taken_from_pv_24) * pun_values_24 / 1000
+        rev_pv = (-discharged_from_pv) * pun_values_24 / 1000
         rev_bess = -(np.array(discharged_energy_24) * pun_values_24 / 1000) - (
                 taken_from_grid_24 * pun_values_24 / 1000)
 
         rev = np.array(rev, dtype=float)
+        rev_bess = np.array(rev_bess, dtype=float)
 
         # EVALUATE CUMULATIVE GLOBAL REVENUES
 
-        rev_cumulative = np.cumsum(rev)
+        rev_cumulative = np.cumsum(rev_bess)
 
         # CREATING FIGURE LAYOUT
 
@@ -191,6 +193,8 @@ class EnergyPlots:
 
         ax1.bar(time_steps_24, [1] * np.array(taken_from_grid_24), width=width, color='darkgreen',
                 label='Energy Taken from Grid [kWh]')
+        ax1.bar(time_steps_24, [1] * np.array(taken_from_pv_24), width=width, color='darkblue',
+                label='Energy Taken from PV [kWh]')
 
         ax1.bar(time_steps_24, discharged_energy_24, width=width, color='darkred',
                 bottom= np.array(taken_from_grid_24),
@@ -260,17 +264,19 @@ class EnergyPlots:
 
         rev = - (np.array(discharged_energy_24) * pun_values_24 / 1000) - (
                 taken_from_grid_24 * pun_values_24 / 1000) + (
-                      produced_from_pv - taken_from_pv_24) * pun_values_24 / 1000
+                      -discharged_from_pv) * pun_values_24 / 1000
 
-        rev_pv = (produced_from_pv - taken_from_pv_24) * pun_values_24 / 1000
+        rev_pv = (discharged_from_pv) * pun_values_24 / 1000
 
         rev_bess = -(np.array(discharged_energy_24) * pun_values_24 / 1000) - (
                 taken_from_grid_24 * pun_values_24 / 1000)
 
         rev = np.array(rev, dtype=float)
+        rev_pv = np.array(rev_pv,dtype=float)
+        rev_bess = np.array(rev, dtype=float)
 
 
-        rev_cumulative = np.cumsum(rev)
+        rev_cumulative = np.cumsum(rev_pv)
 
         # Creazione del layout con 4 box usando gridspec
         fig = plt.figure(figsize=(24, 12))  # Aumentato il figsize per adattarsi a 4 grafici
@@ -296,14 +302,10 @@ class EnergyPlots:
         ax1.fill_between(time_steps_24, 0, produced_from_pv, color='lightblue', alpha=0.3, label='Produced from PV')
 
         width = 0.4
-        #ax1.bar(time_steps_24, [1] * np.array(taken_from_grid_24), width=width, color='darkgreen',
-                #label='Energy Taken from Grid [kWh]')
+
         ax1.bar(time_steps_24, taken_from_pv_24, color='darkblue', bottom=-discharged_from_pv,
                 label='Energy Charged from PV [kWh]', width=width)
 
-        #ax1.bar(time_steps_24, discharged_energy_24, width=width, color='darkred',
-              #  bottom= np.array(taken_from_grid_24),
-               # label='Energy Discharged from BESS [kWh]')
         ax1.bar(time_steps_24, -discharged_from_pv,
                 label='Energy Sold from PV [kWh]', width=width)
 
@@ -322,9 +324,9 @@ class EnergyPlots:
 
         # Asse per la cumulata dei ricavi a destra del primo grafico
         ax2 = fig.add_subplot(gs[0, 1])  # Usa solo la prima riga nella colonna di destra
-        ax2.plot(time_steps_24, rev_cumulative, color='lightgreen', label='Cumulative Revenues', alpha=1)
+        ax2.plot(time_steps_24, -rev_cumulative, color='lightgreen', label='Cumulative Revenues', alpha=1)
         ax2.set_title('Cumulative Revenues Over Time')
-        ax2.fill_between(time_steps_24, rev_cumulative, color='green', alpha=0.3)  # Area sottesa con alpha 0.3
+        ax2.fill_between(time_steps_24, -rev_cumulative, color='green', alpha=0.3)  # Area sottesa con alpha 0.3
         ax2.set_ylabel('Cumulative Revenues [Euros]')
         ax2.legend(loc='upper left')
 
@@ -332,7 +334,7 @@ class EnergyPlots:
         colors_bess = ['red' if total < 0 else 'limegreen' for total in rev_pv]
 
         ax4 = fig.add_subplot(gs[1, 1])
-        ax4.bar(time_steps_24, rev_pv, width=width, color=['darkred' if total < 0 else 'darkgreen' for total in rev_pv],
+        ax4.bar(time_steps_24, -rev_pv, width=width, color=['darkred' if total > 0 else 'darkgreen' for total in rev_pv],
                 label='Revenues from PV')
         #ax4.bar(time_steps_24, rev_bess, width=width, #bottom=rev_pv,
                 #color=['red' if total < 0 else 'limegreen' for total in rev_bess], label='Revenues from BESS')

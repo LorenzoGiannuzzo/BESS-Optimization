@@ -110,6 +110,7 @@ class Revenues(ElementwiseProblem):
 
             self.taken_from_pv = np.minimum(self.charged_energy, self.production)
 
+
             self.charged_energy_grid = np.maximum(self.charged_energy - self.taken_from_pv, 0.0)
 
             self.discharged_from_pv = np.minimum(-self.production + self.taken_from_pv, 0.0)
@@ -121,11 +122,10 @@ class Revenues(ElementwiseProblem):
 
                 if -self.discharged_from_pv[i] - self.discharged_energy[i] > POD_power:
 
-                    exceed = -self.discharged_energy[i] - self.discharged_from_pv[i] - POD_power
-
-                    self.discharged_energy[i] = -max(-self.discharged_energy[i] - exceed, 0.0)
-
                     self.discharged_from_pv[i] = -min(POD_power, -self.discharged_from_pv[i])
+
+                    self.discharged_energy[i] = -min(POD_power - abs(self.discharged_from_pv[i]), -self.discharged_energy[i])
+
 
                 if self.charged_energy_grid[i] >= POD_power:
 
@@ -154,6 +154,6 @@ class Revenues(ElementwiseProblem):
             # DEFINE THE OUTPUT OF THE OPTIMIZATION PROBLEM
 
             out["F"] = [final_revenues]
-            out["idx"] = self.taken_from_pv
+
 
 

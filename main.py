@@ -134,17 +134,20 @@ class Main:
         charged_energy_grid = np.maximum(charged_energy - taken_from_pv, 0.0)
 
         discharged_from_pv = np.minimum(-pv_production['P'] + taken_from_pv, 0.0)
-
+        print(len(discharged_from_pv))
         for i in range(len(discharged_from_pv)):
 
             if -discharged_from_pv[i] - discharged_energy[i] > POD_power:
 
                 exceed = -discharged_energy[i] - discharged_from_pv[i] - POD_power
 
-                discharged_energy[i] = -max(-discharged_energy[i] - exceed, 0.0)
-
-
                 discharged_from_pv[i] = -min(POD_power, -discharged_from_pv[i])
+
+                discharged_energy[i] = -min(POD_power - abs(discharged_from_pv[i]),
+                                                 - discharged_energy[i])
+
+
+
 
             if charged_energy_grid[i] >= POD_power:
 
@@ -160,6 +163,7 @@ class Main:
 
             if c_d_timeseries[index] >= 0:
                 soc[index + 1] = min(soc_max, soc[index] + charged_energy[index]/size)
+                print(charged_energy[index])
 
             else:
                 soc[index + 1] = max(soc_min, soc[index] + discharged_energy[index]/size)

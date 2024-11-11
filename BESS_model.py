@@ -157,7 +157,6 @@ class BESS_model:
                 self.discharged_energy[index] = 0.0
 
             # UPDATE SoC AT TIMESTEP t + 1
-            #TODO the update of SoC is useless now
 
             # IF BESS IS CHARGING
 
@@ -166,6 +165,7 @@ class BESS_model:
                 # INCREASE SoC
 
                 self.soc[index + 1] = np.minimum(soc_max, self.soc[index] + self.charged_energy[index] / self.size)
+                self.charged_energy[index] = (self.soc[index+1] - self.soc[index])*self.size
 
             # IF BESS IS DISCHARGING
 
@@ -173,7 +173,8 @@ class BESS_model:
 
                 # DECREASE SoC (discharged_energy is negative)
 
-                self.soc[index + 1] = max(soc_min, self.soc[index] + self.discharged_energy[index] / self.size)
+                self.soc[index + 1] = np.maximum(soc_min, self.soc[index] + self.discharged_energy[index] / self.size)
+                self.discharged_energy[index] = (self.soc[index+1] - self.soc[index])*self.size
 
 
         # RETURN CHARGED AND DISCHARGE ENERGY

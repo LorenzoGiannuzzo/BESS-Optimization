@@ -9,7 +9,7 @@ BESS Optimization using NSGA-III Algorithm
     __version__ = "v0.2.1"
     __license__ = "MIT"
 
-Last Update of current code: 06/11/2024 - 17:41
+Last Update of current code: 11/11/2024 - 12:18
 
 """
 
@@ -29,13 +29,11 @@ from argparser import output_json_path, range_str, minimize_C, soc_min, soc_max,
 from Plots import EnergyPlots
 from PV import pv_production
 
-
-
-
 # CREATION OF CLASS MAIN
 
 
 class Main:
+
     def __init__(self, multiprocessing=True):
 
         """
@@ -45,18 +43,29 @@ class Main:
 
         self.multiprocessing = multiprocessing
 
+        # INITIALIZE MULTIPROCESSING
+
         if self.multiprocessing:
 
             n_processes = cpu_count() - 1
             self.pool = Pool(processes=n_processes)
             runner = StarmapParallelization(self.pool.starmap)
+
+            # SET OBJECTIVE FUNCTION
+
             self.objective_function = Revenues(elementwise_runner=runner,elementwise=True)
 
         else:
 
+            # SET OBJECTIVE FUNCTION
+
             self.objective_function = Revenues()
 
+        # SET OPTIMIZER
+
         self.optimizer = Optimizer(objective_function=self.objective_function, pop_size=pop_size, multiprocessing=multiprocessing)
+
+    # DEFINE RUN OPTIMIZATION FUNCTION
 
     def run_optimization(self):
 
@@ -64,17 +73,19 @@ class Main:
         Executes the optimization, applies physical constraints, calculates revenues, and generates plots.
         """
 
-        # Execute the optimization and get the solution
+        # GET SOLUTION FROM OPTIMIZATION TASK
 
         solution = self.optimizer.maximize_revenues()
 
-
         if multiprocessing:
+
             self.pool.close()
+
+        # SAVE OPTIMIZATION HISTORY
 
         self.history = solution.history
 
-        # Get the charge/discharge time series from the solution
+        # GET CHARGED/DISCHARGED ENERGY FROM SOLUTION
 
         if minimize_C:
 
@@ -90,10 +101,11 @@ class Main:
             print("\nN Solutions in the Pareto-Front:\n\n",of_values.shape)
 
         else:
+
             alpha = np.ones(time_window)
             c_d_timeseries = solution.X
 
-        # Apply physical constraints to the charge/discharge time series
+        # APPLY PHYSICAL CONSTRAINTS
 
         soc, charged_energy, discharged_energy, c_d_timeseries, taken_from_grid, discharged_from_pv, taken_from_pv = self.apply_physical_constraints(c_d_timeseries,
                                                                                                      alpha)

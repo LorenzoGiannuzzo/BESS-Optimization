@@ -9,7 +9,7 @@ BESS Optimization using NSGA-III Algorithm
     __version__ = "v0.2.1"
     __license__ = "MIT"
 
-Last Update of current code: 06/11/2024 - 16:13
+Last Update of current code: 11/11/2024 - 12:18
 
 """
 
@@ -165,6 +165,9 @@ class BESS_model:
                 # INCREASE SoC
 
                 self.soc[index + 1] = np.minimum(soc_max, self.soc[index] + self.charged_energy[index] / self.size)
+
+                # RE-EVALUATE CHARGED ENERGY
+
                 self.charged_energy[index] = (self.soc[index+1] - self.soc[index])*self.size
 
             # IF BESS IS DISCHARGING
@@ -174,6 +177,9 @@ class BESS_model:
                 # DECREASE SoC (discharged_energy is negative)
 
                 self.soc[index + 1] = np.maximum(soc_min, self.soc[index] + self.discharged_energy[index] / self.size)
+
+                # RE-EVALUATE DISCHARGED ENERGY
+
                 self.discharged_energy[index] = (self.soc[index+1] - self.soc[index])*self.size
 
 

@@ -1,10 +1,25 @@
+"""
+
+BESS Optimization using NSGA-III Algorithm
+
+    __author__ = "Lorenzo Giannuzzo"
+    __maintainer__ = "Lorenzo Giannuzzo"
+    __email__ = "lorenzo.giannuzzo@polito.it"
+    __status__ = "in progress"
+    __version__ = "v0.2.1"
+    __license__ = "MIT"
+
+Last Update of current code: 11/11/2024 - 12:20
+
+"""
+
 import numpy as np
 import configuration
 import Economic_parameters
 
 from pymoo.core.problem import ElementwiseProblem
 from BESS_model import BESS_model, charge_rate_interpolated_func, discharge_rate_interpolated_func, size
-from argparser import minimize_C, POD_power
+from argparser import minimize_C
 from PV import pv_production
 
 # DEFINE OPTIMIZATION PROBLEM
@@ -68,17 +83,31 @@ class Revenues(ElementwiseProblem):
 
             self.charged_energy_grid = np.maximum(self.charged_energy - self.taken_from_pv, 0.0)
 
-            #self.charged_energy = np.maximum(self.charged_energy - self.production, 0.0)
-
             self.discharged_from_pv = np.minimum(-self.production + self.taken_from_pv, 0.0)
 
+            # APPLY POD CONSTRAINTS
+
+            for i in range(len(self.discharged_from_pv)):
+
+                from argparser import POD_power
+
+                if -self.discharged_from_pv[i] - self.discharged_energy[i] > POD_power:
+                    self.discharged_from_pv[i] = -min(POD_power, -self.discharged_from_pv[i])
+
+                    self.discharged_energy[i] = -min(POD_power - abs(self.discharged_from_pv[i]),
+                                                     -self.discharged_energy[i])
+
+                if self.charged_energy_grid[i] >= POD_power:
+                    self.charged_energy_grid[i] = min(self.charged_energy_grid[i], POD_power)
+                    self.charged_energy[i] = self.charged_energy_grid[i] + self.taken_from_pv[i]
 
             # EVALUATE THE REVENUES OBTAINED FOR EACH TIMESTEP t
 
             revenue_column = np.array(
                 -(self.discharged_energy * self.PUN_timeseries / 1000) - (self.charged_energy_grid *
-                                                                          self.PUN_timeseries / 1000) - (
-                            self.discharged_from_pv * self.PUN_timeseries / 1000))
+                                                                          self.PUN_timeseries / 1000)
+                - (self.discharged_from_pv * self.PUN_timeseries / 1000) )
+
 
             # EVALUATE THE REVENUES OBTAINED DURING THE OPTIMIZATION TIME WINDOW
 
@@ -94,6 +123,7 @@ class Revenues(ElementwiseProblem):
             out["F"] = [final_revenues, alpha]
 
         else:
+
             self.c_d_timeseries = np.array(x[:self.time_window]).reshape(configuration.time_window)
             self.alpha = np.ones(self.time_window)
 
@@ -119,6 +149,7 @@ class Revenues(ElementwiseProblem):
 
             for i in range(len(self.discharged_from_pv)):
 
+                from argparser import POD_power
 
                 if -self.discharged_from_pv[i] - self.discharged_energy[i] > POD_power:
 

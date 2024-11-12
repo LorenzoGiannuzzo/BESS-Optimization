@@ -151,7 +151,7 @@ else:
 
 # 8) DEFINE NUMBER OF GENERATIONS USED TO INTERRUPT THE ALGORITHM EXECUTION
 
-n_gen = 2000
+n_gen = 1000
 
 # 8-bis) DEFINE TOLERANCE AS THE ALGORITHM INTERRUPTION CRITERIA
 #TODO Should use same from both  because i have to delete minimize_C

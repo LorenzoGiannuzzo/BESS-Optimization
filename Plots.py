@@ -147,7 +147,7 @@ class EnergyPlots:
 
         rev = - (np.array(discharged_energy_24) * pun_values_24 / 1000) - (
                 taken_from_grid_24 * pun_values_24 / 1000) + (
-                      produced_from_pv - taken_from_pv_24) * pun_values_24 / 1000
+                      discharged_from_pv) * pun_values_24 / 1000
 
         # EVALUATE PV AND BESS REVENUES
 
@@ -371,9 +371,9 @@ class EnergyPlots:
 
         rev = - (np.array(discharged_energy_24) * pun_values_24 / 1000) - (
                 taken_from_grid_24 * pun_values_24 / 1000) + (
-                      produced_from_pv - taken_from_pv_24) * pun_values_24 / 1000
+                      -discharged_from_pv) * pun_values_24 / 1000
 
-        rev_pv = (produced_from_pv - taken_from_pv_24) * pun_values_24 / 1000
+        rev_pv = -discharged_from_pv * pun_values_24 / 1000
         rev_bess = -(np.array(discharged_energy_24) * pun_values_24 / 1000) - (
                 taken_from_grid_24 * pun_values_24 / 1000)
 

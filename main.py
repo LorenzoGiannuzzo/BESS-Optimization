@@ -228,6 +228,7 @@ class Main:
             plots.plot_combined_energy_with_pun(num_values=time_window)
             plots.Total_View(num_values=time_window)
             plots.PV_View(num_values=time_window)
+            plots.POD_View(num_values=time_window)
             plots.plot_alpha_vs_timewindow(time_window, np.abs(c_d_energy), PUN_Timeseries, [power_energy] * (time_window))
 
 

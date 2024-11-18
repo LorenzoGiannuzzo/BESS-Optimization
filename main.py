@@ -9,7 +9,7 @@ BESS Optimization using NSGA-III Algorithm
     __version__ = "v0.2.1"
     __license__ = "MIT"
 
-Last Update of current code: 11/11/2024 - 12:18
+Last Update of current code: 18/11/2024 - 17:18
 
 """
 
@@ -97,8 +97,8 @@ class Main:
             alpha = solution.X[max_revenue_index, time_window:time_window * 2]
             alpha_mean = np.mean(alpha)
 
-            print("\nAverage C/D reduction factor [%]:\n\n",alpha_mean*100)
-            print("\nN Solutions in the Pareto-Front:\n\n",of_values.shape)
+            print("\nAverage C/D reduction factor [%]:\n\n", alpha_mean*100)
+            print("\nN Solutions in the Pareto-Front:\n\n", of_values.shape)
 
         else:
 
@@ -107,8 +107,9 @@ class Main:
 
         # APPLY PHYSICAL CONSTRAINTS
 
-        soc, charged_energy, discharged_energy, c_d_timeseries, taken_from_grid, discharged_from_pv, taken_from_pv = self.apply_physical_constraints(c_d_timeseries,
-                                                                                                     alpha)
+        soc, charged_energy, discharged_energy, c_d_timeseries, taken_from_grid, discharged_from_pv, taken_from_pv =\
+            self.apply_physical_constraints(c_d_timeseries, alpha)
+
         self.c_d_timeseries_final = c_d_timeseries
         self.soc = soc
         self.charged_energy = charged_energy
@@ -120,16 +121,19 @@ class Main:
 
         # Calculate and print revenues
 
-        self.calculate_and_print_revenues(charged_energy, discharged_energy, self.taken_from_grid, self.discharged_from_pv)
+        self.calculate_and_print_revenues(charged_energy, discharged_energy, self.taken_from_grid,
+                                          self.discharged_from_pv)
 
         # Generate plots of the results
 
         if plot:
 
-            self.plot_results(soc, charged_energy, discharged_energy, np.abs(c_d_timeseries), PUN_timeseries[:,1],taken_from_grid,taken_from_pv,discharged_from_pv)
+            self.plot_results(soc, charged_energy, discharged_energy, np.abs(c_d_timeseries), PUN_timeseries[:, 1],
+                              taken_from_grid,taken_from_pv,discharged_from_pv)
 
-
-    def apply_physical_constraints(self, c_d_timeseries,alpha):
+    # TODO Remove self from this function as it is a staticmethod
+    @staticmethod
+    def apply_physical_constraints(self, c_d_timeseries, alpha):
 
         c_func = charge_rate_interpolated_func  # Charge rate function
         d_func = discharge_rate_interpolated_func  # Discharge rate function
@@ -147,43 +151,38 @@ class Main:
 
         discharged_from_pv = np.minimum(-pv_production['P'] + taken_from_pv, 0.0)
 
-
         for i in range(len(discharged_from_pv)):
 
             if -discharged_from_pv[i] - discharged_energy[i] > POD_power:
-
-                exceed = -discharged_energy[i] - discharged_from_pv[i] - POD_power
 
                 discharged_from_pv[i] = -min(POD_power, -discharged_from_pv[i])
 
                 discharged_energy[i] = -min(POD_power - abs(discharged_from_pv[i]),
                                                  - discharged_energy[i])
 
-
-
-
             if charged_energy_grid[i] >= POD_power:
 
                 charged_energy_grid[i] = min(charged_energy_grid[i], POD_power)
+
                 charged_energy[i] = charged_energy_grid[i] + taken_from_pv[i]
-
-
-
 
         for index in range(time_window - 1):
 
             # Update SoC for the next time step
 
             if c_d_timeseries[index] >= 0:
+
                 soc[index + 1] = min(soc_max, soc[index] + charged_energy[index]/size)
+
                 charged_energy[index] = (soc[index+1] - soc[index])*size
 
             else:
+
                 soc[index + 1] = max(soc_min, soc[index] + discharged_energy[index]/size)
+
                 discharged_energy[index] = (soc[index+1]-soc[index])*size
 
         return soc, charged_energy, discharged_energy, c_d_timeseries, charged_energy_grid, discharged_from_pv, taken_from_pv
-
 
     def calculate_and_print_revenues(self, charged_energy, discharged_energy, taken_from_grid, discharged_from_pv):
 
@@ -200,15 +199,17 @@ class Main:
 
         # Calculate revenues by summing the costs of charging and discharging
 
-        rev = - (np.array(discharged_energy) * PUN_ts / 1000) - (taken_from_grid * PUN_ts / 1000) - discharged_from_pv * PUN_ts / 1000
+        rev = (- (np.array(discharged_energy) * PUN_ts / 1000) - (taken_from_grid * PUN_ts / 1000) -
+               discharged_from_pv * PUN_ts / 1000)
+
         self.rev = rev
 
         # Print total revenues
 
         print("\nRevenues for optimized time window [EUROs]:\n\n", rev.sum())
 
-
-    def plot_results(self, soc, charged_energy, discharged_energy, c_d_energy, PUN_Timeseries, taken_from_grid, taken_from_pv,discharged_from_pv):
+    def plot_results(self, soc, charged_energy, discharged_energy, c_d_energy, PUN_Timeseries, taken_from_grid,
+                     taken_from_pv,discharged_from_pv):
 
         """
         Generates plots of the state of charge, charged energy, discharged energy, and energy prices.
@@ -219,6 +220,7 @@ class Main:
             discharged_energy (list): Discharged energy for each time step.
 
         """
+
         if plot:
 
             plots = EnergyPlots(time_window, soc, charged_energy, discharged_energy, PUN_timeseries[:,1],taken_from_grid,taken_from_pv, pv_production['P'],discharged_from_pv)
@@ -256,6 +258,7 @@ if __name__ == "__main__":
         X.append([])
 
         for i in range(pop_size):
+
             X[j].append(main.history[j].pop[i].get('X'))
 
     for j in range(len(main.history)):
@@ -263,6 +266,7 @@ if __name__ == "__main__":
         Y.append([])
 
         for i in range(pop_size):
+
             Y[j].append(main.history[j].pop[i].get('f'))
 
     X = np.array(X)
@@ -286,7 +290,9 @@ if __name__ == "__main__":
     # OUTPUT CREATION
 
     for i in range(len(PUN_timeseries[:,1])):
+
         entry = {
+
             "datetime": PUN_timeseries[i, 0].isoformat() + "Z",
             "PUN": PUN_timeseries[i, 1]/1000,
             "soc": SoC[i],
@@ -307,7 +313,9 @@ if __name__ == "__main__":
         }
 
         data.append(entry)
+
         json_file_path = output_json_path
+
         with open(json_file_path, 'w') as json_file:
             json.dump(data, json_file, indent=4)
 

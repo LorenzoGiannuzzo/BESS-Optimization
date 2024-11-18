@@ -22,7 +22,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 import matplotlib.colors as mcolors
 import matplotlib.gridspec as gridspec
-import matplotlib.patches as mpatches
 from matplotlib.colors import Normalize
 from argparser import minimize_C, size, POD_power
 
@@ -177,14 +176,14 @@ class EnergyPlots:
 
         # Normalize SoC values to be in the range [0, 1] for the colormap
 
-        norm = Normalize(vmin=min(soc_24), vmax=max(soc_24))
+        norm = Normalize(vmin=min(soc_24*100), vmax=max(soc_24*100))
         cmap = matplotlib.colors.LinearSegmentedColormap.from_list("", ["lightblue", "steelblue", "darkblue"])
 
         # Plot SoC with gradient colored bars based on value
 
         for i in range(len(time_steps_24)):
 
-            ax0.bar(time_steps_24[i], soc_24[i], color=cmap(norm(soc_24[i])))
+            ax0.bar(time_steps_24[i], soc_24[i] * 100, color=cmap(norm(soc_24[i])))
 
         ax0.set_title('State of Charge (SoC)')
         ax0.set_ylabel('SoC [%]')
@@ -308,7 +307,7 @@ class EnergyPlots:
         ax0 = fig.add_subplot(gs[0, 0])
 
         # Normalize SoC values to be in the range [0, 1] for the colormap
-        norm = Normalize(vmin=min(soc), vmax=max(soc))
+        norm = Normalize(vmin=min(soc*100), vmax=max(soc*100))
         cmap = matplotlib.colors.LinearSegmentedColormap.from_list("", ["lightblue", "steelblue", "darkblue"])
 
         # Plot SoC with gradient colored bars based on value
@@ -319,7 +318,7 @@ class EnergyPlots:
                 color = cmap(norm(soc[i]))  # Use colormap for the current timestep
 
             # Plot the current SoC bar
-            ax0.bar(time_steps[i], soc[i], color=color)
+            ax0.bar(time_steps[i], soc[i]*100, color=color)
 
         ax0.set_title('State of Charge - BESS')
         ax0.set_ylabel('SoC [%]')
@@ -461,12 +460,12 @@ class EnergyPlots:
         ax0 = fig.add_subplot(gs[0, 0])
 
         # Normalize SoC values to be in the range [0, 1] for the colormap
-        norm = Normalize(vmin=min(soc), vmax=max(soc))
+        norm = Normalize(vmin=min(soc*100), vmax=max(soc*100))
         cmap = matplotlib.colors.LinearSegmentedColormap.from_list("", ["lightblue", "steelblue", "darkblue"])
 
         # Plot SoC with gradient colored bars based on value
         for i in range(len(time_steps)):
-            ax0.bar(time_steps[i], soc[i], color='lightgrey')
+            ax0.bar(time_steps[i], soc[i]*100, color='lightgrey')
         ax0.set_title('State of Charge (SoC)')
         ax0.set_ylabel('SoC [%]')
 
@@ -580,12 +579,12 @@ class EnergyPlots:
         ax0 = fig.add_subplot(gs[0, 0])
 
         # Normalize SoC values to be in the range [0, 1] for the colormap
-        norm = Normalize(vmin=min(soc), vmax=max(soc))
+        norm = Normalize(vmin=min(soc*100), vmax=max(soc*100))
         cmap = matplotlib.colors.LinearSegmentedColormap.from_list("", ["lightblue", "steelblue", "darkblue"])
 
         # Plot SoC with gradient colored bars based on value
         for i in range(len(time_steps)):
-            ax0.bar(time_steps[i], soc[i], color=cmap(norm(soc[i])))
+            ax0.bar(time_steps[i], soc[i]*100, color=cmap(norm(soc[i])))
         ax0.set_title('State of Charge (SoC)')
         ax0.set_ylabel('SoC [%]')
 

@@ -222,9 +222,9 @@ class Main:
         if plot:
 
             plots = EnergyPlots(time_window, soc, charged_energy, discharged_energy, PUN_timeseries[:,1],taken_from_grid,taken_from_pv, pv_production['P'],discharged_from_pv)
-            plots.plot_soc()
-            plots.plot_charged_energy()
-            plots.plot_discharged_energy()
+            #plots.plot_soc()
+            #plots.plot_charged_energy()
+            #plots.plot_discharged_energy()
             plots.plot_combined_energy_with_pun(num_values=time_window)
             plots.Total_View(num_values=time_window)
             plots.PV_View(num_values=time_window)

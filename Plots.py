@@ -9,7 +9,7 @@ BESS Optimization using NSGA-III Algorithm
     __version__ = "v0.2.1"
     __license__ = "MIT"
 
-Last Update of current code: 06/11/2024 - 17:49
+Last Update of current code: 18/11/2024 - 17:49
 
 """
 
@@ -718,7 +718,7 @@ class EnergyPlots:
 
         if not os.path.exists("Plots"):
             os.makedirs("Plots")
-        plt.savefig("Plots/interpolated_functions.png")
+        plt.savefig("Plots/General/interpolated_functions.png")
 
     # Close the figure to release memory
 
@@ -735,7 +735,7 @@ class EnergyPlots:
         plt.grid(True)
 
         # Save the plot as a PNG file
-        plt.savefig("Plots/charge_rate.png")
+        plt.savefig("Plots/General/charge_rate.png")
         plt.close()
 
         # Plotting for discharge_rate
@@ -750,7 +750,7 @@ class EnergyPlots:
 
         # Save the plot as a PNG file
 
-        plt.savefig("Plots/disc_rate.png")
+        plt.savefig("Plots/General/disc_rate.png")
 
 
     @staticmethod
@@ -810,7 +810,7 @@ class EnergyPlots:
         plt.title('PUN Values')
         plt.xlabel('Time step')
         plt.ylabel('PUN Value')
-        plt.savefig(os.path.join("Plots", "PUN.png"))
+        plt.savefig(os.path.join("Plots/General", "PUN.png"))
         plt.close()
 
     @staticmethod
@@ -969,9 +969,9 @@ class EnergyPlots:
 
         os.makedirs(output_dir, exist_ok=True)
         if minimize_C:
-            output_path = os.path.join(output_dir, 'C_rate_PUN_minC.png')
+            output_path = os.path.join(output_dir, 'C_rate_minC.png')
         else:
-            output_path = os.path.join(output_dir, 'C_rate_PUN.png')
+            output_path = os.path.join(output_dir, 'C_rate.png')
 
         plt.savefig(output_path)
 

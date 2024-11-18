@@ -66,6 +66,7 @@ OPTIMIZATION PARAMETERS:
 
 # DEFINE RANDOM SET FUNCTION EXTRACTION
 
+
 def comp_by_cv_then_random(pop, P, **kwargs):
 
     S = np.full(P.shape[0], np.nan)
@@ -85,6 +86,7 @@ def comp_by_cv_then_random(pop, P, **kwargs):
 
     return S[:, None].astype(int)
 
+
 # 1) DEFINE TIME WINDOW OBTAINED FROM Economic_parameters.py FILE
 
 time_window = time_window
@@ -94,7 +96,8 @@ time_window = time_window
 soc_0 = soc
 
 # 3) DEFINE POPULATION SITE USED TO EXPLORE THE OPTIMIZATION DOMAIN
-#TODO Should use same pop from both minimize and no minimize_C because i have to delete minimize_C
+
+# TODO Should use same pop from both minimize and no minimize_C because i have to delete minimize_C
 
 if minimize_C:
 
@@ -106,7 +109,7 @@ else:
 
 # 4) DEFINE NUMBER OF ELEMENTS INIZIALIZED BY THE NSGA-III (Elements of the chromosome, namely the genes,
 # which are the charged/discharged % of energy at each timestep t, for a lenght of time_window
-#TODO Should use same from both  because i have to delete minimize_C
+# TODO Should use same from both  because i have to delete minimize_C
 
 if minimize_C:
 
@@ -117,7 +120,7 @@ else:
     n_var = time_window
 
 # 5) DEFINE NUMBER OF VARIABLES (OUTPUTS NEEDED TO BE EVALUATED AS OBJECTIVE FUNCTION)
-#TODO Should use same from both  because i have to delete minimize_C
+# TODO Should use same from both  because i have to delete minimize_C
 
 if minimize_C:
 
@@ -128,33 +131,33 @@ else:
     n_obj = 1
 
 # 6) DEFINE THE LOWER BOUNDARIES OF THE RESEARCH DOMAIN, NAMELY THE MAXIMUM % OF SoC WHICH CAN BE DISCHARGED
-#TODO Should use same from both  because i have to delete minimize_C
+# TODO Should use same from both  because i have to delete minimize_C
 
 if minimize_C:
 
-    xl = [-max_discharge] * (time_window) + [0.0] * (time_window)
+    xl = [-max_discharge] * time_window + [0.0] * time_window
 
 else:
 
     xl = [-max_discharge]*time_window
 
 # 7) DEFINE THE UPPER BOUNDARIES OF THE RESEARCH DOMAIN, NAMELY THE MAXIMUM % OF SoC WHICH CAN BE CHARGED
-#TODO Should use same from both  because i have to delete minimize_C
+#T ODO Should use same from both  because i have to delete minimize_C
 
 if minimize_C:
 
-    xu = [max_charge] * (time_window) + [1.0] * (time_window)
+    xu = [max_charge] * time_window + [1.0] * time_window
 
 else:
 
-    xu = [max_charge]*time_window
+    xu = [max_charge] * time_window
 
 # 8) DEFINE NUMBER OF GENERATIONS USED TO INTERRUPT THE ALGORITHM EXECUTION
 
 n_gen = 1000
 
 # 8-bis) DEFINE TOLERANCE AS THE ALGORITHM INTERRUPTION CRITERIA
-#TODO Should use same from both  because i have to delete minimize_C
+# TODO Should use same from both  because i have to delete minimize_C
 
 if minimize_C:
 
@@ -187,7 +190,8 @@ indicates the number of gaps between two consecutive points along an objective a
 '''
 
 ref_dirs = get_reference_directions("das-dennis", n_obj, n_partitions=n_obj*4)
-#RULE OF THUMB FOR n_partitions
+
+# RULE OF THUMB FOR n_partitions
 
 # 11) ALGORITHMS INITIALIZATION- HYPERPARAMETERS DEFINITION: Sampling, Selection, Crossover, Mutation
 

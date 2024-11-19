@@ -32,6 +32,7 @@ soc_default = 0.2
 dod_default = "10-90"
 pv_power_default = 0
 pod_power_default = 100
+n_cycles_default = 0
 
 # GET PARSER ARGUMENTS FROM COMMAND LINE
 
@@ -64,6 +65,9 @@ parser.add_argument('--PV_power', type=float, required=False,default=pv_power_de
 parser.add_argument('--POD_power', type=float, required=False,default=pod_power_default,
                     help='POD power')
 
+parser.add_argument('--n_cycles', type=float, required=False,default=n_cycles_default,
+                    help='number of cycles previously done by teh battery')
+
 # ARGUMENTS PARSING
 
 args = parser.parse_args()
@@ -81,6 +85,7 @@ PV_power = args.PV_power
 power_energy = args.power_energy
 BESS_power = size * args.power_energy
 POD_power = args.POD_power
+n_cycles = args.n_cycles
 
 start_str, end_str = range_str.split('-')
 soc_min = float(start_str) / 100

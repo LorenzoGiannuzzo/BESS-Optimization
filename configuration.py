@@ -31,8 +31,6 @@ from pymoo.termination import get_termination
 from argparser import minimize_C
 from BESS_model import charge_rate_interpolated_func, discharge_rate_interpolated_func
 
-
-
 # IDENTIFICATION OF MAX CHARGE AND DISCHARGE BESS CAPABILITY
 
 x = np.linspace(0, 1,1000)

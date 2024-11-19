@@ -689,7 +689,7 @@ class EnergyPlots:
 
     # Save the plot as a PNG file
 
-        plt.savefig("Plots/charge_rate.png")
+        plt.savefig("Plots/General/charge_rate.png")
         plt.close()
 
     # Plotting

@@ -19,7 +19,7 @@ import numpy as np
 from utils import Get_data
 from utils import BESS
 from argparser import size, technology
-from argparser import soc_min, soc_max, BESS_power, power_energy
+from argparser import soc_min, soc_max, BESS_power, power_energy, n_cycles
 
 # SETTING ST FILE PATHS
 
@@ -52,6 +52,24 @@ BESS_Parameters = BESS.get_bess(technology, properties, se_sp, size)
 
 charge_rate_interpolated_func, discharge_rate_interpolated_func = BESS.get_c_d_functions(load_curve)
 
+
+# DEFINE DEGRADATION FUNCTION
+
+def degradation(cycle_num):
+    capacity_remaining = (
+            0.00000000000000000000000000000005613 * cycle_num ** 9 +
+            0.000000000000000000000000003121 * cycle_num ** 8 -
+            0.00000000000000000000006353 * cycle_num ** 7 +
+            0.000000000000000000663 * cycle_num ** 6 -
+            0.000000000000003987 * cycle_num ** 5 +
+            0.00000000001435 * cycle_num ** 4 -
+            0.0000000307 * cycle_num ** 3 +
+            0.00003746 * cycle_num ** 2 -
+            0.0277 * cycle_num + 100
+    )
+
+    return capacity_remaining
+
 # DEFINE BESS MODEL CLASS
 
 class BESS_model:
@@ -66,8 +84,12 @@ class BESS_model:
         self.discharged_energy = np.zeros(len(PUN_timeseries))
         self.c_d_timeseries = None
         self.alpha = None
+        self.n_cycles = n_cycles
+        self.soc_max = soc_max
 
     # DEFINE RUN SIMULATION FUNCTION TO SIMULATE BESS ENERGY FLOWS
+
+
 
     def run_simulation(self, c_d_timeseries, alpha):
 
@@ -81,9 +103,17 @@ class BESS_model:
 
         self.alpha = np.array(alpha)
 
+
+
         # EXECUTE THE SIMULATION FOR EACH TIMESTEP
 
         for index in range(len(self.PUN_timeseries) - 1):
+
+            # EVALUATE BESS MAXIMUM CAPACITY
+
+            max_capacity = degradation(self.n_cycles) / 100
+
+            soc_max = min(self.soc_max, max_capacity)
 
             # IF BESS IS CHARGING
 
@@ -182,6 +212,12 @@ class BESS_model:
 
                 self.discharged_energy[index] = (self.soc[index+1] - self.soc[index])*self.size
 
+            # N_CYCLES UPDATE FOR EACH TIMESTEP
+
+            total_energy = self.charged_energy[index] + np.abs(self.discharged_energy[index])
+            n_cycles_prev = self.n_cycles
+            actual_capacity = size * degradation(n_cycles_prev)
+            self.n_cycles = n_cycles_prev + total_energy/actual_capacity
 
         # RETURN CHARGED AND DISCHARGE ENERGY
 

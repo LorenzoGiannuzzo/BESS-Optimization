@@ -25,7 +25,7 @@ from configuration import pop_size, soc_0, time_window, plot
 from BESS_model import charge_rate_interpolated_func, discharge_rate_interpolated_func, size, charge_rate, discharge_rate, technology, BESS_model
 from Economic_parameters import PUN_timeseries, time_window
 from Optimizer import Optimizer
-from argparser import output_json_path, range_str, minimize_C, soc_min, soc_max, power_energy, POD_power
+from argparser import output_json_path, range_str, minimize_C, soc_min, soc_max, power_energy, POD_power, n_cycles
 from Plots import EnergyPlots
 from PV import pv_production
 
@@ -107,9 +107,7 @@ class Main:
 
         # APPLY PHYSICAL CONSTRAINTS
 
-        soc, charged_energy, discharged_energy, c_d_timeseries, taken_from_grid, discharged_from_pv, taken_from_pv =\
-            self.apply_physical_constraints(c_d_timeseries, alpha)
-
+        soc, charged_energy, discharged_energy, c_d_timeseries, taken_from_grid, discharged_from_pv, taken_from_pv = self.apply_physical_constraints(self, c_d_timeseries, alpha)
         self.c_d_timeseries_final = c_d_timeseries
         self.soc = soc
         self.charged_energy = charged_energy
@@ -166,7 +164,18 @@ class Main:
 
                 charged_energy[i] = charged_energy_grid[i] + taken_from_pv[i]
 
+        from argparser import n_cycles
+
         for index in range(time_window - 1):
+
+            # EVALUATE SOC MAX
+
+            from BESS_model import degradation
+            from argparser import soc_max
+
+            n_cycles_prev = n_cycles
+            max_capacity = degradation(n_cycles_prev) / 100
+            soc_max = min(soc_max, max_capacity)
 
             # Update SoC for the next time step
 
@@ -182,7 +191,13 @@ class Main:
 
                 discharged_energy[index] = (soc[index+1]-soc[index])*size
 
-        return soc, charged_energy, discharged_energy, c_d_timeseries, charged_energy_grid, discharged_from_pv, taken_from_pv
+            total_energy = charged_energy[index] + np.abs(discharged_energy[index])
+            actual_capacity = size * degradation(n_cycles_prev)/100
+            n_cycles = n_cycles_prev + total_energy/actual_capacity
+            print(soc_max)
+
+        return (soc, charged_energy, discharged_energy, c_d_timeseries, charged_energy_grid,
+                discharged_from_pv, taken_from_pv)
 
     def calculate_and_print_revenues(self, charged_energy, discharged_energy, taken_from_grid, discharged_from_pv):
 

@@ -28,7 +28,6 @@ from pymoo.operators.selection.tournament import TournamentSelection, compare
 from pymoo.util.ref_dirs import get_reference_directions
 from pymoo.core.termination import TerminateIfAny
 from pymoo.termination import get_termination
-from argparser import minimize_C
 from BESS_model import charge_rate_interpolated_func, discharge_rate_interpolated_func
 
 # IDENTIFICATION OF MAX CHARGE AND DISCHARGE BESS CAPABILITY
@@ -95,77 +94,33 @@ soc_0 = soc
 
 # 3) DEFINE POPULATION SITE USED TO EXPLORE THE OPTIMIZATION DOMAIN
 
-# TODO Should use same pop from both minimize and no minimize_C because i have to delete minimize_C
-
-if minimize_C:
-
-    pop_size = 120
-
-else:
-
-    pop_size = 100
+pop_size = 120
 
 # 4) DEFINE NUMBER OF ELEMENTS INIZIALIZED BY THE NSGA-III (Elements of the chromosome, namely the genes,
 # which are the charged/discharged % of energy at each timestep t, for a lenght of time_window
-# TODO Should use same from both  because i have to delete minimize_C
 
-if minimize_C:
-
-    n_var = time_window*2
-
-else:
-
-    n_var = time_window
+n_var = time_window
 
 # 5) DEFINE NUMBER OF VARIABLES (OUTPUTS NEEDED TO BE EVALUATED AS OBJECTIVE FUNCTION)
-# TODO Should use same from both  because i have to delete minimize_C
 
-if minimize_C:
-
-    n_obj = 2
-
-else:
-
-    n_obj = 1
+n_obj = 1
 
 # 6) DEFINE THE LOWER BOUNDARIES OF THE RESEARCH DOMAIN, NAMELY THE MAXIMUM % OF SoC WHICH CAN BE DISCHARGED
-# TODO Should use same from both  because i have to delete minimize_C
 
-if minimize_C:
-
-    xl = [-max_discharge] * time_window + [0.0] * time_window
-
-else:
-
-    xl = [-max_discharge]*time_window
+xl = [-max_discharge]*time_window
 
 # 7) DEFINE THE UPPER BOUNDARIES OF THE RESEARCH DOMAIN, NAMELY THE MAXIMUM % OF SoC WHICH CAN BE CHARGED
-#T ODO Should use same from both  because i have to delete minimize_C
 
-if minimize_C:
-
-    xu = [max_charge] * time_window + [1.0] * time_window
-
-else:
-
-    xu = [max_charge] * time_window
+xu = [max_charge] * time_window
 
 # 8) DEFINE NUMBER OF GENERATIONS USED TO INTERRUPT THE ALGORITHM EXECUTION
 
 n_gen = 1000
 
 # 8-bis) DEFINE TOLERANCE AS THE ALGORITHM INTERRUPTION CRITERIA
-# TODO Should use same from both  because i have to delete minimize_C
 
-if minimize_C:
-
-    tolerance = 0.1
-    period = 5
-
-else:
-
-    tolerance = 0.5
-    period = 20  # number of iteration in which tolerance is evaluated
+tolerance = 0.5
+period = 20  # number of iteration in which tolerance is evaluated
 
 # 9) DEFINITION OF THE TERMINATION CRITERIA
 

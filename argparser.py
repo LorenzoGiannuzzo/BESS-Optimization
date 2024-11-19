@@ -55,10 +55,6 @@ parser.add_argument('--soc', type=float, required=False,default=soc_default,
 
 parser.add_argument('--dod', type=str, required=False,default=dod_default, help='SoC range in %')
 
-parser.add_argument('--minimize_C', action='store_true',
-                    help='Boolean, False = you dont want to minimize c/d velocity, True = you wan to minimize c/d'
-                         ' velocity')
-
 parser.add_argument('--PV_power', type=float, required=False,default=pv_power_default,
                     help='PV peak power')
 
@@ -80,7 +76,6 @@ technology = args.technology
 size = args.size
 soc = args.soc / 100
 range_str = args.dod
-minimize_C = args.minimize_C
 PV_power = args.PV_power
 power_energy = args.power_energy
 BESS_power = size * args.power_energy

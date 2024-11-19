@@ -25,7 +25,7 @@ from configuration import pop_size, soc_0, time_window, plot
 from BESS_model import charge_rate_interpolated_func, discharge_rate_interpolated_func, size, charge_rate, discharge_rate, technology, BESS_model
 from Economic_parameters import PUN_timeseries, time_window
 from Optimizer import Optimizer
-from argparser import output_json_path, range_str, minimize_C, soc_min, soc_max, power_energy, POD_power, n_cycles
+from argparser import output_json_path, range_str, soc_min, power_energy, POD_power
 from Plots import EnergyPlots
 from PV import pv_production
 
@@ -87,32 +87,15 @@ class Main:
 
         # GET CHARGED/DISCHARGED ENERGY FROM SOLUTION
 
-        if minimize_C:
-
-            # PARETO FRONT HANDLER
-
-            of_values = np.array(solution.F[:,0])
-            max_revenue_index = np.argmin(of_values)
-            c_d_timeseries = solution.X[max_revenue_index, :time_window]
-            alpha = solution.X[max_revenue_index, time_window:time_window * 2]
-            alpha_mean = np.mean(alpha)
-
-            print("\nAverage C/D reduction factor [%]:\n\n", alpha_mean*100)
-            print("\nN Solutions in the Pareto-Front:\n\n", of_values.shape)
-
-        else:
-
-            alpha = np.ones(time_window)
-            c_d_timeseries = solution.X
+        c_d_timeseries = solution.X
 
         # APPLY PHYSICAL CONSTRAINTS
 
-        soc, charged_energy, discharged_energy, c_d_timeseries, taken_from_grid, discharged_from_pv, taken_from_pv = self.apply_physical_constraints(self, c_d_timeseries, alpha)
+        soc, charged_energy, discharged_energy, c_d_timeseries, taken_from_grid, discharged_from_pv, taken_from_pv = self.apply_physical_constraints(self, c_d_timeseries)
         self.c_d_timeseries_final = c_d_timeseries
         self.soc = soc
         self.charged_energy = charged_energy
         self.discharged_energy = discharged_energy
-        self.alpha = alpha
         self.taken_from_grid = taken_from_grid
         self.taken_from_pv = taken_from_pv
         self.discharged_from_pv = discharged_from_pv
@@ -131,7 +114,7 @@ class Main:
 
     # TODO Remove self from this function as it is a staticmethod
     @staticmethod
-    def apply_physical_constraints(self, c_d_timeseries, alpha):
+    def apply_physical_constraints(self, c_d_timeseries):
 
         c_func = charge_rate_interpolated_func  # Charge rate function
         d_func = discharge_rate_interpolated_func  # Discharge rate function
@@ -139,9 +122,9 @@ class Main:
         soc[0] = soc_0  # Initial state of charge
 
         bess_model = BESS_model(time_window, PUN_timeseries, soc, size, c_func,
-                                d_func, alpha)
+                                d_func)
 
-        charged_energy, discharged_energy = bess_model.run_simulation(c_d_timeseries, alpha)
+        charged_energy, discharged_energy = bess_model.run_simulation(c_d_timeseries)
 
         taken_from_pv = np.minimum(charged_energy, pv_production['P'])
 
@@ -194,7 +177,6 @@ class Main:
             total_energy = charged_energy[index] + np.abs(discharged_energy[index])
             actual_capacity = size * degradation(n_cycles_prev)/100
             n_cycles = n_cycles_prev + total_energy/actual_capacity
-            print(soc_max)
 
         return (soc, charged_energy, discharged_energy, c_d_timeseries, charged_energy_grid,
                 discharged_from_pv, taken_from_pv)
@@ -298,7 +280,6 @@ if __name__ == "__main__":
 
     SoC = main.soc
     c_d_energy = main.c_d_timeseries_final
-    alpha = main.alpha
     revenues = main.rev
     data = []
 
@@ -312,7 +293,7 @@ if __name__ == "__main__":
             "PUN": PUN_timeseries[i, 1]/1000,
             "soc": SoC[i],
             "c_d_energy": c_d_energy[i]*size,
-            "Nominal C-rate": np.abs(c_d_energy[i])/alpha[i],
+            "Nominal C-rate": np.abs(c_d_energy[i]),
             "C-rate": abs(c_d_energy[i]),
             "revenues": revenues[i],
             "rev_BESS": -main.discharged_energy[i] * PUN_timeseries[i,1] / 1000,

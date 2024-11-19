@@ -23,7 +23,7 @@ import numpy as np
 import matplotlib.colors as mcolors
 import matplotlib.gridspec as gridspec
 from matplotlib.colors import Normalize
-from argparser import minimize_C, size, POD_power
+from argparser import size, POD_power
 
 matplotlib.use('Agg')
 
@@ -45,22 +45,11 @@ class EnergyPlots:
         self.produced_from_pv = produced_from_pv
         self.discharged_from_pv = discharged_from_pv
 
-        #TODO This shouldn't be there because of minimize_C delete
+        self.plots_dir = "Plots/Results"
 
-        if minimize_C:
+        if not os.path.exists(self.plots_dir):
 
-            self.plots_dir = "Plots/minimize_C_rate"
-
-            if not os.path.exists(self.plots_dir):
-
-                os.makedirs(self.plots_dir)
-        else:
-
-            self.plots_dir = "Plots/optimal_C_rate"
-
-            if not os.path.exists(self.plots_dir):
-
-                os.makedirs(self.plots_dir)
+            os.makedirs(self.plots_dir)
 
     # DEFINE SoC PLOT FUNCTION
 
@@ -75,14 +64,7 @@ class EnergyPlots:
         plt.xlabel('Time Window [h]')
         plt.ylabel('SoC')
 
-        # TODO This shouldn't be there because of minimize_C delete
-        if minimize_C:
-
-            plt.savefig(os.path.join(self.plots_dir, "SoC_minC.png"))
-
-        else:
-
-            plt.savefig(os.path.join(self.plots_dir, "SoC.png"))
+        plt.savefig(os.path.join(self.plots_dir, "SoC.png"))
 
     # DEFINE CHARGED ENERGY PLOT FUNCTION
 
@@ -97,15 +79,7 @@ class EnergyPlots:
         plt.xlabel('Time Window [h]')
         plt.ylabel('Charged Energy [kWh]')
 
-        # TODO This shouldn't be there because of minimize_C delete
-        if minimize_C:
-
-            plt.savefig(os.path.join(self.plots_dir, "Charged_Energy_minC.png"))
-
-        else:
-
-            plt.savefig(os.path.join(self.plots_dir, "Charged_Energy.png"))
-
+        plt.savefig(os.path.join(self.plots_dir, "Charged_Energy.png"))
 
     # DEFINE DISCHARGED ENERGY FUNCTION
 
@@ -118,13 +92,7 @@ class EnergyPlots:
         plt.xlabel('Time Window [h]')
         plt.ylabel('Discharged Energy [kWh]')
 
-        if minimize_C:
-
-            plt.savefig(os.path.join(self.plots_dir, "Disc_Energy_minC.png"))
-
-        else:
-
-            plt.savefig(os.path.join(self.plots_dir, "Disc_Energy.png"))
+        plt.savefig(os.path.join(self.plots_dir, "Disc_Energy.png"))
 
     # DEFINE COMBINED PLOTS FIGURE FUCNTION
 
@@ -247,15 +215,7 @@ class EnergyPlots:
 
         fig.tight_layout()
 
-        # TODO Rembemer to fix this
-
-        if minimize_C:
-
-            plt.savefig(os.path.join(self.plots_dir, "BESS_View_minC.png"))
-
-        else:
-
-            plt.savefig(os.path.join(self.plots_dir, "BESS_View.png"))
+        plt.savefig(os.path.join(self.plots_dir, "BESS_View.png"))
 
 
 
@@ -409,15 +369,13 @@ class EnergyPlots:
 
             fig.tight_layout()
 
-
         # Save the plot based on the minimize_C condition
-        if minimize_C:
-            plt.savefig(os.path.join(self.plots_dir, "PV_View_minC.png"))
-        else:
-            plt.savefig(os.path.join(self.plots_dir, "PV_View.png"))
+
+        plt.savefig(os.path.join(self.plots_dir, "PV_View.png"))
 
 
     def POD_View(self, num_values):
+
         time_steps = self.time_steps[:num_values]
         charged_energy = self.charged_energy[:num_values]
         discharged_energy = self.discharged_energy[:num_values]
@@ -530,13 +488,11 @@ class EnergyPlots:
         fig.tight_layout()
 
         # Save the plot based on the minimize_C condition
-        if minimize_C:
-            plt.savefig(os.path.join(self.plots_dir, "POD_View_minC.png"))
-        else:
-            plt.savefig(os.path.join(self.plots_dir, "POD_View.png"))
 
+        plt.savefig(os.path.join(self.plots_dir, "POD_View.png"))
 
     def Total_View(self, num_values):
+
         time_steps = self.time_steps[:num_values]
         charged_energy = self.charged_energy[:num_values]
         discharged_energy = self.discharged_energy[:num_values]
@@ -667,14 +623,11 @@ class EnergyPlots:
             ax4.axis('equal')  # Equal aspect ratio ensures that pie is drawn as a circle.
             ax4.set_title('System Total Energy Distribution [kWh]')
 
-
         fig.tight_layout()
 
         # Save the plot based on the minimize_C condition
-        if minimize_C:
-            plt.savefig(os.path.join(self.plots_dir, "Total_View_minC.png"))
-        else:
-            plt.savefig(os.path.join(self.plots_dir, "Total_View.png"))
+
+        plt.savefig(os.path.join(self.plots_dir, "Total_View.png"))
 
     @staticmethod
     def c_d_plot(charge_rate, discharge_rate, charge_rate_interpolated_func, discharge_rate_interpolated_func ):
@@ -794,10 +747,7 @@ class EnergyPlots:
 
         # Save the figure
 
-        if minimize_C:
-            plt.savefig('Plots/minimize_C_rate/total_convergence_minC.png')
-        else:
-            plt.savefig('Plots/optimal_C_rate/total_convergence.png')
+        plt.savefig('Plots/Results/total_convergence.png')
 
     @staticmethod
     def PUN_plot(PUN_timeseries):
@@ -885,22 +835,15 @@ class EnergyPlots:
 
             # Check if the "Plots" folder exists, create it if not
 
-            if minimize_C:
-                output_dir = 'Plots/minimize_C_rate'
-            else:
-                output_dir = 'Plots/optimal_C_rate'
+            output_dir = 'Plots/Results'
 
             if not os.path.exists(output_dir):
                 os.makedirs(output_dir)
 
             # Save the figure in the "Plots" folder
 
-            if minimize_C:
-                output_path = os.path.join(output_dir, f'convergence_{fig_num + 1}_minC.png')
-                fig.savefig(output_path)
-            else:
-                output_path = os.path.join(output_dir, f'convergence_{fig_num + 1}.png')
-                fig.savefig(output_path)
+            output_path = os.path.join(output_dir, f'convergence_{fig_num + 1}.png')
+            fig.savefig(output_path)
 
 
     @staticmethod
@@ -962,16 +905,11 @@ class EnergyPlots:
 
         # Saving the plot to a file
 
-        if minimize_C:
-            output_dir = 'Plots/minimize_C_rate'
-        else:
-            output_dir = 'Plots/optimal_C_rate'
+        output_dir = 'Plots/Results'
 
         os.makedirs(output_dir, exist_ok=True)
-        if minimize_C:
-            output_path = os.path.join(output_dir, 'C_rate_minC.png')
-        else:
-            output_path = os.path.join(output_dir, 'C_rate.png')
+
+        output_path = os.path.join(output_dir, 'C_rate.png')
 
         plt.savefig(output_path)
 

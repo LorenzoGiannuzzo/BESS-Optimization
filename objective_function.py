@@ -19,7 +19,6 @@ import Economic_parameters
 
 from pymoo.core.problem import ElementwiseProblem
 from BESS_model import BESS_model, charge_rate_interpolated_func, discharge_rate_interpolated_func, size, degradation
-from argparser import minimize_C
 from PV import pv_production
 
 # DEFINE OPTIMIZATION PROBLEM
@@ -65,133 +64,107 @@ class Revenues(ElementwiseProblem):
     def _evaluate(self, x, out, *args, **kwargs):
 
         # SET X-VECTOR TO BE OPTIMIZED AS THE % OF CHARGED AND DISCHARGED ENERGY FROM BESS
-        if minimize_C:
-            self.c_d_timeseries = np.array(x[:self.time_window]).reshape(configuration.time_window)
-            self.alpha = np.array(x[self.time_window:self.time_window*2])
 
-            # EVALUATE THE CHARGED AND DISCHARGED ENERGY AND UPDATE THE SoC FOR EACH TIMESTEP t
+        self.c_d_timeseries = np.array(x[:self.time_window]).reshape(configuration.time_window)
+        self.alpha = np.ones(self.time_window)
 
-            # Create an instance of BESS_model
+        # EVALUATE THE CHARGED AND DISCHARGED ENERGY AND UPDATE THE SoC FOR EACH TIMESTEP t
 
-            bess_model = BESS_model(self.time_window, self.PUN_timeseries, self.soc, self.size, self.c_func, self.d_func, self.alpha)
+        # Create an instance of BESS_model
 
-            # Run the simulation
+        bess_model = BESS_model(self.time_window, self.PUN_timeseries, self.soc, self.size, self.c_func,
+                                    self.d_func)
 
-            self.charged_energy, self.discharged_energy = bess_model.run_simulation(self.c_d_timeseries, self.alpha)
+        # Run the simulation
 
-            self.taken_from_pv = np.minimum(self.charged_energy, self.production)
+        self.charged_energy, self.discharged_energy = bess_model.run_simulation(self.c_d_timeseries)
 
-            self.charged_energy_grid = np.maximum(self.charged_energy - self.taken_from_pv, 0.0)
+        self.taken_from_pv = np.minimum(self.charged_energy, self.production)
 
-            self.discharged_from_pv = np.minimum(-self.production + self.taken_from_pv, 0.0)
+        self.charged_energy_grid = np.maximum(self.charged_energy - self.taken_from_pv, 0.0)
 
-            # APPLY POD CONSTRAINTS
+        self.discharged_from_pv = np.minimum(-self.production + self.taken_from_pv, 0.0)
 
-            for i in range(len(self.discharged_from_pv)):
+        # APPLY POD CONSTRAINTS
 
-                from argparser import POD_power
+        from argparser import n_cycles
 
-                if -self.discharged_from_pv[i] - self.discharged_energy[i] > POD_power:
-                    self.discharged_from_pv[i] = -min(POD_power, -self.discharged_from_pv[i])
+        for i in range(len(self.discharged_from_pv)):
 
-                    self.discharged_energy[i] = -min(POD_power - abs(self.discharged_from_pv[i]),
+            from argparser import POD_power
+
+            if -self.discharged_from_pv[i] - self.discharged_energy[i] > POD_power:
+
+                self.discharged_from_pv[i] = -min(POD_power, -self.discharged_from_pv[i])
+
+                self.discharged_energy[i] = -min(POD_power - abs(self.discharged_from_pv[i]),
                                                      -self.discharged_energy[i])
 
-                if self.charged_energy_grid[i] >= POD_power:
-                    self.charged_energy_grid[i] = min(self.charged_energy_grid[i], POD_power)
-                    self.charged_energy[i] = self.charged_energy_grid[i] + self.taken_from_pv[i]
+            if self.charged_energy_grid[i] >= POD_power:
 
-            # EVALUATE THE REVENUES OBTAINED FOR EACH TIMESTEP t
-
-            revenue_column = np.array(
-                -(self.discharged_energy * self.PUN_timeseries / 1000) - (self.charged_energy_grid *
-                                                                          self.PUN_timeseries / 1000)
-                - (self.discharged_from_pv * self.PUN_timeseries / 1000) )
+                self.charged_energy_grid[i] = min(self.charged_energy_grid[i], POD_power)
+                self.charged_energy[i] = self.charged_energy_grid[i] + self.taken_from_pv[i]
 
 
-            # EVALUATE THE REVENUES OBTAINED DURING THE OPTIMIZATION TIME WINDOW
+        for i in range(self.time_window - 1):
 
-            total_revenue = sum(revenue_column)
+            # EVALUATE SOC MAX
 
-            # CORRECT THE VALUES OF THE REVENUES IN ORDER TO MINIMIZE THE OBJECTIVE FUNCTION
-
-            final_revenues = -total_revenue
-            alpha = np.sum(self.alpha)
-
-            # DEFINE THE OUTPUT OF THE OPTIMIZATION PROBLEM
-
-            out["F"] = [final_revenues, alpha]
-
-        else:
-
-            self.c_d_timeseries = np.array(x[:self.time_window]).reshape(configuration.time_window)
-            self.alpha = np.ones(self.time_window)
-
-            # EVALUATE THE CHARGED AND DISCHARGED ENERGY AND UPDATE THE SoC FOR EACH TIMESTEP t
-
-            # Create an instance of BESS_model
-
-            bess_model = BESS_model(self.time_window, self.PUN_timeseries, self.soc, self.size, self.c_func,
-                                    self.d_func, self.alpha)
-
-            # Run the simulation
-
-            self.charged_energy, self.discharged_energy = bess_model.run_simulation(self.c_d_timeseries, self.alpha)
-
-            self.taken_from_pv = np.minimum(self.charged_energy, self.production)
-
-            self.charged_energy_grid = np.maximum(self.charged_energy - self.taken_from_pv, 0.0)
-
-            self.discharged_from_pv = np.minimum(-self.production + self.taken_from_pv, 0.0)
-
-            # APPLY POD CONSTRAINTS
-
-            for i in range(len(self.discharged_from_pv)):
-
-                from argparser import POD_power
-
-                if -self.discharged_from_pv[i] - self.discharged_energy[i] > POD_power:
-
-                    self.discharged_from_pv[i] = -min(POD_power, -self.discharged_from_pv[i])
-
-                    self.discharged_energy[i] = -min(POD_power - abs(self.discharged_from_pv[i]),
-                                                     -self.discharged_energy[i])
-
-                if self.charged_energy_grid[i] >= POD_power:
-
-                    self.charged_energy_grid[i] = min(self.charged_energy_grid[i], POD_power)
-                    self.charged_energy[i] = self.charged_energy_grid[i] + self.taken_from_pv[i]
-
-            # EVALUATE THE NUMBER OF CYCLES DONE BY BESS
-
-            total_charged = np.sum(self.charged_energy)
-            total_discharged = np.sum(-self.discharged_energy)
-            total_energy = total_charged + total_discharged
-
-            from argparser import n_cycles
+            from BESS_model import degradation
+            from argparser import soc_max, soc_min
 
             n_cycles_prev = n_cycles
-            actual_capacity = size * degradation(n_cycles_prev)/100
+            max_capacity = degradation(n_cycles_prev) / 100
+            soc_max = min(soc_max, max_capacity)
 
-            n_cycles = total_energy / actual_capacity
+            # Update SoC for the next time step
 
-            # EVALUATE THE REVENUES OBTAINED FOR EACH TIMESTEP t
+            if self.c_d_timeseries[i] >= 0:
 
-            revenue_column = np.array(-(self.discharged_energy * self.PUN_timeseries / 1000) -
+                self.soc[i + 1] = min(soc_max, self.soc[i] + self.charged_energy[i] / size)
+
+                self.charged_energy[i] = (self.soc[i + 1] - self.soc[i]) * size
+
+            else:
+
+                self.soc[i + 1] = max(soc_min, self.soc[i] + self.discharged_energy[i] / size)
+
+                self.discharged_energy[i] = (self.soc[i + 1] - self.soc[i]) * size
+
+            total_energy = self.charged_energy[i] + np.abs(self.discharged_energy[i])
+            actual_capacity = size * degradation(n_cycles_prev) / 100
+            n_cycles = n_cycles_prev + total_energy / actual_capacity
+
+        # EVALUATE THE NUMBER OF CYCLES DONE BY BESS
+
+        total_charged = np.sum(self.charged_energy)
+        total_discharged = np.sum(-self.discharged_energy)
+        total_energy = total_charged + total_discharged
+
+        from argparser import n_cycles
+
+        n_cycles_prev = n_cycles
+        actual_capacity = size * degradation(n_cycles_prev)/100
+
+        n_cycles = total_energy / actual_capacity
+
+        # EVALUATE THE REVENUES OBTAINED FOR EACH TIMESTEP t
+
+        revenue_column = np.array(-(self.discharged_energy * self.PUN_timeseries / 1000) -
                                       (self.charged_energy_grid * self.PUN_timeseries / 1000)
                                       - (self.discharged_from_pv * self.PUN_timeseries / 1000))
 
-            # EVALUATE THE REVENUES OBTAINED DURING THE OPTIMIZATION TIME WINDOW
+        # EVALUATE THE REVENUES OBTAINED DURING THE OPTIMIZATION TIME WINDOW
 
-            total_revenue = sum(revenue_column)
+        total_revenue = sum(revenue_column)
 
-            # CORRECT THE VALUES OF THE REVENUES IN ORDER TO MINIMIZE THE OBJECTIVE FUNCTION
+        # CORRECT THE VALUES OF THE REVENUES IN ORDER TO MINIMIZE THE OBJECTIVE FUNCTION
 
-            final_revenues = -total_revenue
+        final_revenues = -total_revenue
 
-            # DEFINE THE OUTPUT OF THE OPTIMIZATION PROBLEM
+        # DEFINE THE OUTPUT OF THE OPTIMIZATION PROBLEM
 
-            out["F"] = [final_revenues]
+        out["F"] = [final_revenues]
 
 
 

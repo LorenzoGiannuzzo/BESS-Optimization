@@ -56,8 +56,9 @@ charge_rate_interpolated_func, discharge_rate_interpolated_func = BESS.get_c_d_f
 # DEFINE DEGRADATION FUNCTION
 
 def degradation(cycle_num):
+
     capacity_remaining = (
-            0.00000000000000000000000000000005613 * cycle_num ** 9 +
+            -0.00000000000000000000000000000005613 * cycle_num ** 9 +
             0.000000000000000000000000003121 * cycle_num ** 8 -
             0.00000000000000000000006353 * cycle_num ** 7 +
             0.000000000000000000663 * cycle_num ** 6 -
@@ -73,7 +74,7 @@ def degradation(cycle_num):
 # DEFINE BESS MODEL CLASS
 
 class BESS_model:
-    def __init__(self, time_window, PUN_timeseries, soc, size, c_func, d_func, alpha):
+    def __init__(self, time_window, PUN_timeseries, soc, size, c_func, d_func):
         self.time_window = time_window
         self.PUN_timeseries = PUN_timeseries
         self.soc = soc
@@ -83,27 +84,16 @@ class BESS_model:
         self.charged_energy = np.zeros(len(PUN_timeseries))
         self.discharged_energy = np.zeros(len(PUN_timeseries))
         self.c_d_timeseries = None
-        self.alpha = None
         self.n_cycles = n_cycles
         self.soc_max = soc_max
 
     # DEFINE RUN SIMULATION FUNCTION TO SIMULATE BESS ENERGY FLOWS
 
-
-
-    def run_simulation(self, c_d_timeseries, alpha):
+    def run_simulation(self, c_d_timeseries):
 
         # SET CHARGE/DISCHARGE VECTOR (% of SoC charged or discharged at each timestep) WITH SAME LENGTH AS TIME WINDOW
 
         self.c_d_timeseries = np.array(c_d_timeseries).reshape(self.time_window)
-
-        # SET ALPHA VALUES (parameter used to slow down charge/discharge of the BESS)
-        #TODO - this parameter is used to take into account BESS degradation in the objective function, we should
-        # consider a normal polynomial function instead of this
-
-        self.alpha = np.array(alpha)
-
-
 
         # EXECUTE THE SIMULATION FOR EACH TIMESTEP
 
@@ -127,16 +117,17 @@ class BESS_model:
                 # (self.c_func(self.soc[index])), AND HOW MUCH CAN HE CHARGE LEFT (soc_max - self.soc[index])
 
                 self.c_d_timeseries[index] = np.minimum(
-                    self.c_d_timeseries[index] * np.abs(self.alpha[index]),
+                    self.c_d_timeseries[index],
                     np.minimum(
-                        self.c_func(self.soc[index]) * np.abs(self.alpha[index]),
+                        self.c_func(self.soc[index]),
                         soc_max - self.soc[index]
                     )
                 )
                 self.c_d_timeseries[index] = np.minimum(
                     self.c_d_timeseries[index],
-                    np.array(power_energy) * np.abs(self.alpha[index])
+                    np.array(power_energy)
                 )
+
             # IF BESS IS DISCHARGING (specular case as charging)
 
                 # TODO THIS THING SHOULD BE DONE USING A FUNCTION CONTAINED IN A FILE NAMED CONSTRAINER
@@ -144,15 +135,15 @@ class BESS_model:
             else:
 
                 self.c_d_timeseries[index] = np.maximum(
-                    self.c_d_timeseries[index] * np.abs(self.alpha[index]),
+                    self.c_d_timeseries[index],
                     np.maximum(
-                        -self.d_func(self.soc[index]) * np.abs(self.alpha[index]),
+                        -self.d_func(self.soc[index]),
                         soc_min - self.soc[index]
                     )
                 )
                 self.c_d_timeseries[index] = np.maximum(
                     self.c_d_timeseries[index],
-                    np.array(-power_energy) * np.abs(self.alpha[index])
+                    np.array(-power_energy)
                 )
             # IF BESS IS DISCHARGING
 

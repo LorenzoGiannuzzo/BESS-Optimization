@@ -228,7 +228,7 @@ class Main:
             plots.Total_View(num_values=time_window)
             plots.PV_View(num_values=time_window)
             plots.POD_View(num_values=time_window)
-            plots.plot_alpha_vs_timewindow(time_window, np.abs(c_d_energy), PUN_Timeseries, [power_energy] * (time_window))
+            plots.plot_alpha_vs_timewindow(time_window, (charged_energy - discharged_energy) / size, PUN_Timeseries, [power_energy] * (time_window)) # TODO is /size correct?
 
 
 # MAIN EXECUTION
@@ -292,9 +292,9 @@ if __name__ == "__main__":
             "datetime": PUN_timeseries[i, 0].isoformat() + "Z",
             "PUN": PUN_timeseries[i, 1]/1000,
             "soc": SoC[i],
-            "c_d_energy": c_d_energy[i]*size,
-            "Nominal C-rate": np.abs(c_d_energy[i]),
-            "C-rate": abs(c_d_energy[i]),
+            "c_d_energy": main.charged_energy[i] + main.discharged_energy[i],
+            "Nominal C-rate": power_energy,
+            "C-rate": (main.charged_energy[i] - main.discharged_energy[i]) / size, # TODO si /size correct??
             "revenues": revenues[i],
             "rev_BESS": -main.discharged_energy[i] * PUN_timeseries[i,1] / 1000,
             "rev_PV": (pv_production['P'].iloc[i] - main.taken_from_pv[i])*PUN_timeseries[i,1]/1000,

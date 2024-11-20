@@ -16,12 +16,12 @@ Last Update of current code: 11/11/2024 - 12:20
 import numpy as np
 import configuration
 import Economic_parameters
-
 from pymoo.core.problem import ElementwiseProblem
 from BESS_model import BESS_model, charge_rate_interpolated_func, discharge_rate_interpolated_func, size, degradation
 from PV import pv_production
 
 # DEFINE OPTIMIZATION PROBLEM
+
 
 class Revenues(ElementwiseProblem):
     def __init__(

@@ -74,7 +74,7 @@ class Main:
 
         # APPLY PHYSICAL CONSTRAINTS
         (soc, charged_energy, discharged_energy, c_d_timeseries, taken_from_grid, discharged_from_pv,
-         taken_from_pv, n_cycles) = self.apply_physical_constraints(c_d_timeseries)
+         taken_from_pv, n_cycler) = self.apply_physical_constraints(c_d_timeseries)
 
         self.c_d_timeseries_final = c_d_timeseries
         self.soc = soc
@@ -83,7 +83,7 @@ class Main:
         self.taken_from_grid = taken_from_grid
         self.taken_from_pv = taken_from_pv
         self.discharged_from_pv = discharged_from_pv
-        self.n_cycles = n_cycles
+        self.n_cycler = n_cycler
 
         # Calculate and print revenues
         self.calculate_and_print_revenues(charged_energy, discharged_energy, self.taken_from_grid,
@@ -119,6 +119,9 @@ class Main:
 
         from argparser import n_cycles
 
+        n_cycler = [0] * time_window
+        n_cycler[0] = n_cycles
+
         for index in range(time_window - 1):
             from BESS_model import degradation
             from argparser import soc_max
@@ -137,9 +140,10 @@ class Main:
             total_energy = charged_energy[index] + np.abs(discharged_energy[index])
             actual_capacity = size * degradation(n_cycles_prev) / 100
             n_cycles = n_cycles_prev + total_energy / actual_capacity
+            n_cycler[index+1] = n_cycles
 
         return (soc, charged_energy, discharged_energy, c_d_timeseries, charged_energy_grid,
-                discharged_from_pv, taken_from_pv, n_cycles)
+                discharged_from_pv, taken_from_pv, n_cycler)
 
     def calculate_and_print_revenues(self, charged_energy, discharged_energy, taken_from_grid, discharged_from_pv):
         """
@@ -225,7 +229,7 @@ if __name__ == "__main__":
             "technology": technology,
             "size": size,
             "dod": range_str,
-            "n:cycles": main.n_cycles,
+            "n_cycles": main.n_cycler[i],
             "energy_charged_from_PV": main.taken_from_pv[i],
             "energy_taken_from_grid": main.taken_from_grid[i],
             "energy_sold_from_PV": pv_production['P'].iloc[i] - main.taken_from_pv[i],

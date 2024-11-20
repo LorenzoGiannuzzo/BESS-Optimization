@@ -217,6 +217,7 @@ if __name__ == "__main__":
     # OUTPUT CREATION
     for i in range(len(PUN_timeseries[:, 1])):
         entry = {
+
             "datetime": PUN_timeseries[i, 0].isoformat() + "Z",
             "PUN": PUN_timeseries[i, 1] / 1000,
             "soc": SoC[i],
@@ -234,6 +235,7 @@ if __name__ == "__main__":
             "energy_taken_from_grid": main.taken_from_grid[i],
             "energy_sold_from_PV": pv_production['P'].iloc[i] - main.taken_from_pv[i],
             "energy_sold_from_BESS": -main.discharged_energy[i]
+
         }
         data.append(entry)
 

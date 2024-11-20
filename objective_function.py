@@ -9,7 +9,7 @@ BESS Optimization using NSGA-III Algorithm
     __version__ = "v0.2.1"
     __license__ = "MIT"
 
-Last Update of current code: 11/11/2024 - 12:20
+Last Update of current code: 20/11/2024 - 12:20
 
 """
 

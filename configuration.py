@@ -120,7 +120,7 @@ n_gen = 1000
 # 8-bis) DEFINE TOLERANCE AS THE ALGORITHM INTERRUPTION CRITERIA
 
 tolerance = 0.5
-period = 20  # number of iteration in which tolerance is evaluated
+period = 10  # number of iteration in which tolerance is evaluated
 
 # 9) DEFINITION OF THE TERMINATION CRITERIA
 

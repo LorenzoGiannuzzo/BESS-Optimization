@@ -159,7 +159,7 @@ class BESS_model:
 
             # IF BESS IS DISCHARGING
 
-            elif self.c_d_timeseries[index] <= 0:
+            elif self.c_d_timeseries[index] < 0:
 
                 # EVALUATE DISCHARGED ENERGY FROM BESS
 
@@ -190,6 +190,7 @@ class BESS_model:
                 # RE-EVALUATE CHARGED ENERGY
 
                 self.charged_energy[index] = (self.soc[index+1] - self.soc[index])*self.size
+                self.discharged_energy[index] = 0.0
 
             # IF BESS IS DISCHARGING
 
@@ -202,6 +203,7 @@ class BESS_model:
                 # RE-EVALUATE DISCHARGED ENERGY
 
                 self.discharged_energy[index] = (self.soc[index+1] - self.soc[index])*self.size
+                self.charged_energy[index] = 0
 
             # N_CYCLES UPDATE FOR EACH TIMESTEP
 

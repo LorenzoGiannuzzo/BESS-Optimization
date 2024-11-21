@@ -1,7 +1,8 @@
 import pandas as pd
+from argparser import input_PV
 
 # File path
-file_path = 'input/PV_power.csv'
+file_path = input_PV
 
 pv_production = pd.read_csv(file_path, sep=';', usecols=['time', 'P'])
 

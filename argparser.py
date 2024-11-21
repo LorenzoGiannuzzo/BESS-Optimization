@@ -24,6 +24,7 @@ parser = argparse.ArgumentParser(description='Script for BESS Optimization.')
 # SET DEFAULT VALUES
 
 input_json_default = r"C:\Users\lorenzo.giannuzzo\PycharmProjects\BESS-Optimization\Input\pun2.json"
+input_PV_default = r"C:\Users\lorenzo.giannuzzo\PycharmProjects\BESS-Optimization\Input\PV_power.csv"
 output_json_default = r"C:\Users\lorenzo.giannuzzo\PycharmProjects\BESS-Optimization\Output\output.json"
 technology_default = "Li-ion"
 size_default = 2500
@@ -38,6 +39,9 @@ n_cycles_default = 0
 
 parser.add_argument('--input_json', type=str, required=False,default=input_json_default,
                     help='Absolute path of the file .json for PUN values as input')
+
+parser.add_argument('--input_PV', type=str, required=False,default=input_PV_default,
+                    help='Absolute path of the output file .json')
 
 parser.add_argument('--output_json', type=str, required=False,default=output_json_default,
                     help='Absolute path of the output file .json')
@@ -71,6 +75,7 @@ args = parser.parse_args()
 # GET PARAMETERS
 
 input_json_path = args.input_json
+input_PV = args.input_PV
 output_json_path = args.output_json
 technology = args.technology
 size = args.size

@@ -94,7 +94,7 @@ soc_0 = soc
 
 # 3) DEFINE POPULATION SITE USED TO EXPLORE THE OPTIMIZATION DOMAIN
 
-pop_size = 120
+pop_size = 50
 
 # 4) DEFINE NUMBER OF ELEMENTS INIZIALIZED BY THE NSGA-III (Elements of the chromosome, namely the genes,
 # which are the charged/discharged % of energy at each timestep t, for a lenght of time_window
@@ -119,7 +119,7 @@ n_gen = 1000
 
 # 8-bis) DEFINE TOLERANCE AS THE ALGORITHM INTERRUPTION CRITERIA
 
-tolerance = 0.5
+tolerance = 0.2
 period = 10  # number of iteration in which tolerance is evaluated
 
 # 9) DEFINITION OF THE TERMINATION CRITERIA

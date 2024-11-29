@@ -29,6 +29,7 @@ from Optimizer import Optimizer
 from argparser import output_json_path, range_str, soc_min, power_energy, POD_power
 from Plots import EnergyPlots
 from PV import pv_production
+from configuration import plot_monthly
 
 
 # CREATION OF CLASS MAIN
@@ -173,10 +174,16 @@ class Main:
                                 taken_from_grid, taken_from_pv, pv_production['P'], discharged_from_pv)
             plots.plot_combined_energy_with_pun(num_values=time_window)
             plots.Total_View(num_values=time_window)
+            if plot_monthly == True:
+                plots.Total_View_Monthly(time_window)
+                plots.Total_View_Monthly_SoC(time_window)
+
             plots.PV_View(num_values=time_window)
             plots.POD_View(num_values=time_window)
             plots.plot_alpha_vs_timewindow(time_window, (charged_energy - discharged_energy) / size, PUN_Timeseries,
                                            [power_energy] * (time_window))
+            plots.Total_View_cycles(time_window, main.n_cycler)
+            plots.plot_degradation()
 
 
 # MAIN EXECUTION
@@ -209,10 +216,13 @@ if __name__ == "__main__":
                               #discharge_rate_interpolated_func)
         EnergyPlots.total_convergence(len(main.history), time_window, pop_size, X, Y)
 
+
+
     SoC = main.soc
     c_d_energy = main.c_d_timeseries_final
     revenues = main.rev
     data = []
+
 
     # OUTPUT CREATION
     for i in range(len(PUN_timeseries[:, 1])):

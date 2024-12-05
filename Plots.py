@@ -1218,7 +1218,7 @@ class EnergyPlots:
         ]
 
         # Creazione del layout con 12 box usando gridspec
-        fig = plt.figure(figsize=(16, 32))  # Aumentato la larghezza e l'altezza per migliorare la visibilità
+        fig = plt.figure(figsize=(16, 48))  # Aumentato la larghezza e l'altezza per migliorare la visibilità
         gs = gridspec.GridSpec(num_settimane, 2)  # 12 righe e 2 colonne per 12 box
 
         width = 0.4  # Larghezza delle barre

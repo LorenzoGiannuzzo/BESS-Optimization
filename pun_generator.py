@@ -3,7 +3,7 @@ import pandas as pd
 from datetime import datetime, timedelta
 
 # Load the existing PUN timeseries from pun2.json
-with open('Input/pun2.json', 'r') as file:
+with open('Input/50h_pun.json', 'r') as file:
     pun_data = json.load(file)
 
 # Create a list to hold the new timeseries data
@@ -13,7 +13,7 @@ new_pun_data = []
 start_datetime = datetime.fromisoformat(pun_data[0]['datetime'].replace("Z", "+00:00"))
 
 # Generate data for 1 year (365 days)
-for i in range(365 * 24):  # 24 hours for each day
+for i in range(31 * 24):  # 24 hours for each day
     # Calculate the current datetime
     current_datetime = start_datetime + timedelta(hours=i)
 
@@ -31,5 +31,5 @@ for i in range(365 * 24):  # 24 hours for each day
     new_pun_data.append(new_entry)
 
 # Save the new timeseries to a new JSON file
-with open('Input/full_year_pun.json', 'w') as outfile:
+with open('Input/month_pun.json', 'w') as outfile:
     json.dump(new_pun_data, outfile, indent=4)

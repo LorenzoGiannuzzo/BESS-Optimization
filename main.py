@@ -168,10 +168,10 @@ class Main:
         for i in range(num_settimane):
             inizio = i * ore_per_settimana
             fine = inizio + ore_per_settimana
-            revenues_settimanali[i] = np.sum(rev[inizio:fine])
+            revenues_settimanali[i] = np.sum(rev[inizio:fine]) * 30
 
         # Moltiplica le revenues settimanali per 4
-        revenues_finali = revenues_settimanali * 4
+        revenues_finali = revenues_settimanali
 
         # Calcola la somma totale delle revenues finali
         rev = np.sum(revenues_finali)
@@ -193,6 +193,7 @@ class Main:
                                 taken_from_grid, taken_from_pv, pv_production['P'], discharged_from_pv)
             plots.plot_combined_energy_with_pun(num_values=time_window)
             plots.Total_View(num_values=time_window)
+            plots.plot_daily_energy_flows(num_values=time_window)
             #if plot_monthly == True:
                # plots.Total_View_Monthly(time_window)
                 #plots.Total_View_Monthly_SoC(time_window)

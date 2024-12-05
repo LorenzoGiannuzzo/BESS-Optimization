@@ -165,10 +165,10 @@ class Revenues(ElementwiseProblem):
         for i in range(num_settimane):
             inizio = i * ore_per_settimana
             fine = inizio + ore_per_settimana
-            revenues_settimanali[i] = np.sum(revenue_column[inizio:fine])
+            revenues_settimanali[i] = np.sum(revenue_column[inizio:fine]) * 30
 
         # Moltiplica le revenues settimanali per 4
-        revenues_finali = revenues_settimanali * 4
+        revenues_finali = revenues_settimanali
 
         # Calcola la somma totale delle revenues finali
         somma_revenues_finali = np.sum(revenues_finali)

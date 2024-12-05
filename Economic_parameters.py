@@ -63,4 +63,3 @@ time_window = len(PUN_timeseries_reduced[:, 1])
 
 PUN_timeseries = PUN_timeseries_reduced
 
-

@@ -1189,6 +1189,83 @@ class EnergyPlots:
 
         plt.savefig(output_path)
 
+    def plot_daily_energy_flows(self, num_values):
+        # Estrai i dati
+        time_steps = self.time_steps[:num_values]
+        charged_energy = self.charged_energy[:num_values]
+        discharged_energy = self.discharged_energy[:num_values]
+        pun_values = self.PUN_timeseries[:num_values]
+        soc = self.soc[:num_values]
+        produced_from_pv = self.produced_from_pv[:num_values]
+        taken_from_pv = self.taken_from_pv[:num_values]
+        taken_from_grid = self.taken_from_grid[:num_values]
+        discharged_from_pv = self.discharged_from_pv[:num_values]
+
+        # Calcola le revenues
+        rev = - (np.array(discharged_energy) * pun_values / 1000) - (taken_from_grid * pun_values / 1000) - (
+                discharged_from_pv * pun_values / 1000)
+        rev_cumulative = np.cumsum(rev)
+
+        # Suddividi i dati in settimane
+        num_settimane = 12
+        ore_per_settimana = 24
+        weeks = [slice(i * ore_per_settimana, (i + 1) * ore_per_settimana) for i in range(num_settimane)]
+
+        # Nomi dei mesi in inglese
+        month_names = [
+            "January", "February", "March", "April", "May", "June",
+            "July", "August", "September", "October", "November", "December"
+        ]
+
+        # Creazione del layout con 12 box usando gridspec
+        fig = plt.figure(figsize=(16, 32))  # Aumentato la larghezza e l'altezza per migliorare la visibilità
+        gs = gridspec.GridSpec(num_settimane, 2)  # 12 righe e 2 colonne per 12 box
+
+        width = 0.4  # Larghezza delle barre
+        for i, week in enumerate(weeks):
+            # Asse per SoC
+            ax0 = fig.add_subplot(gs[i, 0])  # Posizione del box per SoC
+            norm = Normalize(vmin=min(soc * 100), vmax=max(soc * 100))
+            cmap = matplotlib.colors.LinearSegmentedColormap.from_list("", ["lightblue", "steelblue", "darkblue"])
+
+            # Plot SoC
+            ax0.bar(time_steps[week], soc[week], color=cmap(norm(soc[week] * 100)), width=width)
+            ax0.set_title(f'{month_names[i]}')  # Modificato per usare i nomi dei mesi
+            ax0.set_ylabel('SoC [%]')
+            ax0.set_ylim(0, 1)  # Imposta i limiti dell'asse Y per SoC
+
+            # Asse per l'energia caricata e scaricata
+            ax1 = fig.add_subplot(gs[i, 1])  # Posizione del box per energia
+            ax1.fill_between(time_steps[week], 0, produced_from_pv[week], color='lightblue', alpha=0.3,
+                             label='Produced from PV')
+            ax1.bar(time_steps[week], taken_from_grid[week], color='darkgreen', label='From Grid to BESS',
+                    width=width)
+            ax1.bar(time_steps[week], taken_from_pv[week], color='darkblue', bottom=-discharged_from_pv[week],
+                    width=width,
+                    label='From PV to BESS')
+            ax1.bar(time_steps[week], discharged_energy[week], color='darkred', label='From BESS to Grid',
+                    width=width)
+            ax1.bar(time_steps[week], -discharged_from_pv[week], color='steelblue', label='From PV to Grid',
+                    width=width)
+
+            ax1.set_ylabel('Energy [kWh]')
+            ax1.legend(loc='upper left')
+
+            # Plot PUN values on the secondary axis
+            ax2 = ax1.twinx()
+            ax2.plot(time_steps[week], pun_values[week], color='black', label='PUN')
+            ax2.set_ylabel('PUN [Euro/MWh]')
+            ax2.legend(loc='upper right')
+
+        plt.subplots_adjust(hspace=0.4, wspace=0.3)  # Aumenta lo spazio verticale e orizzontale tra i grafici
+        plt.tight_layout()
+        plt.savefig(os.path.join(self.plots_dir, "Daily_Energy_Flows.png"))
+
+
+
+
+
+
 
 
 

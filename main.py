@@ -157,6 +157,25 @@ class Main:
         rev = (- (np.array(discharged_energy) * PUN_ts / 1000) - (taken_from_grid * PUN_ts / 1000) -
                discharged_from_pv * PUN_ts / 1000)
 
+        # Calcolare le revenues settimanali
+        num_settimane = 12
+        ore_per_settimana = 24
+
+        # Inizializza un array per le revenues settimanali
+        revenues_settimanali = np.zeros(num_settimane)
+
+        # Calcola le revenues per ogni settimana
+        for i in range(num_settimane):
+            inizio = i * ore_per_settimana
+            fine = inizio + ore_per_settimana
+            revenues_settimanali[i] = np.sum(rev[inizio:fine])
+
+        # Moltiplica le revenues settimanali per 4
+        revenues_finali = revenues_settimanali * 4
+
+        # Calcola la somma totale delle revenues finali
+        rev = np.sum(revenues_finali)
+
         self.rev = rev
         print("\nRevenues for optimized time window [EUROs]:\n\n", rev.sum())
 
@@ -174,9 +193,9 @@ class Main:
                                 taken_from_grid, taken_from_pv, pv_production['P'], discharged_from_pv)
             plots.plot_combined_energy_with_pun(num_values=time_window)
             plots.Total_View(num_values=time_window)
-            if plot_monthly == True:
-                plots.Total_View_Monthly(time_window)
-                plots.Total_View_Monthly_SoC(time_window)
+            #if plot_monthly == True:
+               # plots.Total_View_Monthly(time_window)
+                #plots.Total_View_Monthly_SoC(time_window)
 
             plots.PV_View(num_values=time_window)
             plots.POD_View(num_values=time_window)

@@ -154,9 +154,28 @@ class Revenues(ElementwiseProblem):
                                       (self.charged_energy_grid * self.PUN_timeseries / 1000)
                                       - (self.discharged_from_pv * self.PUN_timeseries / 1000))
 
+        # Calcolare le revenues settimanali
+        num_settimane = 12
+        ore_per_settimana = 24
+
+        # Inizializza un array per le revenues settimanali
+        revenues_settimanali = np.zeros(num_settimane)
+
+        # Calcola le revenues per ogni settimana
+        for i in range(num_settimane):
+            inizio = i * ore_per_settimana
+            fine = inizio + ore_per_settimana
+            revenues_settimanali[i] = np.sum(revenue_column[inizio:fine])
+
+        # Moltiplica le revenues settimanali per 4
+        revenues_finali = revenues_settimanali * 4
+
+        # Calcola la somma totale delle revenues finali
+        somma_revenues_finali = np.sum(revenues_finali)
+
         # EVALUATE THE REVENUES OBTAINED DURING THE OPTIMIZATION TIME WINDOW
 
-        total_revenue = sum(revenue_column)
+        total_revenue = somma_revenues_finali
 
         # CORRECT THE VALUES OF THE REVENUES IN ORDER TO MINIMIZE THE OBJECTIVE FUNCTION
 

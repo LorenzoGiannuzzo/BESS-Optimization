@@ -1236,6 +1236,7 @@ class EnergyPlots:
 
             # Asse per l'energia caricata e scaricata
             ax1 = fig.add_subplot(gs[i, 1])  # Posizione del box per energia
+            ax1.set_title(f'{month_names[i]}')
             ax1.fill_between(time_steps[week], 0, produced_from_pv[week], color='lightblue', alpha=0.3,
                              label='Produced from PV')
             ax1.bar(time_steps[week], taken_from_grid[week], color='darkgreen', label='From Grid to BESS',

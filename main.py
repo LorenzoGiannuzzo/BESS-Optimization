@@ -157,6 +157,8 @@ class Main:
         rev = (- (np.array(discharged_energy) * PUN_ts / 1000) - (taken_from_grid * PUN_ts / 1000) -
                discharged_from_pv * PUN_ts / 1000)
 
+        self.rev = rev
+
         # Calcolare le revenues settimanali
         num_settimane = 12
         ore_per_settimana = 24
@@ -174,10 +176,10 @@ class Main:
         revenues_finali = revenues_settimanali
 
         # Calcola la somma totale delle revenues finali
-        rev = np.sum(revenues_finali)
+        revv = np.sum(revenues_finali)
 
-        self.rev = rev
-        print("\nRevenues for optimized time window [EUROs]:\n\n", rev.sum())
+
+        print("\nRevenues for optimized time window [EUROs]:\n\n", revv.sum())
 
     def plot_results(self, soc, charged_energy, discharged_energy, c_d_energy, PUN_Timeseries, taken_from_grid,
                      taken_from_pv, discharged_from_pv):
@@ -248,7 +250,7 @@ if __name__ == "__main__":
     for i in range(len(PUN_timeseries[:, 1])):
         entry = {
 
-            "datetime": PUN_timeseries[i, 0].isoformat() + "Z",
+            "datetime": PUN_timeseries[i, 0],
             "PUN": PUN_timeseries[i, 1] / 1000,
             "soc": SoC[i],
             "c_d_energy": main.charged_energy[i] + main.discharged_energy[i],

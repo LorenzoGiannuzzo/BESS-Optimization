@@ -503,6 +503,22 @@ class EnergyPlots:
         taken_from_grid = self.taken_from_grid[:num_values]  # Energia dalla rete
         discharged_from_pv = self.discharged_from_pv
 
+        colors = [
+            'steelblue',  # Blu scuro
+            'lightskyblue',  # Blu navy
+            'lightgreen',  # Blu medio scuro
+            'greenyellow',  # Blu medio
+            'yellow',  # Blu chiaro
+            'orange',  # Deep Sky Blue
+            'red',
+            'orangered',# Blu pastello
+            'orange',  # Blu chiaro
+            'yellow',
+            'greenyellow', # Blu molto chiaro
+            'lightskyblue',  # Blu pallido
+              # Blu quasi bianco
+        ]
+
         # EVALUATE REVENUES
 
         rev = - (np.array(discharged_energy) * pun_values / 1000) - (
@@ -514,6 +530,11 @@ class EnergyPlots:
                 taken_from_grid * pun_values / 1000)
 
         rev = np.array(rev, dtype=float)
+
+        month_names = [
+            "January", "February", "March", "April", "May", "June",
+            "July", "August", "September", "October", "November", "December"
+        ]
 
         rev_cumulative = np.cumsum(rev)
 
@@ -528,8 +549,8 @@ class EnergyPlots:
         total_curtailment = np.sum(curtailment)
 
         # Creazione del layout con 4 box usando gridspec
-        fig = plt.figure(figsize=(24, 12))  # Aumentato il figsize per adattarsi a 4 grafici
-        gs = gridspec.GridSpec(2, 2, width_ratios=[1, 1], height_ratios=[1, 1])
+        fig = plt.figure(figsize=(36, 12))  # Aumentato il figsize per adattarsi a 4 grafici
+        gs = gridspec.GridSpec(2, 1, )
 
         # Asse per SoC in alto a sinistra
         ax0 = fig.add_subplot(gs[0, 0])
@@ -538,14 +559,32 @@ class EnergyPlots:
         norm = Normalize(vmin=min(soc*100), vmax=max(soc*100))
         cmap = matplotlib.colors.LinearSegmentedColormap.from_list("", ["lightblue", "steelblue", "darkblue"])
 
+        for i in range(12):
+            start = i * 24 - 1
+            end = (i + 1) * 24 - 1  # This gives you the last index for the current span
+            plt.axvspan(start, end, facecolor=colors[i], alpha=0.2)
+            plt.axvline(x=i*24-1, ls='--', color = "black")
+            ax0.text(11.5 + 23.92 * i, max(soc) * 100 + max(soc)*100*0.04, f'{month_names[i]}', color="black", fontsize=15,
+                     horizontalalignment='center')
+
         # Plot SoC with gradient colored bars based on value
         for i in range(len(time_steps)):
             ax0.bar(time_steps[i], soc[i]*100, color=cmap(norm(soc[i])))
         ax0.set_title('State of Charge (SoC)')
         ax0.set_ylabel('SoC [%]')
+        plt.ylim(0, max(soc)*100 + max(soc)*100*0.08)
+
+
 
         # Asse per l'energia caricata e scaricata (secondo grafico) in basso a sinistra
         ax1 = fig.add_subplot(gs[1, 0])
+
+        for i in range(12):
+            start = i * 24 - 1
+            end = (i + 1) * 24 - 1 # This gives you the last index for the current span
+            plt.axvspan(start, end, facecolor=colors[i], alpha=0.2)
+            plt.axvline(x=i * 24 - 1, ls='--',color = "black")
+            ax1.text(11.5 + 23.92*i , size * 0.55, f'{month_names[i]}', color="black", fontsize=15, horizontalalignment = 'center')
 
         # Aggiungi l'area sottesa per 'produced_from_pv' in un giallo più acceso e dietro le barre
         ax1.fill_between(time_steps, 0, produced_from_pv, color='lightblue', alpha=0.3, label='Produced from PV')
@@ -572,56 +611,60 @@ class EnergyPlots:
         ax3.plot(time_steps, pun_values, color='black', label='PUN')
         ax3.set_ylabel('PUN [Euro/MWh]')
         ax3.legend(loc='upper right')
+        plt.ylim(min(pun_values)-0.01*min(pun_values), max(pun_values)+max(pun_values)*0.01)
 
         ax1.set_xlabel('Time Window [h]')
 
-        # Asse per la cumulata dei ricavi a destra del primo grafico
-        ax2 = fig.add_subplot(gs[0, 1])  # Usa solo la prima riga nella colonna di destra
-        ax2.plot(time_steps, rev_cumulative, color='lightgreen', label='Cumulative Revenues', alpha=1)
-        ax2.set_title('Cumulative Revenues Over Time')
-        ax2.fill_between(time_steps, rev_cumulative, color='green', alpha=0.3)  # Area sottesa con alpha 0.3
-        ax2.set_ylabel('Cumulative Revenues [Euros]')
-        ax2.legend(loc='upper left')
-
-        # Nuovo grafico per rev_pv e rev_bess (quarto grafico) in basso a destra
-        colors_bess = ['red' if total < 0 else 'limegreen' for total in rev_pv]
-
-        ax4 = fig.add_subplot(gs[1, 1])
 
 
-        if total_curtailment != 0.0:
-            def func(pct, allvalues):
-                absolute = int(np.round(pct / 100. * np.sum(allvalues)))  # Calculate absolute value
-                return f"{absolute} ({pct:.1f}%)"  # Format as "absolute (percentage)"
 
-            sizes = [total_curtailment, total_dicharged_pv, total_from_pv, total_from_grid, total_discharged]
-            labels = ['Curtailment', 'From PV to Grid', 'From PV to BESS', 'From Grid to BESS', 'From BESS to Grid']
-            colors = ['Orange', 'khaki', 'steelblue', 'lightblue', 'paleturquoise']
-            explode = (0.05, 0.05,0.05,0.05,0.05)  # explode the first slice (Total Curtailment)
-
-            # Create pie chart
-            ax4.pie(sizes, explode=explode, labels=labels, colors=colors,
-                    autopct=lambda pct: func(pct, sizes),  # Use the custom function
-                    shadow=False, startangle=90, textprops={'fontsize': 14})
-            ax4.axis('equal')  # Equal aspect ratio ensures that pie is drawn as a circle.
-            ax4.set_title('System Total Energy Distribution [kWh]')
-
-        else:
-            def func(pct, allvalues):
-                absolute = int(np.round(pct / 100. * np.sum(allvalues)))  # Calculate absolute value
-                return f"{absolute} ({pct:.1f}%)"  # Format as "absolute (percentage)"
-
-            sizes = [total_dicharged_pv, total_from_pv, total_from_grid, total_discharged]
-            labels = [ 'From PV to Grid', 'From PV to BESS', 'From Grid to BESS', 'From BESS to Grid']
-            colors = [ 'goldenrod', 'steelblue', 'lightblue', 'paleturquoise']
-            explode = ( 0.05, 0.05, 0.05, 0.05)  # explode the first slice (Total Curtailment)
-
-            # Create pie chart
-            ax4.pie(sizes, explode=explode, labels=labels, colors=colors,
-                    autopct=lambda pct: func(pct, sizes),  # Use the custom function
-                    shadow=False, startangle=90, textprops={'fontsize': 14})
-            ax4.axis('equal')  # Equal aspect ratio ensures that pie is drawn as a circle.
-            ax4.set_title('System Total Energy Distribution [kWh]')
+        # # Asse per la cumulata dei ricavi a destra del primo grafico
+        # ax2 = fig.add_subplot(gs[0, 1])  # Usa solo la prima riga nella colonna di destra
+        # ax2.plot(time_steps, rev_cumulative, color='lightgreen', label='Cumulative Revenues', alpha=1)
+        # ax2.set_title('Cumulative Revenues Over Time')
+        # ax2.fill_between(time_steps, rev_cumulative, color='green', alpha=0.3)  # Area sottesa con alpha 0.3
+        # ax2.set_ylabel('Cumulative Revenues [Euros]')
+        # ax2.legend(loc='upper left')
+        #
+        # # Nuovo grafico per rev_pv e rev_bess (quarto grafico) in basso a destra
+        # colors_bess = ['red' if total < 0 else 'limegreen' for total in rev_pv]
+        #
+        # ax4 = fig.add_subplot(gs[1, 1])
+        #
+        #
+        # if total_curtailment != 0.0:
+        #     def func(pct, allvalues):
+        #         absolute = int(np.round(pct / 100. * np.sum(allvalues)))  # Calculate absolute value
+        #         return f"{absolute} ({pct:.1f}%)"  # Format as "absolute (percentage)"
+        #
+        #     sizes = [total_curtailment, total_dicharged_pv, total_from_pv, total_from_grid, total_discharged]
+        #     labels = ['Curtailment', 'From PV to Grid', 'From PV to BESS', 'From Grid to BESS', 'From BESS to Grid']
+        #     colors = ['Orange', 'khaki', 'steelblue', 'lightblue', 'paleturquoise']
+        #     explode = (0.05, 0.05,0.05,0.05,0.05)  # explode the first slice (Total Curtailment)
+        #
+        #     # Create pie chart
+        #     ax4.pie(sizes, explode=explode, labels=labels, colors=colors,
+        #             autopct=lambda pct: func(pct, sizes),  # Use the custom function
+        #             shadow=False, startangle=90, textprops={'fontsize': 14})
+        #     ax4.axis('equal')  # Equal aspect ratio ensures that pie is drawn as a circle.
+        #     ax4.set_title('System Total Energy Distribution [kWh]')
+        #
+        # else:
+        #     def func(pct, allvalues):
+        #         absolute = int(np.round(pct / 100. * np.sum(allvalues)))  # Calculate absolute value
+        #         return f"{absolute} ({pct:.1f}%)"  # Format as "absolute (percentage)"
+        #
+        #     sizes = [total_dicharged_pv, total_from_pv, total_from_grid, total_discharged]
+        #     labels = [ 'From PV to Grid', 'From PV to BESS', 'From Grid to BESS', 'From BESS to Grid']
+        #     colors = [ 'goldenrod', 'steelblue', 'lightblue', 'paleturquoise']
+        #     explode = ( 0.05, 0.05, 0.05, 0.05)  # explode the first slice (Total Curtailment)
+        #
+        #     # Create pie chart
+        #     ax4.pie(sizes, explode=explode, labels=labels, colors=colors,
+        #             autopct=lambda pct: func(pct, sizes),  # Use the custom function
+        #             shadow=False, startangle=90, textprops={'fontsize': 14})
+        #     ax4.axis('equal')  # Equal aspect ratio ensures that pie is drawn as a circle.
+        #     ax4.set_title('System Total Energy Distribution [kWh]')
 
         fig.tight_layout()
 
@@ -1221,42 +1264,41 @@ class EnergyPlots:
         fig = plt.figure(figsize=(16, 48))  # Aumentato la larghezza e l'altezza per migliorare la visibilità
         gs = gridspec.GridSpec(num_settimane, 2)  # 12 righe e 2 colonne per 12 box
 
-        width = 0.4  # Larghezza delle barre
+        width = 0.6  # Larghezza delle barre
         for i, week in enumerate(weeks):
             # Asse per SoC
             ax0 = fig.add_subplot(gs[i, 0])  # Posizione del box per SoC
-            norm = Normalize(vmin=min(soc * 100), vmax=max(soc * 100))
+            norm = Normalize(vmin=min(soc), vmax=max(soc))
             cmap = matplotlib.colors.LinearSegmentedColormap.from_list("", ["lightblue", "steelblue", "darkblue"])
 
             # Plot SoC
-            ax0.bar(time_steps[week], soc[week], color=cmap(norm(soc[week] * 100)), width=width)
-            ax0.set_title(f'{month_names[i]}')  # Modificato per usare i nomi dei mesi
-            ax0.set_ylabel('SoC [%]')
-            ax0.set_ylim(0, 1)  # Imposta i limiti dell'asse Y per SoC
+            ax0.bar(time_steps[week], soc[week], color=cmap(norm(soc[week])), width=width)
+            ax0.set_title(f'Typical Day of {month_names[i]} - State of Charge', fontsize=14)
+            ax0.set_ylabel('SoC [%]', fontsize=12)
+            # Set limits for SoC
+            ax0.grid(axis='y', linestyle='--', alpha=0.4)
 
-            # Asse per l'energia caricata e scaricata
-            ax1 = fig.add_subplot(gs[i, 1])  # Posizione del box per energia
-            ax1.set_title(f'{month_names[i]}')
+            # Energy axis
+            ax1 = fig.add_subplot(gs[i, 1])
+            ax1.set_title(f'Typical Day of {month_names[i]} - Energy Flows', fontsize=14)
             ax1.fill_between(time_steps[week], 0, produced_from_pv[week], color='lightblue', alpha=0.3,
                              label='Produced from PV')
-            ax1.bar(time_steps[week], taken_from_grid[week], color='darkgreen', label='From Grid to BESS',
-                    width=width)
+            ax1.bar(time_steps[week], taken_from_grid[week], color='darkgreen', label='From Grid to BESS', width=0.4)
             ax1.bar(time_steps[week], taken_from_pv[week], color='darkblue', bottom=-discharged_from_pv[week],
-                    width=width,
-                    label='From PV to BESS')
-            ax1.bar(time_steps[week], discharged_energy[week], color='darkred', label='From BESS to Grid',
-                    width=width)
+                    width=0.4, label='From PV to BESS')
+            ax1.bar(time_steps[week], discharged_energy[week], color='darkred', label='From BESS to Grid', width=0.4)
             ax1.bar(time_steps[week], -discharged_from_pv[week], color='steelblue', label='From PV to Grid',
-                    width=width)
+                    width=0.4)
 
-            ax1.set_ylabel('Energy [kWh]')
-            ax1.legend(loc='upper left')
+            ax1.set_ylabel('Energy [ kWh]', fontsize=12)
+            ax1.legend(loc='upper left', fontsize=10)
+            ax1.grid(axis='y', linestyle='--', alpha=0.7)
 
             # Plot PUN values on the secondary axis
             ax2 = ax1.twinx()
-            ax2.plot(time_steps[week], pun_values[week], color='black', label='PUN')
-            ax2.set_ylabel('PUN [Euro/MWh]')
-            ax2.legend(loc='upper right')
+            ax2.plot(time_steps[week], pun_values[week], color='black', label='PUN', linewidth=2)
+            ax2.set_ylabel('PUN [Euro/MWh]', fontsize=12)
+            ax2.legend(loc='upper right', fontsize=10)
 
         plt.subplots_adjust(hspace=0.4, wspace=0.3)  # Aumenta lo spazio verticale e orizzontale tra i grafici
         plt.tight_layout()

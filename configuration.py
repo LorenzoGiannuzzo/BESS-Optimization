@@ -115,11 +115,11 @@ xu = [max_charge] * time_window
 
 # 8) DEFINE NUMBER OF GENERATIONS USED TO INTERRUPT THE ALGORITHM EXECUTION
 
-n_gen = 1000
+n_gen = 2000
 
 # 8-bis) DEFINE TOLERANCE AS THE ALGORITHM INTERRUPTION CRITERIA
 
-tolerance = 1
+tolerance = 5
 period = 15
 
 # number of iteration in which tolerance is evaluated

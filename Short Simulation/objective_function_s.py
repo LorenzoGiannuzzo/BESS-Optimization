@@ -14,11 +14,11 @@ Last Update of current code: 20/11/2024 - 12:20
 """
 
 import numpy as np
-import configuration
-import Economic_parameters
+import configuration_s
+import Economic_parameters_s
 from pymoo.core.problem import ElementwiseProblem
-from BESS_model import BESS_model, charge_rate_interpolated_func, discharge_rate_interpolated_func, size, degradation
-from PV import pv_production
+from BESS_model_s import BESS_model, charge_rate_interpolated_func, discharge_rate_interpolated_func, size
+from PV_s import pv_production
 
 # DEFINE OPTIMIZATION PROBLEM
 
@@ -30,10 +30,10 @@ class Revenues(ElementwiseProblem):
 
     ) -> None:
         super().__init__(
-            n_var= configuration.n_var,
-            n_obj=configuration.n_obj,
-            xl= configuration.xl,
-            xu= configuration.xu,
+            n_var= configuration_s.n_var,
+            n_obj=configuration_s.n_obj,
+            xl= configuration_s.xl,
+            xu= configuration_s.xu,
             vtype=float,
             **kwargs,
 
@@ -41,7 +41,7 @@ class Revenues(ElementwiseProblem):
 
         # DEFINE REVENUES ATTRIBUTES FROM IMPORTER PARAMETERS
 
-        self.PUN_timeseries = Economic_parameters.PUN_timeseries[:,1]
+        self.PUN_timeseries = Economic_parameters_s.PUN_timeseries[:, 1]
         self.c_func, self.d_func = charge_rate_interpolated_func, discharge_rate_interpolated_func
 
         # DEFINE OBJECTIVE FUNCTION PARAMETERS
@@ -52,9 +52,9 @@ class Revenues(ElementwiseProblem):
 
         # INITIALIZE SoC AT t=0
 
-        self.soc[0] = configuration.soc_0
+        self.soc[0] = configuration_s.soc_0
 
-        self.time_window = configuration.time_window
+        self.time_window = configuration_s.time_window
         self.size = size
 
         self.production = pv_production['P']
@@ -65,7 +65,7 @@ class Revenues(ElementwiseProblem):
 
         # SET X-VECTOR TO BE OPTIMIZED AS THE % OF CHARGED AND DISCHARGED ENERGY FROM BESS
 
-        self.c_d_timeseries = np.array(x[:self.time_window]).reshape(configuration.time_window)
+        self.c_d_timeseries = np.array(x[:self.time_window]).reshape(configuration_s.time_window)
         self.alpha = np.ones(self.time_window)
 
         # EVALUATE THE CHARGED AND DISCHARGED ENERGY AND UPDATE THE SoC FOR EACH TIMESTEP t
@@ -87,11 +87,11 @@ class Revenues(ElementwiseProblem):
 
         # APPLY POD CONSTRAINTS
 
-        from argparser import n_cycles
+        from argparser_s import n_cycles
 
         for i in range(len(self.discharged_from_pv)):
 
-            from argparser import POD_power
+            from argparser_s import POD_power
 
             if -self.discharged_from_pv[i] - self.discharged_energy[i] > POD_power:
 
@@ -110,8 +110,8 @@ class Revenues(ElementwiseProblem):
 
             # EVALUATE SOC MAX
 
-            from BESS_model import degradation
-            from argparser import soc_max, soc_min
+            from BESS_model_s import degradation
+            from argparser_s import soc_max, soc_min
 
             n_cycles_prev = n_cycles
             max_capacity = degradation(n_cycles_prev) / 100
@@ -141,7 +141,7 @@ class Revenues(ElementwiseProblem):
         total_discharged = np.sum(-self.discharged_energy)
         total_energy = total_charged + total_discharged
 
-        from argparser import n_cycles
+        from argparser_s import n_cycles
 
         n_cycles_prev = n_cycles
         actual_capacity = size * degradation(n_cycles_prev)/100

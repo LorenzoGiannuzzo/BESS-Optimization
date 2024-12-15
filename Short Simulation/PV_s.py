@@ -1,6 +1,5 @@
 import pandas as pd
-import numpy as np
-from argparser import input_PV, PV_power
+from argparser_s import input_PV, PV_power
 
 # File path
 file_path = input_PV

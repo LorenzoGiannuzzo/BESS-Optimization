@@ -18,8 +18,8 @@ Last Update of current code: 11/11/2024 - 12:18
 import numpy as np
 from utils import Get_data
 from utils import BESS
-from argparser import size, technology
-from argparser import soc_min, soc_max, BESS_power, power_energy, n_cycles
+from argparser_s import size, technology
+from argparser_s import soc_min, soc_max, power_energy, n_cycles
 
 # SETTING ST FILE PATHS
 

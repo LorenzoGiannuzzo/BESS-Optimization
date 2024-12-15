@@ -16,8 +16,8 @@ Last Update of current code: 06/11/2024 - 17:00
 # IMPORT LIBRARIES AND MODULES FROM PROJECT FILES
 
 import numpy as np
-from argparser import soc
-from Economic_parameters import time_window
+from argparser_s import soc
+from Economic_parameters_s import time_window
 from pymoo.termination.robust import RobustTermination
 from pymoo.termination.xtol import DesignSpaceTermination
 from pymoo.algorithms.moo.nsga3 import NSGA3
@@ -28,7 +28,7 @@ from pymoo.operators.selection.tournament import TournamentSelection, compare
 from pymoo.util.ref_dirs import get_reference_directions
 from pymoo.core.termination import TerminateIfAny
 from pymoo.termination import get_termination
-from BESS_model import charge_rate_interpolated_func, discharge_rate_interpolated_func
+from BESS_model_s import charge_rate_interpolated_func, discharge_rate_interpolated_func
 
 # IDENTIFICATION OF MAX CHARGE AND DISCHARGE BESS CAPABILITY
 

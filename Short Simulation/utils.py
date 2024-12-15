@@ -1,11 +1,11 @@
-import ExcelOpener
-import Interpolator
+import ExcelOpener_s
+import Interpolator_s
 
 class Get_data:
     @staticmethod
     def get_data(file_path2, sheetname3):
         # Import data from an Excel file and a specific sheet using a method from the ExcelOpener module.
-        data = ExcelOpener.import_file.load_excel(file_path2, sheetname3)
+        data = ExcelOpener_s.import_file.load_excel(file_path2, sheetname3)
         # Return the imported data.
         return data
 
@@ -34,10 +34,10 @@ class BESS:
         # Select discharge rate DataFrame from rows 357 onwards of load_curve.
         discharge_rate = load_curve.iloc[357:, [0, 4, 5]]
         # Interpolate data for the charge rate.
-        charge_interpolator = Interpolator.DataInterpolator(charge_rate, 'SoC [%]', 'Charge Rate [kWh/(kWhp*h)]')
+        charge_interpolator = Interpolator_s.DataInterpolator(charge_rate, 'SoC [%]', 'Charge Rate [kWh/(kWhp*h)]')
         charge_rate_interpolated_func = charge_interpolator.interpolate()
         # Interpolate data for the discharge rate.
-        discharge_interpolator = Interpolator.DataInterpolator(discharge_rate, 'SoC [%]', 'Discharge Rate [kWh/(kWhp*h)]')
+        discharge_interpolator = Interpolator_s.DataInterpolator(discharge_rate, 'SoC [%]', 'Discharge Rate [kWh/(kWhp*h)]')
         discharge_rate_interpolated_func = discharge_interpolator.interpolate()
 
         # Return the interpolated functions for charge and discharge rates.

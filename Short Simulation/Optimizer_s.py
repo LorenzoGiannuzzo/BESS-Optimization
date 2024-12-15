@@ -15,13 +15,10 @@ Last Update of current code: 06/11/2024 - 17:38
 
 # IMPORT LIBRARIES
 
-import configuration
-import multiprocessing
+import configuration_s
 from pymoo.optimize import minimize
-from pymoo.core.problem import StarmapParallelization
-from objective_function import Revenues
-from multiprocessing import cpu_count
-from configuration import plot
+from objective_function_s import Revenues
+from configuration_s import plot
 
 
 # DEFINE OPTIMIZER CLASS
@@ -53,9 +50,9 @@ class Optimizer:
 
             problem = self._objective_function
 
-            algorithm = configuration.algorithm
+            algorithm = configuration_s.algorithm
 
-            termination = configuration.termination
+            termination = configuration_s.termination
 
             res = minimize(
 
@@ -76,9 +73,9 @@ class Optimizer:
 
             problem = self._objective_function
 
-            algorithm = configuration.algorithm
+            algorithm = configuration_s.algorithm
 
-            termination = configuration.termination
+            termination = configuration_s.termination
 
             res = minimize(
                 problem,

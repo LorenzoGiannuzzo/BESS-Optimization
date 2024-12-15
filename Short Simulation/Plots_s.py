@@ -23,7 +23,7 @@ import numpy as np
 import matplotlib.colors as mcolors
 import matplotlib.gridspec as gridspec
 from matplotlib.colors import Normalize
-from argparser import size, POD_power
+from argparser_s import size, POD_power
 
 matplotlib.use('Agg')
 
@@ -45,7 +45,7 @@ class EnergyPlots:
         self.produced_from_pv = produced_from_pv
         self.discharged_from_pv = discharged_from_pv
 
-        self.plots_dir = "Plots/Results"
+        self.plots_dir = "Plots/Results/Short Simulation"
 
         if not os.path.exists(self.plots_dir):
 
@@ -878,7 +878,7 @@ class EnergyPlots:
                 ax2.legend(loc='upper right')
 
         # Save the figure to the Plots/Results directory
-        plot_dir = 'Plots/Results'
+        plot_dir = '../Plots/Results'
         if not os.path.exists(plot_dir):
             os.makedirs(plot_dir)
         plt.savefig(os.path.join(plot_dir, 'Monthly_Results.png'), dpi=300, bbox_inches='tight')
@@ -926,7 +926,7 @@ class EnergyPlots:
                 ax.set_xlabel('Time [h]')
 
         # Save the figure to the Plots/Results directory
-        plot_dir = 'Plots/Results'
+        plot_dir = '../Plots/Results'
         if not os.path.exists(plot_dir):
             os.makedirs(plot_dir)
         plt.savefig(os.path.join(plot_dir, 'Monthly_SoC.png'), dpi=300, bbox_inches='tight')
@@ -934,7 +934,7 @@ class EnergyPlots:
 
     @staticmethod
     def plot_degradation():
-        from BESS_model import degradation
+        from BESS_model_s import degradation
         # Generate cycle numbers from 0 to 7000
         cycles = np.arange(0, 7001,1,dtype=float)  # 7001 to include 7000
         capacities = degradation(cycles)  # Calculate capacities for each cycle
@@ -946,7 +946,7 @@ class EnergyPlots:
         plt.title('Battery Capacity Degradation Over Cycles')
         plt.grid(True)
         plt.legend()
-        plt.savefig(os.path.join('Plots/General','Degradation.png'), dpi=300, bbox_inches='tight')
+        plt.savefig(os.path.join('Plots/General', 'Degradation.png'), dpi=300, bbox_inches='tight')
 
     @staticmethod
     def c_d_plot(charge_rate, discharge_rate, charge_rate_interpolated_func, discharge_rate_interpolated_func ):
@@ -988,7 +988,7 @@ class EnergyPlots:
 
     # Save the plot as a PNG file
 
-        if not os.path.exists("Plots"):
+        if not os.path.exists("../Plots"):
             os.makedirs("Plots")
         plt.savefig("Plots/General/interpolated_functions.png")
 
@@ -1066,7 +1066,7 @@ class EnergyPlots:
 
         # Save the figure
 
-        plt.savefig('Plots/Results/total_convergence.png')
+        plt.savefig('Plots/Results/Short Simulation/total_convergence.png')
 
     @staticmethod
     def PUN_plot(PUN_timeseries):
@@ -1154,7 +1154,7 @@ class EnergyPlots:
 
             # Check if the "Plots" folder exists, create it if not
 
-            output_dir = 'Plots/Results'
+            output_dir = 'Plots/Results/Short Simulation'
 
             if not os.path.exists(output_dir):
                 os.makedirs(output_dir)
@@ -1224,7 +1224,7 @@ class EnergyPlots:
 
         # Saving the plot to a file
 
-        output_dir = 'Plots/Results'
+        output_dir = 'Plots/Results/Short Simulation'
 
         os.makedirs(output_dir, exist_ok=True)
 

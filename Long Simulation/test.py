@@ -96,9 +96,3 @@ class Optimizer:
             print('Execution Time:', res.exec_time)
 
         return res
-
-
-
-
-
-

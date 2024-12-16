@@ -575,7 +575,6 @@ class EnergyPlots:
         plt.ylim(0, max(soc)*100 + max(soc)*100*0.08)
 
 
-
         # Asse per l'energia caricata e scaricata (secondo grafico) in basso a sinistra
         ax1 = fig.add_subplot(gs[1, 0])
 
@@ -666,14 +665,20 @@ class EnergyPlots:
         #     ax4.axis('equal')  # Equal aspect ratio ensures that pie is drawn as a circle.
         #     ax4.set_title('System Total Energy Distribution [kWh]')
 
-        fig.tight_layout()
+
 
         from argparser_s import weekends
 
         if weekends == 'True':
+            ax1.set_title('System Energy Flows - Weekdays')
+            ax0.set_title('State of Charge (SoC) - Weekdays')
+            fig.tight_layout()
             plt.savefig(os.path.join(self.plots_dir, "Total_View.png"))
-        else:
 
+        else:
+            ax1.set_title('System Energy Flows - Weekdends')
+            ax0.set_title('State of Charge (SoC) - Weekdends')
+            fig.tight_layout()
             plt.savefig(os.path.join(self.plots_dir, "Total_View_2.png"))
 
 

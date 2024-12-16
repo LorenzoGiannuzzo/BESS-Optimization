@@ -16,6 +16,7 @@ Last Update of current code: 18/11/2024 - 17:06
 # IMPORTING LIBRARIES
 
 import argparse
+import sys
 
 # CREATE PARSER
 
@@ -68,6 +69,9 @@ parser.add_argument('--POD_power', type=float, required=False,default=pod_power_
 parser.add_argument('--n_cycles', type=float, required=False,default=n_cycles_default,
                     help='number of cycles previously done by teh battery')
 
+parser.add_argument('--weekends', type= str,default = 'True', help='Execute main for weekends')
+
+
 # ARGUMENTS PARSING
 
 args = parser.parse_args()
@@ -86,9 +90,28 @@ power_energy = args.power_energy
 BESS_power = size * args.power_energy
 POD_power = args.POD_power
 n_cycles = args.n_cycles
+weekends = args.weekends
 
 start_str, end_str = range_str.split('-')
 soc_min = float(start_str) / 100
 soc_max = float(end_str) / 100
+
+args2 = [
+    sys.executable,  # Percorso all'interprete Python
+    'main.py',  # Nome del file principale
+    '--type', str('Short'),
+    '--input_json', input_json_path,
+    '--input_PV', input_PV,
+    '--output_json', output_json_path,
+    '--technology', technology,
+    '--size', str(size),
+    '--power_energy', str(power_energy),
+    '--soc', str(soc * 100),  # Converti di nuovo in percentuale
+    '--dod', range_str,
+    '--PV_power', str( str(PV_power)),
+    '--POD_power', str(POD_power),
+    '--n_cycles', str(n_cycles),
+    '--weekends', 'False'
+]
 
 

@@ -115,7 +115,7 @@ xu = [max_charge] * time_window
 
 # 8) DEFINE NUMBER OF GENERATIONS USED TO INTERRUPT THE ALGORITHM EXECUTION
 
-n_gen = 1000
+n_gen = 300
 
 # 8-bis) DEFINE TOLERANCE AS THE ALGORITHM INTERRUPTION CRITERIA
 
@@ -191,6 +191,8 @@ algorithm = NSGA3(
 # 12 DEFINE BOOLEAN VALUE TO ENABLE/DISABLE PLOTS
 
 plot = True
-plot_monthly = True
+plot_monthly = False
+i = 0
+
 
 

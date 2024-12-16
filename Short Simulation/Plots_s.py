@@ -668,9 +668,15 @@ class EnergyPlots:
 
         fig.tight_layout()
 
-        # Save the plot based on the minimize_C condition
+        from argparser_s import weekends
 
-        plt.savefig(os.path.join(self.plots_dir, "Total_View.png"))
+        if weekends == 'True':
+            plt.savefig(os.path.join(self.plots_dir, "Total_View.png"))
+        else:
+
+            plt.savefig(os.path.join(self.plots_dir, "Total_View_2.png"))
+
+
 
     def Total_View_cycles(self, num_values, n_cycles):
         # Create a cycles vector that matches the length of the time window

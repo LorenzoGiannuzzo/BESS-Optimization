@@ -78,9 +78,14 @@ for month in range(1, 13):  # Months from 1 to 12
 # Reset index to get hours as a column for weekends
 final_result_weekends.reset_index(drop=True, inplace=True)
 
-# Convert to numpy arrays if needed
-PUN_timeseries = final_result_weekdays.to_numpy()
-PUN_timeseries_weekends = final_result_weekends.to_numpy()
+from argparser_s import weekends
+
+if weekends == 'True':
+    # Convert to numpy arrays if needed
+    PUN_timeseries = final_result_weekdays.to_numpy()
+
+else:
+    PUN_timeseries = final_result_weekends.to_numpy()
 
 time_window = len(PUN_timeseries[:, 1])
 

@@ -66,6 +66,8 @@ if __name__ == "__main__":
     parser.add_argument('--n_cycles', type=float, required=False, default=n_cycles_default,
                         help='number of cycles previously done by the battery')
 
+    parser.add_argument('--weekends', type=str, default='True', help='Execute main for weekends')
+
     # ARGUMENTS PARSING
     args = parser.parse_args()
 

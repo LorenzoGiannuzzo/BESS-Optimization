@@ -54,12 +54,22 @@ The output consists in a .json file structured for each timestep of the consider
         energy_sold_from_BESS --- Energy discharged from the BESS and sold the electrical grid, expressed in kWh.\
 
 }
-### Example:
+### How to call main execution - Example:
 
-`python main.py --input_json C:\Users\lorenzo.giannuzzo\PycharmProjects\BESS-Optimization\Input\pun2.json --output_json C:\Users\lorenzo.giannuzzo\PycharmProjects\BESS-Optimization\Output\output.json --technology Li-ion --size 2500 --power 250  --soc 0.9 --dod 20-80 --minimize_C --PV_power 1000
+`python main.py --type Short --input_json C:\Users\lorenzo.giannuzzo\PycharmProjects\BESS-Optimization\Input
+\year_pun.json --input_PV C:\Users\lorenzo.giannuzzo\PycharmProjects\BESS-Optimization\Input\year_PV.csv --output_json C:\Users\lorenzo.giannuzzo\PycharmProjects\BESS-Optimization\Output\Short_Simulation\output_weekdays.json --technology Li-ion --size 2500 --power_energy 0.125 --soc 60 --dod 0-100  --PV_power 1000 --POD_power 1300 --n_cycles 1000
 `
 
 ## Project Structure
+
+The project is structured so that there is a main.py that is called from the command line, and depending on the din punt parameters requested, it executes one of the scripts: main_s.py and main_l.py. 
+The main_s.py file runs the annual "short" simulation for 12 typical weekday days and 12 typical weekend days (1 typical day for each month). This simulation is intended to provide a
+The main_l.py file runs the "long" simulation, i.e. the optimization of 8760 charge/discharge values.
+(yearly simulation with hourly resolution). Both files refer to other specific Python files named "_l" or "_s" depending on the main to which they refer. The files related to the simulations
+The files related to the "short" simulations are in the "short simulation" folder, while those related to the "long" simulations are in the "long simulation" folder. Since these are substantially different simulations, they use different
+use different input data processing files and different hyperparameter configuration files.
+
+Each of the long or short simulation directory contains the following files:
 
 - `BESS_model.py`: Contains the BESS model definition and related functions.
 - `Economic_parameters.py`: Defines economic parameters and functions related to the PUN timeseries.
@@ -71,6 +81,5 @@ The output consists in a .json file structured for each timestep of the consider
 - `configuration.py`: Configuration settings for the project.
 - `main.py`: The main script that runs the optimization and post-processing.
 - `objective_function.py`: Defines the objective function for the optimization.
-- `requirements.txt`: Lists the dependencies required to run the project.
 - `utils.py`: Utility functions used across the project.
 - `PV.py`: Import data related to the PV size and production.

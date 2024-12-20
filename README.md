@@ -26,11 +26,12 @@ Run the main script to start the optimization process:
 - `--technology <BESS_technology>`: Defines the technology type of the Battery Energy Storage System (e.g., "Li-ion" for Lithium-ion).
 - `--size <BESS_size_in_kWh>`: Specifies the size of the Battery Energy Storage System in kilowatt-hours (kWh).
 - `--power <BESS_nominal_power_in_kW>`: Specifies the nominal power of the Battery Energy Storage System in kW.
+- 
 - `--soc <SoC_at_step_0>`: Specifies the initial state of charge of the Battery Energy Storage System in %.
 - `--dod <Depth_of_Discharge>`: Specifies the range of SoC in %.
-- `--minimize_C <Boolean>`: Parameter that requires no values. Default values is FALSE, is it's in command line, it's set to be True. If TRUE, it changes the optimization problem maximizing revenues and minimizing C-rate
-- `--PV <Peak_power_in_kW>`: Define the peak power of the PV plants connected to the BESS. Default values is 0 kW. 
-
+- `--PV_power <Peak_power_in_kW>`: Define the peak power of the PV plants connected to the BESS. Default values is 0 kW. 
+- `--POD_power <POD_power_in_kW>`: Define the power of the POD that is responsible for energy exchanges between the system and the electrical grid. Default values is 100 kW. 
+- `--n_cycles <number_of_cycles>`: Define the number of cycles the battery already sustained before the optimization. Default value is 0. 
 
 ### Output:
 
@@ -42,11 +43,11 @@ The output consists in a .json file structured for each timestep of the consider
         soc: --- State Of Charge (SoC) expressed as a factor between 0 and 1.\
         c_d_energy: --- Energy which is charged/discharged expressed in kWh. Negative if discharged, positive if charged.\
         Nominal C-rate --- Nominal Charge/Discharge velocity, expressed as % of the total capacity of the BESS.
-        C-rate: --- Charge/Discharge velocity, expressed as % of the total capacity of the BESS.
         revenues: --- Cash flow resulted from charging/discharging energy from t BESS, expressed in EUROs.
         technology: --- Typology of BESS.\
         size: --- Total capacity of the battery, expressed in kWh.\
         dod: --- Depth of Discharge, expressed as "Min_SoC - Max_SoC".\
+        n_cycles --- Updated number of cycles battery has after charging or discharging energy.\
         energy_charged_from_pv --- Energy taken from pv and used to charge the BESS, expressed in kWh.\
         energy_taken_from_grid --- Energy taken from the electrical grid and used to charge the BESS, expressed in kWh.\
         energy_sold_from_pv --- Energy produced by PV plants and directly sold to the electrical grid, expressed in kWh.\

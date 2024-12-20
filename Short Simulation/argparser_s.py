@@ -69,7 +69,7 @@ parser.add_argument('--POD_power', type=float, required=False,default=pod_power_
 parser.add_argument('--n_cycles', type=float, required=False,default=n_cycles_default,
                     help='number of cycles previously done by teh battery')
 
-parser.add_argument('--weekends', type= str,default = 'True', help='Execute main for weekends')
+parser.add_argument('--weekends', type= str,required = False, default = 'True', help='Execute main for weekends')
 
 
 # ARGUMENTS PARSING

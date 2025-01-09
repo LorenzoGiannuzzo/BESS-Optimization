@@ -1,3 +1,18 @@
+"""
+
+BESS Optimization using NSGA-III Algorithm
+
+    __author__ = "Lorenzo Giannuzzo"
+    __maintainer__ = "Lorenzo Giannuzzo"
+    __email__ = "lorenzo.giannuzzo@polito.it"
+    __status__ = "in progress"
+    __version__ = "v0.2.1"
+    __license__ = "MIT"
+
+Last Update of current code: 09/01/2025 - 17:49
+
+"""
+
 import ExcelOpener_s
 import Interpolator_s
 
@@ -29,13 +44,17 @@ class BESS:
 
     @staticmethod
     def get_c_d_functions(load_curve):
+
         # Select charge rate DataFrame from the first 356 rows of load_curve.
         charge_rate = load_curve.iloc[:356, [0, 3.5]]
+
         # Select discharge rate DataFrame from rows 357 onwards of load_curve.
         discharge_rate = load_curve.iloc[357:, [0, 4, 5]]
+
         # Interpolate data for the charge rate.
         charge_interpolator = Interpolator_s.DataInterpolator(charge_rate, 'SoC [%]', 'Charge Rate [kWh/(kWhp*h)]')
         charge_rate_interpolated_func = charge_interpolator.interpolate()
+
         # Interpolate data for the discharge rate.
         discharge_interpolator = Interpolator_s.DataInterpolator(discharge_rate, 'SoC [%]', 'Discharge Rate [kWh/(kWhp*h)]')
         discharge_rate_interpolated_func = discharge_interpolator.interpolate()

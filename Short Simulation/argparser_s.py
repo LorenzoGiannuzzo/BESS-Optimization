@@ -9,21 +9,18 @@ BESS Optimization using NSGA-III Algorithm
     __version__ = "v0.2.1"
     __license__ = "MIT"
 
-Last Update of current code: 18/11/2024 - 17:06
+Last Update of current code: 09/01/2025 - 17:06
 
 """
 
 # IMPORTING LIBRARIES
-
 import argparse
 import sys
 
 # CREATE PARSER
-
 parser = argparse.ArgumentParser(description='Script for BESS Optimization.')
 
 # SET DEFAULT VALUES
-
 input_json_default = r"C:\Users\lorenzo.giannuzzo\PycharmProjects\BESS-Optimization\Input\pun2.json"
 input_PV_default = r"C:\Users\lorenzo.giannuzzo\PycharmProjects\BESS-Optimization\Input\PV_power.csv"
 output_json_default = r"C:\Users\lorenzo.giannuzzo\PycharmProjects\BESS-Optimization\Output\output.json"
@@ -37,7 +34,6 @@ pod_power_default = 100
 n_cycles_default = 0
 
 # GET PARSER ARGUMENTS FROM COMMAND LINE
-
 parser.add_argument('--input_json', type=str, required=False,default=input_json_default,
                     help='Absolute path of the file .json for PUN values as input')
 
@@ -73,11 +69,9 @@ parser.add_argument('--weekends', type= str,required = False, default = 'True', 
 
 
 # ARGUMENTS PARSING
-
 args = parser.parse_args()
 
 # GET PARAMETERS
-
 input_json_path = args.input_json
 input_PV = args.input_PV
 output_json_path = args.output_json
@@ -96,9 +90,10 @@ start_str, end_str = range_str.split('-')
 soc_min = float(start_str) / 100
 soc_max = float(end_str) / 100
 
+# Execute Long Simulation with new parameters
 args2 = [
-    sys.executable,  # Percorso all'interprete Python
-    'main.py',  # Nome del file principale
+    sys.executable,
+    'main.py',
     '--type', str('Short'),
     '--input_json', input_json_path,
     '--input_PV', input_PV,

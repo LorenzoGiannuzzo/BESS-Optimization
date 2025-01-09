@@ -9,12 +9,11 @@ BESS Optimization using NSGA-III Algorithm
     __version__ = "v0.2.1"
     __license__ = "MIT"
 
-Last Update of current code: 06/11/2024 - 17:38
+Last Update of current code: 09/01/2025 - 17:38
 
 """
 
 # IMPORT LIBRARIES
-
 import configuration_s
 from pymoo.optimize import minimize
 from objective_function_s import Revenues
@@ -22,7 +21,6 @@ from configuration_s import plot
 
 
 # DEFINE OPTIMIZER CLASS
-
 class Optimizer:
 
     def __init__(self, objective_function: Revenues, pop_size: int, multiprocessing=True):
@@ -33,7 +31,6 @@ class Optimizer:
         self.multiprocessing = multiprocessing
 
     # DEFINE THE OPTIMIZATION TASK: MAXIMIZATION OF REVENUES
-
     def maximize_revenues(self):
 
         if plot:
@@ -49,9 +46,7 @@ class Optimizer:
         if self.multiprocessing:
 
             problem = self._objective_function
-
             algorithm = configuration_s.algorithm
-
             termination = configuration_s.termination
 
             res = minimize(
@@ -66,15 +61,12 @@ class Optimizer:
             )
 
             # VISUALIZE EXECUTION TIME
-
             print('Execution Time:', res.exec_time)
 
         else:
 
             problem = self._objective_function
-
             algorithm = configuration_s.algorithm
-
             termination = configuration_s.termination
 
             res = minimize(
@@ -87,7 +79,6 @@ class Optimizer:
             )
 
             # VISUALIZE EXECUTION TIME
-
             print('Execution Time:', res.exec_time)
 
         return res

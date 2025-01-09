@@ -9,16 +9,14 @@ BESS Optimization using NSGA-III Algorithm
     __version__ = "v0.2.1"
     __license__ = "MIT"
 
-Last Update of current code: 06/11/2024 - 17:39
+Last Update of current code: 09/01/2025 - 17:39
 
 """
 
 # IMPORT LIBRARIES
-
 from scipy.interpolate import interp1d
 
 # CREATE DATAINTERPOLATOR CLASS
-
 class DataInterpolator:
 
     def __init__(self, df, x_col, y_col):

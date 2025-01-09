@@ -9,16 +9,14 @@ BESS Optimization using NSGA-III Algorithm
     __version__ = "v0.2.1"
     __license__ = "MIT"
 
-Last Update of current code: 06/11/2024 - 17:38
+Last Update of current code: 09/01/2025 - 17:38
 
 """
 
 # IMPORT LIBRARIES
-
 import pandas as pd
 
 # CREATE IMPORT_FILE CLASS
-
 # Define CSVHandler class
 class import_file:
 
@@ -32,13 +30,11 @@ class import_file:
         except FileNotFoundError:
 
             # Handle FileNotFoundError, print an error message
-
             print(f"Error: The file '{file_path}' was not found.")
 
         except Exception as e:
 
             # Handle other exceptions, print an error message with details
-
             print(f"Error loading the file '{file_path}': {e}")
 
         return data

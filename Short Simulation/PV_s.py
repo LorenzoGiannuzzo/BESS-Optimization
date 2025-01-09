@@ -1,3 +1,18 @@
+"""
+
+BESS Optimization using NSGA-III Algorithm
+
+    __author__ = "Lorenzo Giannuzzo"
+    __maintainer__ = "Lorenzo Giannuzzo"
+    __email__ = "lorenzo.giannuzzo@polito.it"
+    __status__ = "in progress"
+    __version__ = "v0.2.1"
+    __license__ = "MIT"
+
+Last Update of current code: 09/01/2025 - 17:49
+
+"""
+
 import pandas as pd
 from argparser_s import input_PV, PV_power
 
@@ -30,6 +45,7 @@ final_pv_result = pd.DataFrame()
 # Iterate over each month to create the final structure
 for month in range(1, 13):  # Months from 1 to 12
     month_data = mean_hourly_pv[mean_hourly_pv['month'] == month]
+
     # Append the month data to the final result
     final_pv_result = pd.concat([final_pv_result, month_data[['hour', 'P']]], ignore_index=True)
 
@@ -38,7 +54,6 @@ final_pv_result.reset_index(drop=True, inplace=True)
 
 # Convert to numpy array
 PV_timeseries_reduced = final_pv_result
-
 pv_production = PV_timeseries_reduced
 
 

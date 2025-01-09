@@ -9,14 +9,13 @@ BESS Optimization using NSGA-III Algorithm
     __version__ = "v0.2.1"
     __license__ = "MIT"
 
-Last Update of current code: 16/12/2024 - 17:18
+Last Update of current code: 09/01/2025 - 17:18
 
 """
 
 # IMPORTING LIBRARIES AND MODULES FROM PROJECT
 import numpy as np  # Numerical operations
 import json  # JSON file handling
-import os  # Operating system functionalities
 from pymoo.core.problem import StarmapParallelization  # Parallelization for optimization
 from multiprocessing import Pool, cpu_count  # Multiprocessing utilities
 from objective_function_s import Revenues  # Objective function for revenue calculation
@@ -219,10 +218,6 @@ class Main:
             plots.Total_View_cycles(time_window, self.n_cycler)  # Total view of cycles
             plots.plot_degradation()  # Plot degradation
 
-            # if plot_monthly == True:
-            # plots.Total_View_Monthly(time_window)  # Monthly view plot
-            # plots.Total_View_Monthly_SoC(time_window)  # Monthly SoC plot
-
 # MAIN EXECUTION
 if __name__ == "__main__":
 
@@ -252,10 +247,6 @@ if __name__ == "__main__":
 
     # EXECUTE ADDITIONAL PLOTS IF PLOT FLAG IS TRUE
     if plot:
-        # EnergyPlots.PUN_plot(PUN_timeseries[:, 1])  # Plot PUN timeseries
-        # EnergyPlots.convergence(len(main.history), time_window, pop_size, X, Y)  # Plot convergence of optimization
-        # EnergyPlots.c_d_plot(charge_rate, discharge_rate, charge_rate_interpolated_func,
-        # discharge_rate_interpolated_func)  # Plot charge/discharge rates
         EnergyPlots.total_convergence(len(main.history), time_window, pop_size, X, Y)  # Plot total convergence
 
     # GET SOC VALUES

@@ -9,12 +9,11 @@ BESS Optimization using NSGA-III Algorithm
     __version__ = "v0.2.1"
     __license__ = "MIT"
 
-Last Update of current code: 06/11/2024 - 17:00
+Last Update of current code: 09/01/2025 - 17:00
 
 """
 
 # IMPORT LIBRARIES AND MODULES FROM PROJECT FILES
-
 import numpy as np
 from argparser_l import soc
 from Economic_parameters_l import time_window
@@ -31,17 +30,11 @@ from pymoo.termination import get_termination
 from BESS_model_l import charge_rate_interpolated_func, discharge_rate_interpolated_func
 
 # IDENTIFICATION OF MAX CHARGE AND DISCHARGE BESS CAPABILITY
-
 x = np.linspace(0, 1,1000)
-
 charge_values = charge_rate_interpolated_func(x)
-
 discharge_values = discharge_rate_interpolated_func(x)
-
 max_charge = max(charge_values)
-
 max_discharge = max(discharge_values)
-
 
 ''' 
 OPTIMIZATION PARAMETERS:
@@ -63,21 +56,17 @@ OPTIMIZATION PARAMETERS:
 
 # DEFINE RANDOM SET FUNCTION EXTRACTION
 
-
 def comp_by_cv_then_random(pop, P, **kwargs):
 
     S = np.full(P.shape[0], np.nan)
-
     for i in range(P.shape[0]):
         a, b = P[i, 0], P[i, 1]
 
         # if at least one solution is infeasible
-
         if pop[a].CV > 0.0 or pop[b].CV > 0.0:
             S[i] = compare(a, pop[a].CV, b, pop[b].CV, method='smaller_is_better', return_random_if_equal=True)
 
         # both solutions are feasible just set random
-
         else:
             S[i] = np.random.choice([a, b])
 
@@ -85,52 +74,41 @@ def comp_by_cv_then_random(pop, P, **kwargs):
 
 
 # 1) DEFINE TIME WINDOW OBTAINED FROM Economic_parameters.py FILE
-
 time_window = time_window
 
 # 2) SoC at timestep 0 INITIALIZATION DEFINED FROM ARGPARSER
-
 soc_0 = soc
 
 # 3) DEFINE POPULATION SITE USED TO EXPLORE THE OPTIMIZATION DOMAIN
-
 pop_size = 50
 
 # 4) DEFINE NUMBER OF ELEMENTS INIZIALIZED BY THE NSGA-III (Elements of the chromosome, namely the genes,
 # which are the charged/discharged % of energy at each timestep t, for a lenght of time_window
-
 n_var = time_window
 
 # 5) DEFINE NUMBER OF VARIABLES (OUTPUTS NEEDED TO BE EVALUATED AS OBJECTIVE FUNCTION)
-
 n_obj = 1
 
 # 6) DEFINE THE LOWER BOUNDARIES OF THE RESEARCH DOMAIN, NAMELY THE MAXIMUM % OF SoC WHICH CAN BE DISCHARGED
-
 xl = [-max_discharge]*time_window
 
 # 7) DEFINE THE UPPER BOUNDARIES OF THE RESEARCH DOMAIN, NAMELY THE MAXIMUM % OF SoC WHICH CAN BE CHARGED
-
 xu = [max_charge] * time_window
 
 # 8) DEFINE NUMBER OF GENERATIONS USED TO INTERRUPT THE ALGORITHM EXECUTION
-
 n_gen = 5000
 
 # 8-bis) DEFINE TOLERANCE AS THE ALGORITHM INTERRUPTION CRITERIA
-
 tolerance = 1
 period = 15
 
 # number of iteration in which tolerance is evaluated
 
 # 9) DEFINITION OF THE TERMINATION CRITERIA
-
 termination1 = get_termination("n_gen", n_gen)  # replaced by tolerance
 termination2 = RobustTermination(DesignSpaceTermination(tol=tolerance), period=period)
 
 # TERMINATE IF ANY OF THE 2 TERMINATION CRITERIA IS MET
-
 termination = TerminateIfAny(termination1, termination2)
 
 # 10) DEFINITION OF THE REFERENCE DIRECTION
@@ -189,8 +167,7 @@ algorithm = NSGA3(
 )
 
 # 12 DEFINE BOOLEAN VALUE TO ENABLE/DISABLE PLOTS
-
 plot = True
-plot_monthly = True
+plot_monthly = False
 
 

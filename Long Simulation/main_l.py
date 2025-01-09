@@ -14,7 +14,6 @@ Last Update of current code: 20/11/2024 - 17:18
 """
 
 # IMPORTING LIBRARIES AND MODULES FROM PROJECT
-
 import multiprocessing
 import numpy as np
 import json
@@ -30,7 +29,6 @@ from argparser_l import output_json_path, range_str, soc_min, power_energy, POD_
 from Plots_l import EnergyPlots
 from PV_l import pv_production
 from configuration_l import plot_monthly
-
 
 # CREATION OF CLASS MAIN
 class Main:
@@ -101,10 +99,8 @@ class Main:
         d_func = discharge_rate_interpolated_func  # Discharge rate function
         soc = [0.0] * time_window  # Initialize state of charge
         soc[0] = soc_0  # Initial state of charge
-
         bess_model = BESS_model(time_window, PUN_timeseries, soc, size, c_func, d_func)
         charged_energy, discharged_energy = bess_model.run_simulation(c_d_timeseries)
-
         taken_from_pv = np.minimum(charged_energy, pv_production['P'])
         charged_energy_grid = np.maximum(charged_energy - taken_from_pv, 0.0)
         discharged_from_pv = np.minimum(-pv_production['P'] + taken_from_pv, 0.0)
@@ -147,12 +143,14 @@ class Main:
                 discharged_from_pv, taken_from_pv, n_cycler)
 
     def calculate_and_print_revenues(self, charged_energy, discharged_energy, taken_from_grid, discharged_from_pv):
+
         """
         Calculates and prints total revenues for the optimized period.
         Args:
             charged_energy (list): Charged energy for each time step.
             discharged_energy (list): Discharged energy for each time step.
         """
+
         PUN_ts = PUN_timeseries[:, 1]  # Time series of energy prices
         rev = (- (np.array(discharged_energy) * PUN_ts / 1000) - (taken_from_grid * PUN_ts / 1000) -
                discharged_from_pv * PUN_ts / 1000)
@@ -162,6 +160,7 @@ class Main:
 
     def plot_results(self, soc, charged_energy, discharged_energy, c_d_energy, PUN_Timeseries, taken_from_grid,
                      taken_from_pv, discharged_from_pv):
+
         """
         Generates plots of the state of charge, charged energy, discharged energy, and energy prices.
         Args:
@@ -169,6 +168,7 @@ class Main:
             charged_energy (list): Charged energy for each time step.
             discharged_energy (list): Discharged energy for each time step.
         """
+
         if plot:
             plots = EnergyPlots(time_window, soc, charged_energy, discharged_energy, PUN_timeseries[:, 1],
                                 taken_from_grid, taken_from_pv, pv_production['P'], discharged_from_pv)
@@ -194,7 +194,6 @@ if __name__ == "__main__":
     # POSTPROCESSING
     X = []
     Y = []
-
     for j in range(len(main.history)):
         X.append([])
         for i in range(pop_size):
@@ -210,19 +209,12 @@ if __name__ == "__main__":
 
     # PLOTS
     if plot:
-        #EnergyPlots.PUN_plot(PUN_timeseries[:, 1])
-        #EnergyPlots.convergence(len(main.history), time_window, pop_size, X, Y)
-        #EnergyPlots.c_d_plot(charge_rate, discharge_rate, charge_rate_interpolated_func,
-                              #discharge_rate_interpolated_func)
         EnergyPlots.total_convergence(len(main.history), time_window, pop_size, X, Y)
-
-
 
     SoC = main.soc
     c_d_energy = main.c_d_timeseries_final
     revenues = main.rev
     data = []
-
 
     # OUTPUT CREATION
     for i in range(len(PUN_timeseries[:, 1])):
@@ -248,7 +240,6 @@ if __name__ == "__main__":
 
         }
         data.append(entry)
-
     json_file_path = output_json_path
     with open(json_file_path, 'w') as json_file:
         json.dump(data, json_file, indent=4)

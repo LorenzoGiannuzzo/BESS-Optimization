@@ -9,20 +9,17 @@ BESS Optimization using NSGA-III Algorithm
     __version__ = "v0.2.1"
     __license__ = "MIT"
 
-Last Update of current code: 18/11/2024 - 17:06
+Last Update of current code: 09/01/2025 - 17:06
 
 """
 
 # IMPORTING LIBRARIES
-
 import argparse
 
 # CREATE PARSER
-
 parser = argparse.ArgumentParser(description='Script for BESS Optimization.')
 
 # SET DEFAULT VALUES
-
 input_json_default = r"C:\Users\lorenzo.giannuzzo\PycharmProjects\BESS-Optimization\Input\pun2.json"
 input_PV_default = r"C:\Users\lorenzo.giannuzzo\PycharmProjects\BESS-Optimization\Input\PV_power.csv"
 output_json_default = r"C:\Users\lorenzo.giannuzzo\PycharmProjects\BESS-Optimization\Output\output.json"
@@ -36,7 +33,6 @@ pod_power_default = 100
 n_cycles_default = 0
 
 # GET PARSER ARGUMENTS FROM COMMAND LINE
-
 parser.add_argument('--input_json', type=str, required=False,default=input_json_default,
                     help='Absolute path of the file .json for PUN values as input')
 
@@ -69,11 +65,9 @@ parser.add_argument('--n_cycles', type=float, required=False,default=n_cycles_de
                     help='number of cycles previously done by teh battery')
 
 # ARGUMENTS PARSING
-
 args = parser.parse_args()
 
 # GET PARAMETERS
-
 input_json_path = args.input_json
 input_PV = args.input_PV
 output_json_path = args.output_json
@@ -86,7 +80,6 @@ power_energy = args.power_energy
 BESS_power = size * args.power_energy
 POD_power = args.POD_power
 n_cycles = args.n_cycles
-
 start_str, end_str = range_str.split('-')
 soc_min = float(start_str) / 100
 soc_max = float(end_str) / 100

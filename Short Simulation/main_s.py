@@ -215,13 +215,11 @@ class Main:
             plots.POD_View(num_values=time_window)  # POD view plot
             plots.plot_alpha_vs_timewindow(time_window, (charged_energy - discharged_energy) / size, PUN_Timeseries,
                                            [power_energy] * (time_window))  # Plot alpha vs time window
-            plots.Total_View_cycles(time_window, self.n_cycler)  # Total view of cycles
+            #plots.Total_View_cycles(time_window, self.n_cycler)  # Total view of cycles
             plots.plot_degradation()  # Plot degradation
 
 # MAIN EXECUTION
 if __name__ == "__main__":
-
-
 
     main = Main(multiprocessing=True)  # Create Main instance with multiprocessing enabled
     main.run_optimization()  # Run optimization

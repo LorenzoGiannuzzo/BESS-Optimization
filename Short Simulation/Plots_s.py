@@ -428,28 +428,14 @@ class EnergyPlots:
         discharged_from_pv = self.discharged_from_pv
 
         colors = [
-            'steelblue',  # Blu scuro
-            'lightskyblue',  # Blu navy
-            'lightgreen',  # Blu medio scuro
-            'greenyellow',  # Blu medio
-            'yellow',  # Blu chiaro
-            'orange',  # Deep Sky Blue
-            'red',
-            'orangered',# Blu pastello
-            'orange',  # Blu chiaro
-            'yellow',
-            'greenyellow', # Blu molto chiaro
-            'lightskyblue',  # Blu pallido
-              # Blu quasi bianco
+            'steelblue', 'lightskyblue', 'lightgreen', 'greenyellow', 'yellow',
+            'orange', 'red', 'orangered', 'orange', 'yellow', 'greenyellow', 'lightskyblue'
         ]
 
         # EVALUATE REVENUES
         rev = - (np.array(discharged_energy) * pun_values / 1000) - (
                 taken_from_grid * pun_values / 1000) + (
-                      -discharged_from_pv) * pun_values / 1000
-        rev_pv = -discharged_from_pv * pun_values / 1000
-        rev_bess = -(np.array(discharged_energy) * pun_values / 1000) - (
-                taken_from_grid * pun_values / 1000)
+                  -discharged_from_pv) * pun_values / 1000
         rev = np.array(rev, dtype=float)
 
         month_names = [
@@ -457,66 +443,66 @@ class EnergyPlots:
             "July", "August", "September", "October", "November", "December"
         ]
 
-        rev_cumulative = np.cumsum(rev)
+        # Creating the layout with 3 boxes using gridspec
+        fig = plt.figure(figsize=(36, 16))  # Increased height for the new graph
+        gs = gridspec.GridSpec(3, 1)  # Changed to 3 rows
 
-        # EVALUATE TOTAL ENTITIES
-        total_from_pv = np.sum(taken_from_pv)
-        total_from_grid = np.sum(taken_from_grid)
-        total_discharged = np.sum(-discharged_energy)
-        total_dicharged_pv = np.sum(-discharged_from_pv)
-        curtailment = np.maximum(produced_from_pv + discharged_from_pv - taken_from_pv, 0.0)
-        total_curtailment = np.sum(curtailment)
-
-        # Creating the layout with 4 boxes using gridspec
-        fig = plt.figure(figsize=(36, 12))  # Aumentato il figsize per adattarsi a 4 grafici
-        gs = gridspec.GridSpec(2, 1, )
-
-        # Axis for SoC top left
+        # Axis for SoC top
         ax0 = fig.add_subplot(gs[0, 0])
 
-        # Normalize SoC values to be in the range [0, 1] for the colormap
-        norm = Normalize(vmin=min(soc*100), vmax=max(soc*100))
-        cmap = matplotlib.colors.LinearSegmentedColormap.from_list("", ["lightblue", "steelblue", "darkblue"])
-
+        # Plot SoC
+        norm = Normalize(vmin=min(soc * 100), vmax=max(soc * 100))
+        cmap = plt.cm.get_cmap("Blues")
         for i in range(12):
             start = i * 24 - 1
-            end = (i + 1) * 24 - 1  # This gives you the last index for the current span
-            plt.axvspan(start, end, facecolor=colors[i], alpha=0.2)
-            plt.axvline(x=i*24-1, ls='--', color = "black")
-            ax0.text(11.5 + 23.92 * i, max(soc) * 100 + max(soc)*100*0.04, f'{month_names[i]}', color="black", fontsize=15,
-                     horizontalalignment='center')
+            end = (i + 1) * 24 - 1
+            #plt.axvspan(start, end, facecolor=colors[i], alpha=0.2)
+            plt.axvline(x=i * 24 - 1, ls='--', color="black")
+            ax0.text(11.5 + 23.92 * i, max(soc) * 100 + max(soc) * 100 * 0.04, f'{month_names[i]}', color="black",
+                     fontsize=15, horizontalalignment='center')
 
-        # Plot SoC with gradient colored bars based on value
         for i in range(len(time_steps)):
-            ax0.bar(time_steps[i], soc[i]*100, color=cmap(norm(soc[i])))
+            ax0.bar(time_steps[i], soc[i] * 100, color=cmap(norm(soc[i])))
         ax0.set_title('State of Charge (SoC)')
         ax0.set_ylabel('SoC [%]')
-        plt.ylim(0, max(soc)*100 + max(soc)*100*0.08)
+        plt.ylim(0, max(soc) * 100 + max(soc) * 100 * 0.08)
 
-        # Axis for charged and discharged energy (second graph) bottom left
+        # Axis for charged and discharged energy (second graph)
         ax1 = fig.add_subplot(gs[1, 0])
+
+        total_d = []
+
+        total_dis = abs(discharged_energy) + abs(discharged_from_pv)
+
+        for i in range(0, len(discharged_energy), 24):
+            somma = sum(total_dis[i:i + 24])
+            total_d.append(somma)
+
+        total_d = np.array(total_d)
+        total_d = total_d * 30 /1000
+        total_d = np.round(total_d, 2)
+
+        norm = (total_d - np.min(total_d)) / (np.max(total_d) - np.min(total_d))
+        colors = [(1, 1 - n, 0) for n in norm]
 
         for i in range(12):
             start = i * 24 - 1
-            end = (i + 1) * 24 - 1 # This gives you the last index for the current span
+            end = (i + 1) * 24 - 1
             plt.axvspan(start, end, facecolor=colors[i], alpha=0.2)
-            plt.axvline(x=i * 24 - 1, ls='--',color = "black")
-            ax1.text(11.5 + 23.92*i , size * 0.55, f'{month_names[i]}', color="black", fontsize=15, horizontalalignment = 'center')
+            plt.axvline(x=i * 24 - 1, ls='--', color="black")
+            ax1.text(11.5 + 23.92 * i, 1360, f'{month_names[i]}', color="black", fontsize=15,
+                     horizontalalignment='center')
+            ax1.text(11.5 + 23.92 * i, 1200, f'{total_d[i]} MWh', color="black", fontsize=15,
+                 horizontalalignment='center')
 
-        # Add the subtended area for ‘produced_from_pv’ in a brighter yellow and behind the bar
         ax1.fill_between(time_steps, 0, produced_from_pv, color='lightblue', alpha=0.3, label='Produced from PV')
-
         width = 0.4
-        ax1.bar(time_steps, [1] * np.array(taken_from_grid), width=width, color='darkgreen',
-                label='From Grid to BESS')
-        ax1.bar(time_steps, taken_from_pv, color='darkblue', bottom=-discharged_from_pv, width= width,
-                label='From PV to BESS')
-
-        ax1.bar(time_steps, discharged_energy, width=width, color='darkred',
-               bottom= np.array(taken_from_grid),
-               label='From BESS to Grid')
-        ax1.bar(time_steps, -discharged_from_pv, width= width,
-                label='From PV to Grid',)
+        ax1.bar(time_steps, [1] * np.array(taken_from_grid), width=width, color='darkgreen', label='From Grid to BESS')
+        ax1.bar(time_steps, taken_from_pv, color='darkblue', bottom=-discharged_from_pv,
+                width = width, label = 'From PV to BESS')
+        ax1.bar(time_steps, discharged_energy, width=width, color='darkred', bottom=np.array(taken_from_grid),
+                label='From BESS to Grid')
+        ax1.bar(time_steps, -discharged_from_pv, width=width, label='From PV to Grid')
 
         ax1.set_ylabel('Energy [kWh]')
         ax1.set_title('System Energy Flows')
@@ -528,8 +514,44 @@ class EnergyPlots:
         ax3.plot(time_steps, pun_values, color='black', label='PUN')
         ax3.set_ylabel('PUN [Euro/MWh]')
         ax3.legend(loc='upper right')
-        plt.ylim(min(pun_values)-0.01*min(pun_values), max(pun_values)+max(pun_values)*0.01)
+        plt.ylim(min(pun_values) - 0.12 * min(pun_values), max(pun_values) + max(pun_values) * 0.12)
         ax1.set_xlabel('Time Window [h]')
+
+        rev_sums = []
+
+        for i in range(0, len(rev), 24):
+            somma = sum(rev[i:i + 24])
+            rev_sums.append(somma)
+
+        rev_sums = np.array(rev_sums)
+        rev_sums = rev_sums * 30
+        rev_sums = np.round(rev_sums, 2)
+
+
+        # New axis for revenues (third graph)
+        ax2 = fig.add_subplot(gs[2, 0])
+
+        # Create a color array based on the values in rev
+        colors_rev = ['green' if r > 0 else 'red' for r in rev]
+
+        ax2.bar(time_steps, rev, color=colors_rev, label='Revenue', width=0.4)
+        ax2.set_ylabel('Revenue [Euro]')
+        ax2.set_title('Revenue from Energy Transactions')
+        ax2.legend(loc='upper left')
+        plt.ylim(min(rev) + 0.25*min(rev), max(rev) + + 0.25*max(rev))  # Adjust y-limits based on revenue values
+
+        norm = (rev_sums - np.min(rev_sums)) / (np.max(rev_sums) - np.min(rev_sums))
+        colors_rev = [(0.8 * (1 - n), 0.8 + 0.2 * n, 0.8 * (1 - n)) for n in norm]
+
+        for i in range(12):
+            start = i * 24 - 1
+            end = (i + 1) * 24 - 1
+            plt.axvspan(start, end, facecolor=colors_rev[i], alpha=0.2)
+            plt.axvline(x=i * 24 - 1, ls='-', color="black")
+            ax2.text(11.5 + 23.92 * i, 160, f'{month_names[i]}', color="black", fontsize=15,
+                     horizontalalignment='center')
+            ax2.text(11.5 + 23.92 * i, 146, f'{rev_sums[i]} €', color="black", fontsize=15,
+                     horizontalalignment='center')
 
         from argparser_s import weekends
 
@@ -539,8 +561,8 @@ class EnergyPlots:
             fig.tight_layout()
             plt.savefig(os.path.join(self.plots_dir, "Total_View.png"))
         else:
-            ax1.set_title('System Energy Flows - Weekdends')
-            ax0.set_title('State of Charge (SoC) - Weekdends')
+            ax1.set_title('System Energy Flows - Weekdays')  # TODO: SHOULD BE WEEKENDS
+            ax0.set_title('State of Charge (SoC) - Weekdays')  # TODO: SHOULD BE WEEKENDS
             fig.tight_layout()
             plt.savefig(os.path.join(self.plots_dir, "Total_View_2.png"))
 

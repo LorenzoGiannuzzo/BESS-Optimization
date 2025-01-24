@@ -86,23 +86,23 @@ pop_size = 50
 
 # 4) DEFINE NUMBER OF ELEMENTS INIZIALIZED BY THE NSGA-III (Elements of the chromosome, namely the genes,
 # which are the charged/discharged % of energy at each timestep t, for a lenght of time_window
-n_var = time_window
+n_var = time_window * 2
 
 # 5) DEFINE NUMBER OF VARIABLES (OUTPUTS NEEDED TO BE EVALUATED AS OBJECTIVE FUNCTION)
 n_obj = 1
 
 # 6) DEFINE THE LOWER BOUNDARIES OF THE RESEARCH DOMAIN, NAMELY THE MAXIMUM % OF SoC WHICH CAN BE DISCHARGED
-xl = [-max_discharge]*time_window
+xl = [-max_discharge]*time_window + [0.0]*time_window
 
 # 7) DEFINE THE UPPER BOUNDARIES OF THE RESEARCH DOMAIN, NAMELY THE MAXIMUM % OF SoC WHICH CAN BE CHARGED
-xu = [max_charge] * time_window
+xu = [max_charge] * time_window + [+1.0] * time_window
 
 # 8) DEFINE NUMBER OF GENERATIONS USED TO INTERRUPT THE ALGORITHM EXECUTION
-n_gen = 300
+n_gen = 1000
 
 # 8-bis) DEFINE TOLERANCE AS THE ALGORITHM INTERRUPTION CRITERIA
-tolerance = 1
-period = 7
+tolerance = 0.1
+period = 20
 
 # number of iteration in which tolerance is evaluated
 
@@ -116,12 +116,10 @@ termination = TerminateIfAny(termination1, termination2)
 # 10) DEFINITION OF THE REFERENCE DIRECTION
 
 '''
-
 Most studies have used the Das and Dennis’s structured approach for generating well-spaced reference points.
 A reference direction is constructed by a vector originating from the origin and connected to each of them. The number
 of points on the unit simplex is determined by a parameter p (we call it n_partitions in our implementation), which
 indicates the number of gaps between two consecutive points along an objective axis.
-
 '''
 
 ref_dirs = get_reference_directions("das-dennis", n_obj, n_partitions=n_obj*4)
@@ -154,14 +152,14 @@ algorithm = NSGA3(
     # The probability of crossover being applied. A probability of 1.0 means crossover is always
     # applied.
 
-    crossover=SBX(eta=1, prob=1),
+    crossover=SBX(eta=0.5, prob=0.8),
 
     # mutation: This parameter specifies the mutation operator used for generating variation in offspring.
     # PM: Polynomial Mutation (PM) is a common mutation method for real-valued variables.
     # The distribution index for PM. Similar to SBX, a higher value of eta results in smaller mutations,
     # while a lower value results in larger mutations.
 
-    mutation=PM(eta=5,prob=1),
+    mutation=PM(eta=1,prob=0.8),
 
     eliminate_duplicates=True
 

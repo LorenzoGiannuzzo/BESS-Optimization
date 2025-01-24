@@ -83,7 +83,7 @@ class BESS_model:
     def run_simulation(self, c_d_timeseries):
 
         # SET CHARGE/DISCHARGE VECTOR (% of SoC charged or discharged at each timestep) WITH SAME LENGTH AS TIME WINDOW
-        self.c_d_timeseries = np.array(c_d_timeseries).reshape(self.time_window)
+        self.c_d_timeseries = np.array(c_d_timeseries[:self.time_window]).reshape(self.time_window)
 
         # EXECUTE THE SIMULATION FOR EACH TIMESTEP
         for index in range(len(self.PUN_timeseries) - 1):

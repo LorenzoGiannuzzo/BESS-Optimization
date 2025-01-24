@@ -30,19 +30,26 @@ matplotlib.use('Agg')
 # DEFINE ENERGY PLOT CLASS
 class EnergyPlots:
 
-    def __init__(self, time_window, soc, charged_energy, discharged_energy, PUN_timeseries, taken_from_grid, taken_from_pv, produced_from_pv,discharged_from_pv):
+    def __init__(self, time_window, soc, charged_energy, discharged_energy, PUN_timeseries, taken_from_grid,
+                 taken_from_pv, produced_from_pv,discharged_from_pv,self_consumption,from_pv_to_load,
+                 from_BESS_to_laod,load):
 
         self.time_window = time_window
+
         self.soc = soc
-        self.charged_energy = charged_energy
-        self.discharged_energy = discharged_energy
-        self.PUN_timeseries = PUN_timeseries
-        self.time_steps = np.arange(time_window)
-        self.taken_from_grid = taken_from_grid
-        self.taken_from_pv = taken_from_pv
-        self.produced_from_pv = produced_from_pv
-        self.discharged_from_pv = discharged_from_pv
+        self.charged_energy = np.array(charged_energy)
+        self.discharged_energy = np.array(discharged_energy)
+        self.PUN_timeseries = np.array(PUN_timeseries)
+        self.time_steps = np.array(np.arange(time_window))
+        self.taken_from_grid = np.array(taken_from_grid)
+        self.taken_from_pv = np.array(taken_from_pv)
+        self.produced_from_pv = np.array(produced_from_pv)
+        self.discharged_from_pv = np.array(discharged_from_pv)
         self.plots_dir = "Plots/Results/Short Simulation"
+        self.self_consumption = self_consumption
+        self.from_pv_to_load = np.array(from_pv_to_load)
+        self.from_BESS_to_load = np.array(from_BESS_to_laod)
+        self.load = load
 
         if not os.path.exists(self.plots_dir):
             os.makedirs(self.plots_dir)
@@ -313,14 +320,15 @@ class EnergyPlots:
 
     def POD_View(self, num_values):
 
+        # GET VARIABLES FROM SELF
         time_steps = self.time_steps[:num_values]
         charged_energy = self.charged_energy[:num_values]
         discharged_energy = self.discharged_energy[:num_values]
         pun_values = self.PUN_timeseries[:num_values]
         soc = self.soc[:num_values]
         produced_from_pv = self.produced_from_pv[:num_values]
-        taken_from_pv = self.taken_from_pv[:num_values]  # Energia da PV
-        taken_from_grid = self.taken_from_grid[:num_values]  # Energia dalla rete
+        taken_from_pv = self.taken_from_pv[:num_values]
+        taken_from_grid = self.taken_from_grid[:num_values]
         discharged_from_pv = self.discharged_from_pv
 
         # EVALUATE REVENUES
@@ -330,10 +338,11 @@ class EnergyPlots:
         rev_pv = -discharged_from_pv * pun_values / 1000
         rev_bess = -(np.array(discharged_energy) * pun_values / 1000) - (
                 taken_from_grid * pun_values / 1000)
+
         rev = np.array(rev, dtype=float)
         rev_cumulative = np.cumsum(rev)
 
-        # EVALUATE TOTAL ENTITIES
+        # EVALUATE TOTAL ENERGY QUANTITIES
         total_from_pv = np.sum(taken_from_pv)
         total_from_grid = np.sum(taken_from_grid)
         total_discharged = np.sum(-discharged_energy)
@@ -417,6 +426,7 @@ class EnergyPlots:
 
     def Total_View(self, num_values):
 
+        # GET VARIABLES FROM SELF
         time_steps = self.time_steps[:num_values]
         charged_energy = self.charged_energy[:num_values]
         discharged_energy = self.discharged_energy[:num_values]
@@ -426,26 +436,24 @@ class EnergyPlots:
         taken_from_pv = self.taken_from_pv[:num_values]
         taken_from_grid = self.taken_from_grid[:num_values]
         discharged_from_pv = self.discharged_from_pv
-
-        colors = [
-            'steelblue', 'lightskyblue', 'lightgreen', 'greenyellow', 'yellow',
-            'orange', 'red', 'orangered', 'orange', 'yellow', 'greenyellow', 'lightskyblue'
-        ]
+        self_consumption = self.load
+        from_pv_to_load = self.from_pv_to_load
+        from_BESS_to_load = self.from_BESS_to_load
 
         # EVALUATE REVENUES
-        rev = - (np.array(discharged_energy) * pun_values / 1000) - (
+        rev = (- (np.array(discharged_energy) * pun_values / 1000) - (
                 taken_from_grid * pun_values / 1000) + (
-                  -discharged_from_pv) * pun_values / 1000
+                  -np.array(discharged_from_pv)) * pun_values / 1000 + from_pv_to_load * pun_values * 1.3 / 1000 +
+               from_BESS_to_load * pun_values / 1000)
         rev = np.array(rev, dtype=float)
 
-        month_names = [
-            "January", "February", "March", "April", "May", "June",
-            "July", "August", "September", "October", "November", "December"
-        ]
+        # SET MONTH NAMES
+        month_names = ["January", "February", "March", "April", "May", "June",
+            "July", "August", "September", "October", "November", "December"]
 
         # Creating the layout with 3 boxes using gridspec
         fig = plt.figure(figsize=(36, 16))  # Increased height for the new graph
-        gs = gridspec.GridSpec(3, 1)  # Changed to 3 rows
+        gs = gridspec.GridSpec(3, 1, height_ratios=[1, 1, 1])  # Set equal height for all rows
 
         # Axis for SoC top
         ax0 = fig.add_subplot(gs[0, 0])
@@ -456,7 +464,6 @@ class EnergyPlots:
         for i in range(12):
             start = i * 24 - 1
             end = (i + 1) * 24 - 1
-            #plt.axvspan(start, end, facecolor=colors[i], alpha=0.2)
             plt.axvline(x=i * 24 - 1, ls='--', color="black")
             ax0.text(11.5 + 23.92 * i, max(soc) * 100 + max(soc) * 100 * 0.04, f'{month_names[i]}', color="black",
                      fontsize=15, horizontalalignment='center')
@@ -471,15 +478,14 @@ class EnergyPlots:
         ax1 = fig.add_subplot(gs[1, 0])
 
         total_d = []
-
-        total_dis = abs(discharged_energy) + abs(discharged_from_pv)
+        total_dis = np.abs(discharged_energy) + np.abs(discharged_from_pv)
 
         for i in range(0, len(discharged_energy), 24):
             somma = sum(total_dis[i:i + 24])
             total_d.append(somma)
 
         total_d = np.array(total_d)
-        total_d = total_d * 30 /1000
+        total_d = total_d * 30 / 1000
         total_d = np.round(total_d, 2)
 
         norm = (total_d - np.min(total_d)) / (np.max(total_d) - np.min(total_d))
@@ -490,24 +496,31 @@ class EnergyPlots:
             end = (i + 1) * 24 - 1
             plt.axvspan(start, end, facecolor=colors[i], alpha=0.2)
             plt.axvline(x=i * 24 - 1, ls='--', color="black")
-            ax1.text(11.5 + 23.92 * i, 1360, f'{month_names[i]}', color="black", fontsize=15,
+            ax1.text(11.5 + 23.92 * i, max(size * 0.53,0.98*max(produced_from_pv)), f'{month_names[i]}', color="black", fontsize=15,
                      horizontalalignment='center')
-            ax1.text(11.5 + 23.92 * i, 1200, f'{total_d[i]} MWh', color="black", fontsize=15,
-                 horizontalalignment='center')
+            ax1.text(11.5 + 23.92 * i, max(size * 0.46,0.91*max(produced_from_pv)), f'{total_d[i]} MWh', color="black", fontsize=15,
+                     horizontalalignment='center')
 
+        self_consumption = pd.to_numeric(self_consumption, errors='coerce')
+        ax1.fill_between(time_steps, self_consumption, color='orange', alpha=0.3,
+                 label='Self Consumption')
         ax1.fill_between(time_steps, 0, produced_from_pv, color='lightblue', alpha=0.3, label='Produced from PV')
         width = 0.4
         ax1.bar(time_steps, [1] * np.array(taken_from_grid), width=width, color='darkgreen', label='From Grid to BESS')
-        ax1.bar(time_steps, taken_from_pv, color='darkblue', bottom=-discharged_from_pv,
-                width = width, label = 'From PV to BESS')
+        ax1.bar(time_steps, taken_from_pv, color='darkblue', bottom=-discharged_from_pv + np.array(from_pv_to_load),
+                width=width, label='From PV to BESS')
+        ax1.bar(time_steps, from_pv_to_load, color='cyan',
+                width=width, label='From PV to Load')
+        ax1.bar(time_steps, from_BESS_to_load, color='lime',
+                width=width, label='From BESS to Load', bottom = -discharged_from_pv + np.array(from_pv_to_load) + np.array(taken_from_pv))
         ax1.bar(time_steps, discharged_energy, width=width, color='darkred', bottom=np.array(taken_from_grid),
                 label='From BESS to Grid')
-        ax1.bar(time_steps, -discharged_from_pv, width=width, label='From PV to Grid')
+        ax1.bar(time_steps, -discharged_from_pv, width=width, label='From PV to Grid', bottom = from_pv_to_load)
 
         ax1.set_ylabel('Energy [kWh]')
         ax1.set_title('System Energy Flows')
         ax1.legend(loc='upper left')
-        plt.ylim(-size * 0.6, size * 0.6)
+        plt.ylim(min(-size * 0.6,-max(produced_from_pv)), max(size * 0.6,max(produced_from_pv)))
 
         # Plot PUN values on the secondary axis
         ax3 = ax1.twinx()
@@ -527,7 +540,6 @@ class EnergyPlots:
         rev_sums = rev_sums * 30
         rev_sums = np.round(rev_sums, 2)
 
-
         # New axis for revenues (third graph)
         ax2 = fig.add_subplot(gs[2, 0])
 
@@ -538,7 +550,7 @@ class EnergyPlots:
         ax2.set_ylabel('Revenue [Euro]')
         ax2.set_title('Revenue from Energy Transactions')
         ax2.legend(loc='upper left')
-        plt.ylim(min(rev) + 0.25*min(rev), max(rev) + + 0.25*max(rev))  # Adjust y-limits based on revenue values
+        plt.ylim(min(rev) + 0.25 * min(rev), max(rev) + 0.25 * max(rev))  # Adjust y-limits based on revenue values
 
         norm = (rev_sums - np.min(rev_sums)) / (np.max(rev_sums) - np.min(rev_sums))
         colors_rev = [(0.8 * (1 - n), 0.8 + 0.2 * n, 0.8 * (1 - n)) for n in norm]
@@ -548,9 +560,9 @@ class EnergyPlots:
             end = (i + 1) * 24 - 1
             plt.axvspan(start, end, facecolor=colors_rev[i], alpha=0.2)
             plt.axvline(x=i * 24 - 1, ls='-', color="black")
-            ax2.text(11.5 + 23.92 * i, 160, f'{month_names[i]}', color="black", fontsize=15,
+            ax2.text(11.5 + 23.92 * i, max(rev) + max(rev)*0.15, f'{month_names[i]}', color="black", fontsize=15,
                      horizontalalignment='center')
-            ax2.text(11.5 + 23.92 * i, 146, f'{rev_sums[i]} €', color="black", fontsize=15,
+            ax2.text(11.5 + 23.92 * i, max(rev) + max(rev)*0.05, f'{rev_sums[i]} €', color="black", fontsize=15,
                      horizontalalignment='center')
 
         from argparser_s import weekends
@@ -561,10 +573,11 @@ class EnergyPlots:
             fig.tight_layout()
             plt.savefig(os.path.join(self.plots_dir, "Total_View.png"))
         else:
-            ax1.set_title('System Energy Flows - Weekdays')  # TODO: SHOULD BE WEEKENDS
-            ax0.set_title('State of Charge (SoC) - Weekdays')  # TODO: SHOULD BE WEEKENDS
-            fig.tight_layout()
-            plt.savefig(os.path.join(self.plots_dir, "Total_View_2.png"))
+            ax1.set_title('System Energy Flows - Weekends')  # TODO: SHOULD BE WEEKENDS
+
+        ax0.set_title('State of Charge (SoC) - Weekends')  # TODO: SHOULD BE WEEKENDS
+        fig.tight_layout()
+        plt.savefig(os.path.join(self.plots_dir, "Total_View_2.png"))
 
     def Total_View_cycles(self, num_values, n_cycles):
 

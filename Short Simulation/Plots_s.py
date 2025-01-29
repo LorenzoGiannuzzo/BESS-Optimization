@@ -503,7 +503,7 @@ class EnergyPlots:
 
         self_consumption = pd.to_numeric(self_consumption, errors='coerce')
         ax1.fill_between(time_steps, self_consumption, color='orange', alpha=0.3,
-                 label='Self Consumption')
+                 label='Electrical Load')
         ax1.fill_between(time_steps, 0, produced_from_pv, color='lightblue', alpha=0.3, label='Produced from PV')
         width = 0.4
         ax1.bar(time_steps, [1] * np.array(taken_from_grid), width=width, color='darkgreen', label='From Grid to BESS')

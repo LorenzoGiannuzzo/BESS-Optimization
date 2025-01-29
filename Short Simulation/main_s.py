@@ -171,8 +171,13 @@ class Main:
                                          + production[i])
 
             # EVALUATE THE LOAD SELF-CONSUMPTION AS MINIMUM BETWEEN LOAD AND THE ENERGY AVAILABLE
+            from argparser_s import self_consumption
 
-            load_self_consumption[i] = load_decision[i] * np.minimum(load[i], total_available_energy[
+            if self_consumption == 'True':
+                load_self_consumption[i] = np.minimum(load[i], total_available_energy[
+                    i])
+            else:
+                load_self_consumption[i] = load_decision[i] * np.minimum(load[i], total_available_energy[
                 i])
 
             # EVALUATE THE ENERGY THAT GOES FROM PV TO LOAD FOR SELF-CONSUMPTION PURPOSES
@@ -217,8 +222,12 @@ class Main:
             # AFTER APPLYING POD CONSTRAINTS, LOAD, CHARGED ENERGY FROM BESS, DISCHARGED FROM PV AND DISCHARGED
             # FROM BESS COULD BE CHANGED
 
-            load_self_consumption[i] = load_decision[i] * np.minimum(load[i], total_available_energy[
-                i])
+            if self_consumption == 'True':
+                load_self_consumption[i] = np.minimum(load[i], total_available_energy[
+                    i])
+            else:
+                load_self_consumption[i] = load_decision[i] * np.minimum(load[i], total_available_energy[
+                    i])
 
             # EVALUATE THE ENERGY THAT GOES FROM PV TO LOAD FOR SELF-CONSUMPTION PURPOSES
 
@@ -273,7 +282,6 @@ class Main:
             n_cycles = n_cycles_prev + total_energy / actual_capacity
 
         # EVALUATE THE NUMBER OF CYCLES DONE BY BESS
-
         total_charged = np.sum(charged_energy)
         total_discharged = np.sum(-discharged_energy)
         total_energy = total_charged + total_discharged
@@ -292,9 +300,9 @@ class Main:
                                      from_pv_to_load, from_BESS_to_load):
 
         PUN_ts = PUN_timeseries[:, 1]
-        rev = np.array( np.abs(discharged_energy) * PUN_ts  / 1000
+        rev = np.array( np.abs(discharged_energy) * PUN_ts / 1000
                - np.abs(taken_from_grid * PUN_ts * 1.1 / 1000)
-               + np.abs(discharged_from_pv) * PUN_ts  / 1000
+               + np.abs(discharged_from_pv) * PUN_ts / 1000
                + np.abs(from_pv_to_load) * PUN_ts * 1.1 / 1000
                + np.abs(from_BESS_to_load) * PUN_ts * 1.1 / 1000)
 

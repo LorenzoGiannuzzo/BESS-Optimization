@@ -71,6 +71,8 @@ parser.add_argument('--n_cycles', type=float, required=False,default=n_cycles_de
 
 parser.add_argument('--weekends', type= str,required = False, default = 'False', help='Execute main for weekends')
 
+parser.add_argument('--self_consumption', type= str, required = True, default = 'False',
+                    help='Force the Algorithm to self-consume energy for the load')
 
 # ARGUMENTS PARSING
 args = parser.parse_args()
@@ -90,6 +92,7 @@ BESS_power = size * args.power_energy
 POD_power = args.POD_power
 n_cycles = args.n_cycles
 weekends = args.weekends
+self_consumption = args.self_consumption
 
 start_str, end_str = range_str.split('-')
 soc_min = float(start_str) / 100

@@ -72,6 +72,10 @@ if __name__ == "__main__":
 
     parser.add_argument('--weekends', type=str, default='True', help='Execute main for weekends')
 
+    parser.add_argument('--self_consumption', type=str, required=True, default='False',
+                        help='Force the Algorithm to self-consume energy for the load')
+
+
     # ARGUMENTS PARSING
     args = parser.parse_args()
 

@@ -76,7 +76,7 @@ class Main:
 
         # APPLY PHYSICAL CONSTRAINTS
         (soc, charged_energy, discharged_energy, c_d_timeseries, taken_from_grid, discharged_from_pv,
-         taken_from_pv, n_cycler,self_consumption,from_pv_to_load, from_BESS_to_load) =\
+         taken_from_pv, n_cycler,load_self_consumption,from_pv_to_load, from_BESS_to_load) =\
             self.apply_physical_constraints(c_d_timeseries, load_decision)  # Apply constraints to the solution
 
         # DEFINE CLASS ATTRIBUTES AS CONSTRAINED SOLUTION OBTAINED FORM OPTIMIZATION
@@ -88,9 +88,10 @@ class Main:
         self.taken_from_pv = taken_from_pv  # Energy taken from PV
         self.discharged_from_pv = discharged_from_pv  # Energy discharged from PV
         self.n_cycler = n_cycler  # Number of cycles
-        self.self_consumption = self_consumption
+        self.load_self_consumption = load_self_consumption
         self.from_pv_to_load = from_pv_to_load
         self.from_BESS_to_load = from_BESS_to_load
+
 
         # GET LOAD DATA
         from Load import data
@@ -103,7 +104,7 @@ class Main:
         # GENERATE PLOTS IF PLOT FLAG IS TRUE
         if plot:
             self.plot_results(soc, charged_energy, discharged_energy, c_d_timeseries, PUN_timeseries[:, 1],
-                              taken_from_grid, taken_from_pv, discharged_from_pv,self_consumption,from_pv_to_load,
+                              taken_from_grid, taken_from_pv, discharged_from_pv, load_self_consumption,from_pv_to_load,
                               from_BESS_to_load, data)  # Generate plots for the results
 
     # CONSTRAINTS FUNCTION DEFINITION
@@ -294,7 +295,7 @@ class Main:
         n_cycles = total_energy / actual_capacity
 
         return (soc, charged_energy, discharged_energy, c_d_timeseries, charged_energy_from_grid_to_BESS,
-                discharged_from_pv, taken_from_pv, n_cycler, self_consumption, from_pv_to_load, from_BESS_to_load)
+                discharged_from_pv, taken_from_pv, n_cycler, load_self_consumption, from_pv_to_load, from_BESS_to_load)
 
     def calculate_and_print_revenues(self, charged_energy, discharged_energy, taken_from_grid, discharged_from_pv,
                                      from_pv_to_load, from_BESS_to_load):
@@ -396,7 +397,7 @@ if __name__ == "__main__":
             "revenues": revenues[i],  # Total revenues for the time step
             "rev_BESS": -main.discharged_energy[i] * PUN_timeseries[i, 1] / 1000,  # Revenue from BESS
             "rev_PV": main.discharged_from_pv[i] * PUN_timeseries[i, 1] / 1000,  # Revenue from PV
-            "rev_SC": main.self_consumption[i] * 1.1 * PUN_timeseries[i, 1] / 1000,  # Revenue from self-consumption
+            "rev_SC": float(main.load_self_consumption[i]) * PUN_timeseries[i, 1] / 1000,  # Revenue from self-consumption
             "technology": technology,  # Technology used
             "size": size,  # Size of the BESS
             "dod": range_str,  # Depth of discharge
@@ -406,7 +407,8 @@ if __name__ == "__main__":
             "energy_sold_from_PV": main.discharged_from_pv[i],  # Energy sold from PV
             "energy_sold_from_BESS": -main.discharged_energy[i],  # Energy sold from BESS
             "energy_from_BESS_to_load": -main.from_BESS_to_load[i],  # Energy from BESS to load
-            "energy_from_PV_to_load": -main.from_pv_to_load[i]  # Energy from PV to load
+            "energy_from_PV_to_load": -main.from_pv_to_load[i],  # Energy from PV to load
+            "energy_self_consumed": main.load_self_consumption[i]  # Energy self consumed (load)
 
         }
 

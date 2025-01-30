@@ -63,6 +63,8 @@ The output consists in a .json file structured for each timestep (1h) of the con
             `energy_sold_from_BESS`:                    # Energy sold from BESS to the grid
             `energy_from_BESS_to_load`:                 # Energy from BESS to load
             `energy_from_PV_to_load`:                   # Energy from PV to load
+            `energy_self_consumed`:                     # Energy self consumed (load)
+
 }
 
 # Project Installation - Clone the repository: 

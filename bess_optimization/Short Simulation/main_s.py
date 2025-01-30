@@ -390,20 +390,24 @@ if __name__ == "__main__":
             # PUN VALUES KEY
             "PUN": PUN_timeseries[i, 1] / 1000,  # PUN value in kWh
             "soc": SoC[i],  # State of charge
-            "c_d_energy": main.charged_energy[i] + main.discharged_energy[i],  # Total charged/discharged energy
+            "c_d_energy": main.charged_energy[i] + main.discharged_energy[i],  # Total charged/discharged energy from BESS
             "Nominal C-rate": power_energy,  # Nominal charge rate
             "C-rate": (main.charged_energy[i] - main.discharged_energy[i]) / size,  # Actual C-rate
-            "revenues": revenues[i],  # Revenue for the time step
+            "revenues": revenues[i],  # Total revenues for the time step
             "rev_BESS": -main.discharged_energy[i] * PUN_timeseries[i, 1] / 1000,  # Revenue from BESS
-            "rev_PV": (pv_production['P'].iloc[i] - main.taken_from_pv[i]) * PUN_timeseries[i, 1] / 1000,  # Revenue from PV
+            "rev_PV": main.discharged_from_pv[i] * PUN_timeseries[i, 1] / 1000,  # Revenue from PV
+            "rev_SC": main.self_consumption[i] * 1.1 * PUN_timeseries[i, 1] / 1000,  # Revenue from self-consumption
             "technology": technology,  # Technology used
             "size": size,  # Size of the BESS
             "dod": range_str,  # Depth of discharge
             "n_cycles": main.n_cycler[i],  # Number of cycles
-            "energy_charged_from_PV": main.taken_from_pv[i],  # Energy charged from PV
-            "energy_taken_from_grid": main.taken_from_grid[i],  # Energy taken from the grid
-            "energy_sold_from_PV": pv_production['P'].iloc[i] - main.taken_from_pv[i],  # Energy sold from PV
-            "energy_sold_from_BESS": -main.discharged_energy[i]  # Energy sold from BESS
+            "energy_charged_from_PV_to_BESS": main.taken_from_pv[i],  # Energy charged from PV
+            "energy_taken_from_grid_to_BESS": main.taken_from_grid[i],  # Energy taken from the grid
+            "energy_sold_from_PV": main.discharged_from_pv[i],  # Energy sold from PV
+            "energy_sold_from_BESS": -main.discharged_energy[i],  # Energy sold from BESS
+            "energy_from_BESS_to_load": -main.from_BESS_to_load[i],  # Energy from BESS to load
+            "energy_from_PV_to_load": -main.from_pv_to_load[i]  # Energy from PV to load
+
         }
 
         data.append(entry)  # Append entry to data list

@@ -21,10 +21,10 @@ import sys
 parser = argparse.ArgumentParser(description='Script for BESS Optimization.')
 
 # SET DEFAULT VALUES
-input_json_default = r"C:\Users\lorenzo.giannuzzo\PycharmProjects\BESS-Optimization\Input\pun2.json"
-input_PV_default = r"C:\Users\lorenzo.giannuzzo\PycharmProjects\BESS-Optimization\Input\PV_power.csv"
-input_load_default = r"C:\Users\lorenzo.giannuzzo\PycharmProjects\BESS-Optimization\Loads\BTA6_5.xlsx"
-output_json_default = r"C:\Users\lorenzo.giannuzzo\PycharmProjects\BESS-Optimization\Output\output.json"
+input_json_default = r"C:\Users\lorenzo.giannuzzo\PycharmProjects\BESS-Optimization\data\Input\pun2.json"
+input_PV_default = r"C:\Users\lorenzo.giannuzzo\PycharmProjects\BESS-Optimization\data\Input\PV_power.csv"
+input_load_default = r"C:\Users\lorenzo.giannuzzo\PycharmProjects\BESS-Optimization\data\Loads\BTA6_5.xlsx"
+output_json_default = r"C:\Users\lorenzo.giannuzzo\PycharmProjects\BESS-Optimization\data\Output\output.json"
 technology_default = "Li-ion"
 size_default = 2500
 power_energy_default = 0

@@ -1,7 +1,6 @@
 # IMPORTING REQUIRED LIBRARIES
 from argparser_s import input_load  # Importing input load parameter
 import ExcelOpener_s  # Module for opening Excel files
-import numpy as np  # Numerical operations
 import pandas as pd  # Data manipulation and analysis
 
 # LOAD EXCEL FILE AND SPECIFIC SHEET

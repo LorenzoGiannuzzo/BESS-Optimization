@@ -6,21 +6,21 @@ import os
 def run_main_s(args):
     # Prepare the arguments for main_s.py, excluding the --flag argument
     filtered_args = [arg for arg in sys.argv[1:] if arg != '--type' and arg != 'Short']
-    short_directory = r"Short Simulation"
+    short_directory = r"bess_optimization/Short Simulation"
     subprocess.run(['python', os.path.join(short_directory, 'main_s.py')] + filtered_args)
 
 def run_main_l(args):
     # Run main_p.py with the provided arguments
     filtered_args = [arg for arg in sys.argv[1:] if arg != '--type' and arg != 'Long']
-    short_directory = r"Long Simulation"
+    short_directory = r"bess_optimization/Long Simulation"
     subprocess.run(['python', os.path.join(short_directory, 'main_l.py')] + filtered_args)
 
 if __name__ == "__main__":
 
-    input_json_default = r"C:\Users\lorenzo.giannuzzo\PycharmProjects\BESS-Optimization\Input\pun2.json"
-    input_PV_default = r"C:\Users\lorenzo.giannuzzo\PycharmProjects\BESS-Optimization\Input\PV_power.csv"
-    output_json_default = r"C:\Users\lorenzo.giannuzzo\PycharmProjects\BESS-Optimization\Output\output.json"
-    input_load_default = r"C:\Users\lorenzo.giannuzzo\PycharmProjects\BESS-Optimization\Loads\BTA6_5.xlsx"
+    input_json_default = r"C:\Users\lorenzo.giannuzzo\PycharmProjects\BESS-Optimization\data\Input\pun2.json"
+    input_PV_default = r"C:\Users\lorenzo.giannuzzo\PycharmProjects\BESS-Optimization\data\Input\PV_power.csv"
+    output_json_default = r"C:\Users\lorenzo.giannuzzo\PycharmProjects\BESS-Optimization\data\Output\output.json"
+    input_load_default = r"C:\Users\lorenzo.giannuzzo\PycharmProjects\BESS-Optimization\data\Loads\BTA6_5.xlsx"
     technology_default = "Li-ion"
     size_default = 2500
     power_energy_default = 0

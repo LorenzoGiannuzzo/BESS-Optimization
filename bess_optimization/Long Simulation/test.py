@@ -14,21 +14,18 @@ Last Update of current code: 09/01/2025 - 17:38
 """
 
 # IMPORT LIBRARIES
-import configuration_l
-import multiprocessing
-from pymoo.optimize import minimize
-from pymoo.core.problem import StarmapParallelization
-from objective_function_l import Revenues
-from multiprocessing import cpu_count
-from configuration_l import plot
 
+import configuration_l
+from pymoo.optimize import minimize
+from objective_function_l import Revenues
+from configuration_l import plot
 
 # DEFINE OPTIMIZER CLASS
 class Optimizer:
 
     def __init__(self, objective_function: Revenues, pop_size: int, multiprocessing=True):
-
         # MULTIPROCESSING CAN BE DISABLED TO COMPARE ALGORITHMS EXECUTION TIMES
+
         self._objective_function = objective_function
         self.pop_size = pop_size
         self.multiprocessing = multiprocessing
@@ -37,8 +34,10 @@ class Optimizer:
     def maximize_revenues(self):
 
         if plot:
+
             # SAVE OPTIMIZATION HISTORY IF PLOTS ARE REQUIRED
             history = True
+
         else:
             history = False
 
@@ -77,13 +76,8 @@ class Optimizer:
                 save_history=True,
             )
 
+
             # VISUALIZE EXECUTION TIME
             print('Execution Time:', res.exec_time)
 
         return res
-
-
-
-
-
-

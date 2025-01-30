@@ -17,7 +17,7 @@ import numpy as np
 import configuration_l
 import Economic_parameters_l
 from pymoo.core.problem import ElementwiseProblem
-from BESS_model_l import BESS_model, charge_rate_interpolated_func, discharge_rate_interpolated_func, size, degradation
+from BESS_model_l import BESS_model, charge_rate_interpolated_func, discharge_rate_interpolated_func, size
 from PV_l import pv_production
 
 # DEFINE OPTIMIZATION PROBLEM
@@ -38,7 +38,7 @@ class Revenues(ElementwiseProblem):
         )
 
         # DEFINE REVENUES ATTRIBUTES FROM IMPORTER PARAMETERS
-        self.PUN_timeseries = Economic_parameters_l.PUN_timeseries[:,1]
+        self.PUN_timeseries = Economic_parameters_l.PUN_timeseries[:, 1]
         self.c_func, self.d_func = charge_rate_interpolated_func, discharge_rate_interpolated_func
 
         # DEFINE OBJECTIVE FUNCTION PARAMETERS

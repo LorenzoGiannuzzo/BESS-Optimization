@@ -779,7 +779,7 @@ class EnergyPlots:
                 ax2.legend(loc='upper right')
 
         # Save the figure to the Plots/Results directory
-        plot_dir = '../Plots/Results'
+        plot_dir = '../../Plots/Results'
         if not os.path.exists(plot_dir):
             os.makedirs(plot_dir)
         plt.savefig(os.path.join(plot_dir, 'Monthly_Results.png'), dpi=300, bbox_inches='tight')
@@ -827,7 +827,7 @@ class EnergyPlots:
                 ax.set_xlabel('Time [h]')
 
         # Save the figure to the Plots/Results directory
-        plot_dir = '../Plots/Results'
+        plot_dir = '../../Plots/Results'
         if not os.path.exists(plot_dir):
             os.makedirs(plot_dir)
         plt.savefig(os.path.join(plot_dir, 'Monthly_SoC.png'), dpi=300, bbox_inches='tight')
@@ -887,7 +887,7 @@ class EnergyPlots:
         plt.grid(True)
 
     # Save the plot as a PNG file
-        if not os.path.exists("../Plots"):
+        if not os.path.exists("../../Plots"):
             os.makedirs("Plots")
         plt.savefig("Plots/General/interpolated_functions.png")
 

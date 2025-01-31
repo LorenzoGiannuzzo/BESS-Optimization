@@ -85,7 +85,7 @@ The project is structured as follows:
 |── Plots                       # folder containing plots of the optimization results
 |── data/                       # folder containing input and output data (input and ouput data are specified by filepath when calling main.py from command line)
 |   |
-|   |── Input/                  # input data
+|   |── Input/                  # input data 
 |   |   |
 |   |   |── BESS Data.xlsx      # Excel files containing experimental data required to get battery model
 |   |   |── XXXX.csv            # a .csv file containing normalized PV production (1kW) for a specific time window (for example 26h - see file 26h_PV.csv)

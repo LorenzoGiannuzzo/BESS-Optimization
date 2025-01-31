@@ -101,8 +101,8 @@ xu = [max_charge] * time_window + [+1.0] * time_window
 n_gen = 1000
 
 # 8-bis) DEFINE TOLERANCE AS THE ALGORITHM INTERRUPTION CRITERIA
-tolerance = 0.1
-period = 20
+tolerance = 0.5
+period = 15
 
 # number of iteration in which tolerance is evaluated
 
@@ -152,14 +152,14 @@ algorithm = NSGA3(
     # The probability of crossover being applied. A probability of 1.0 means crossover is always
     # applied.
 
-    crossover=SBX(eta=0.5, prob=0.8),
+    crossover=SBX(eta=3, prob=0.8),
 
     # mutation: This parameter specifies the mutation operator used for generating variation in offspring.
     # PM: Polynomial Mutation (PM) is a common mutation method for real-valued variables.
     # The distribution index for PM. Similar to SBX, a higher value of eta results in smaller mutations,
     # while a lower value results in larger mutations.
 
-    mutation=PM(eta=1,prob=0.8),
+    mutation=PM(eta=3,prob=0.5),
 
     eliminate_duplicates=True
 

@@ -9,7 +9,7 @@ BESS Optimization using NSGA-III Algorithm
     __version__ = "v0.2.1"
     __license__ = "MIT"
 
-Last Update of current code: 11/01/2025 - 12:18
+Last Update of current code: 09/01/2025 - 12:18
 
 """
 
@@ -18,16 +18,17 @@ import numpy as np
 from utils import Get_data
 from utils import BESS
 from argparser_l import size, technology
-from argparser_l import soc_min, soc_max, BESS_power, power_energy, n_cycles
+from argparser_l import soc_min, soc_max, power_energy, n_cycles
 
 # SETTING ST FILE PATHS
-file_path = r"Input/BESS Data.xlsx"
+file_path = r"data/Input/BESS Data.xlsx"
 sheetname = "BESS Properties"
 sheetname2 = "Li-ion ChargeDischarge Curve 10"
 
 # DEFINE BESS PARAMETERS
 technology = technology
 size = size
+
 #TODO STATIC PARAMETER AT THE MOMENT - IT SHOULD BE A PARAMETER OBTAINABLE FROM THE ARGPARSER
 se_sp = 10 #Nominal Capacity / Nominal Power (Specific Energy / Specific Power)
 
@@ -82,7 +83,7 @@ class BESS_model:
     def run_simulation(self, c_d_timeseries):
 
         # SET CHARGE/DISCHARGE VECTOR (% of SoC charged or discharged at each timestep) WITH SAME LENGTH AS TIME WINDOW
-        self.c_d_timeseries = np.array(c_d_timeseries).reshape(self.time_window)
+        self.c_d_timeseries = np.array(c_d_timeseries[:self.time_window]).reshape(self.time_window)
 
         # EXECUTE THE SIMULATION FOR EACH TIMESTEP
         for index in range(len(self.PUN_timeseries) - 1):
@@ -134,30 +135,34 @@ class BESS_model:
             if self.c_d_timeseries[index] >= 0:
 
                 # EVALAUTE CHARGED ENERGY INTO THE BESS
+
                 self.charged_energy[index] = self.c_d_timeseries[index] * self.size
 
                 # SET DISCHARGED ENERGY AT 0
+
                 self.discharged_energy[index] = 0.0
 
             # IF BESS IS DISCHARGING
             elif self.c_d_timeseries[index] < 0:
 
                 # EVALUATE DISCHARGED ENERGY FROM BESS
+
                 self.discharged_energy[index] = self.c_d_timeseries[index] * self.size
 
                 # SET CHARGED ENERGY AT 0
+
                 self.charged_energy[index] = 0.0
 
             # IF BESS IS NOT CHARGING OR DISCHARGING, SET BOTH C/D ENERGY AT 0
             else:
 
                 self.charged_energy[index] = 0.0
+
                 self.discharged_energy[index] = 0.0
 
             # UPDATE SoC AT TIMESTEP t + 1
 
             # IF BESS IS CHARGING
-
             if self.c_d_timeseries[index] >= 0.0:
 
                 # INCREASE SoC
@@ -168,7 +173,6 @@ class BESS_model:
                 self.discharged_energy[index] = 0.0
 
             # IF BESS IS DISCHARGING
-
             else:
 
                 # DECREASE SoC (discharged_energy is negative)

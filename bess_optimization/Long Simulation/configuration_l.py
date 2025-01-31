@@ -55,18 +55,20 @@ OPTIMIZATION PARAMETERS:
 '''
 
 # DEFINE RANDOM SET FUNCTION EXTRACTION
-
 def comp_by_cv_then_random(pop, P, **kwargs):
 
     S = np.full(P.shape[0], np.nan)
+
     for i in range(P.shape[0]):
         a, b = P[i, 0], P[i, 1]
 
         # if at least one solution is infeasible
+
         if pop[a].CV > 0.0 or pop[b].CV > 0.0:
             S[i] = compare(a, pop[a].CV, b, pop[b].CV, method='smaller_is_better', return_random_if_equal=True)
 
         # both solutions are feasible just set random
+
         else:
             S[i] = np.random.choice([a, b])
 
@@ -84,23 +86,23 @@ pop_size = 50
 
 # 4) DEFINE NUMBER OF ELEMENTS INIZIALIZED BY THE NSGA-III (Elements of the chromosome, namely the genes,
 # which are the charged/discharged % of energy at each timestep t, for a lenght of time_window
-n_var = time_window
+n_var = time_window * 2
 
 # 5) DEFINE NUMBER OF VARIABLES (OUTPUTS NEEDED TO BE EVALUATED AS OBJECTIVE FUNCTION)
 n_obj = 1
 
 # 6) DEFINE THE LOWER BOUNDARIES OF THE RESEARCH DOMAIN, NAMELY THE MAXIMUM % OF SoC WHICH CAN BE DISCHARGED
-xl = [-max_discharge]*time_window
+xl = [-max_discharge]*time_window + [0.0]*time_window
 
 # 7) DEFINE THE UPPER BOUNDARIES OF THE RESEARCH DOMAIN, NAMELY THE MAXIMUM % OF SoC WHICH CAN BE CHARGED
-xu = [max_charge] * time_window
+xu = [max_charge] * time_window + [+1.0] * time_window
 
 # 8) DEFINE NUMBER OF GENERATIONS USED TO INTERRUPT THE ALGORITHM EXECUTION
-n_gen = 5000
+n_gen = 3500
 
 # 8-bis) DEFINE TOLERANCE AS THE ALGORITHM INTERRUPTION CRITERIA
-tolerance = 1
-period = 15
+tolerance = 10
+period = 5
 
 # number of iteration in which tolerance is evaluated
 
@@ -114,12 +116,10 @@ termination = TerminateIfAny(termination1, termination2)
 # 10) DEFINITION OF THE REFERENCE DIRECTION
 
 '''
-
 Most studies have used the Das and Dennis’s structured approach for generating well-spaced reference points.
 A reference direction is constructed by a vector originating from the origin and connected to each of them. The number
 of points on the unit simplex is determined by a parameter p (we call it n_partitions in our implementation), which
 indicates the number of gaps between two consecutive points along an objective axis.
-
 '''
 
 ref_dirs = get_reference_directions("das-dennis", n_obj, n_partitions=n_obj*4)
@@ -127,7 +127,6 @@ ref_dirs = get_reference_directions("das-dennis", n_obj, n_partitions=n_obj*4)
 # RULE OF THUMB FOR n_partitions
 
 # 11) ALGORITHMS INITIALIZATION- HYPERPARAMETERS DEFINITION: Sampling, Selection, Crossover, Mutation
-
 algorithm = NSGA3(
 
     pop_size=pop_size,
@@ -160,14 +159,19 @@ algorithm = NSGA3(
     # The distribution index for PM. Similar to SBX, a higher value of eta results in smaller mutations,
     # while a lower value results in larger mutations.
 
-    mutation=PM(eta=5,prob=1),
+    mutation=PM(eta=1,prob=0.8),
 
     eliminate_duplicates=True
 
 )
 
 # 12 DEFINE BOOLEAN VALUE TO ENABLE/DISABLE PLOTS
+# Activate plots
+
 plot = True
 plot_monthly = False
+
+i = 0
+
 
 

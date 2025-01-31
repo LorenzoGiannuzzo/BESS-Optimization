@@ -118,7 +118,7 @@ termination = TerminateIfAny(termination1, termination2)
 '''
 Most studies have used the Das and Dennis’s structured approach for generating well-spaced reference points.
 A reference direction is constructed by a vector originating from the origin and connected to each of them. The number
-of points on the unit simplex is determined by a parameter p (we call it n_partitions in our implementation), which
+of points on the unit simplex is determined by a parameter p (we call it n_partitions in our implementation),  which
 indicates the number of gaps between two consecutive points along an objective axis.
 '''
 

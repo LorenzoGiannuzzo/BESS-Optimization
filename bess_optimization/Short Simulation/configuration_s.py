@@ -159,7 +159,7 @@ algorithm = NSGA3(
     # The distribution index for PM. Similar to SBX, a higher value of eta results in smaller mutations,
     # while a lower value results in larger mutations.
 
-    mutation=PM(eta=3,prob=0.5),
+    mutation=PM(eta=3,prob=0.8),
 
     eliminate_duplicates=True
 

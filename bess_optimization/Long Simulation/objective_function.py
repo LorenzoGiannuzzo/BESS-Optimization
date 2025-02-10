@@ -14,14 +14,14 @@ Last Update of current code: 09/01/2025 - 12:20
 """
 
 import numpy as np
-import configuration_l
-import Economic_parameters_l
+import configuration
+import Economic_parameters
 from pymoo.core.problem import ElementwiseProblem
-from BESS_model_l import BESS_model, charge_rate_interpolated_func, discharge_rate_interpolated_func, size
-from PV_l import pv_production
-from BESS_model_l import degradation
-from argparser_l import power_energy, POD_power
-from Load_l import data
+from BESS_model import BESS_model, charge_rate_interpolated_func, discharge_rate_interpolated_func, size
+from PV import pv_production
+from BESS_model import degradation
+from argparser import power_energy, POD_power
+from Load import data
 
 # DEFINE OPTIMIZATION PROBLEM
 class Revenues(ElementwiseProblem):
@@ -31,17 +31,17 @@ class Revenues(ElementwiseProblem):
 
     ) -> None:
         super().__init__(
-            n_var= configuration_l.n_var,
-            n_obj=configuration_l.n_obj,
-            xl= configuration_l.xl,
-            xu= configuration_l.xu,
+            n_var= configuration.n_var,
+            n_obj=configuration.n_obj,
+            xl= configuration.xl,
+            xu= configuration.xu,
             vtype=float,
             **kwargs,
 
         )
 
         # DEFINE REVENUES ATTRIBUTES FROM IMPORTER PARAMETERS - PUN and C/D Functions
-        self.PUN_timeseries = Economic_parameters_l.PUN_timeseries[:, 1]
+        self.PUN_timeseries = Economic_parameters.PUN_timeseries[:, 1]
         self.c_func, self.d_func = charge_rate_interpolated_func, discharge_rate_interpolated_func
 
         # DEFINE OBJECTIVE FUNCTION PARAMETERS - SoC, Charged/Discharged Energy (from BESS)
@@ -54,10 +54,10 @@ class Revenues(ElementwiseProblem):
         self.load_decision = np.zeros((len(self.PUN_timeseries)))
 
         # INITIALIZE SoC AT t=0
-        self.soc[0] = configuration_l.soc_0
+        self.soc[0] = configuration.soc_0
 
         # DEFINE TIME WINDOW AND BESS SIZE
-        self.time_window = configuration_l.time_window
+        self.time_window = configuration.time_window
         self.size = size
 
         # DEFINE PV PRODUCTION AND LOAD CONSUMTPION
@@ -69,8 +69,8 @@ class Revenues(ElementwiseProblem):
 
 
         # SET X-VECTOR TO BE OPTIMIZED AS THE % OF CHARGED AND DISCHARGED ENERGY FROM BESS
-        self.c_d_timeseries = np.array(x[:self.time_window]).reshape(configuration_l.time_window)
-        self.load_decision = np.array(x[self.time_window:2*self.time_window]).reshape(configuration_l.time_window)
+        self.c_d_timeseries = np.array(x[:self.time_window]).reshape(configuration.time_window)
+        self.load_decision = np.array(x[self.time_window:2*self.time_window]).reshape(configuration.time_window)
 
         # EVALUATE THE CHARGED AND DISCHARGED ENERGY AND UPDATE THE SoC FOR EACH TIMESTEP t
         # Create an instance of BESS_model
@@ -87,8 +87,8 @@ class Revenues(ElementwiseProblem):
         self.discharged_from_pv = np.zeros((len(self.PUN_timeseries)))
 
         # EXECUTE THE UPDATE FOR EACH i-th TIMESTEP OF ALL THE ENERGY VECTORS. EVALUATING ENERGY BALANCES
-        from argparser_l import n_cycles
-        from argparser_l import soc_max, soc_min
+        from argparser import n_cycles
+        from argparser import soc_max, soc_min
 
         for i in range(self.time_window - 1):
 
@@ -107,7 +107,7 @@ class Revenues(ElementwiseProblem):
             total_available_energy[i] = (np.minimum((self.soc[i] - soc_min) * size * power_energy, size * power_energy)
                                          + self.production[i])
 
-            from argparser_l import self_consumption
+            from argparser import self_consumption
 
             if self_consumption == 'True':
                 self.load_self_consumption[i] = np.minimum(self.load[i], total_available_energy[
@@ -225,7 +225,7 @@ class Revenues(ElementwiseProblem):
         total_discharged = np.sum(-self.discharged_energy_from_BESS)
         total_energy = total_charged + total_discharged
 
-        from argparser_l import n_cycles
+        from argparser import n_cycles
 
         n_cycles_prev = n_cycles
         actual_capacity = size * degradation(n_cycles_prev)/100

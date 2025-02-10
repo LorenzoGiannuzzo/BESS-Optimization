@@ -15,7 +15,7 @@ Last Update of current code: 09/01/2025 - 17:36
 
 # IMPORT LIBRARIES
 import pandas as pd
-from argparser_l import input_json_path
+from argparser import input_json_path
 
 # SET PATH FILE
 json_file_path = input_json_path

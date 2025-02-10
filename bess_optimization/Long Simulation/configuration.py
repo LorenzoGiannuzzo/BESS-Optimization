@@ -15,8 +15,8 @@ Last Update of current code: 09/01/2025 - 17:00
 
 # IMPORT LIBRARIES AND MODULES FROM PROJECT FILES
 import numpy as np
-from argparser_l import soc
-from Economic_parameters_l import time_window
+from argparser import soc
+from Economic_parameters import time_window
 from pymoo.termination.robust import RobustTermination
 from pymoo.termination.xtol import DesignSpaceTermination
 from pymoo.algorithms.moo.nsga3 import NSGA3
@@ -27,7 +27,7 @@ from pymoo.operators.selection.tournament import TournamentSelection, compare
 from pymoo.util.ref_dirs import get_reference_directions
 from pymoo.core.termination import TerminateIfAny
 from pymoo.termination import get_termination
-from BESS_model_l import charge_rate_interpolated_func, discharge_rate_interpolated_func
+from BESS_model import charge_rate_interpolated_func, discharge_rate_interpolated_func
 
 # IDENTIFICATION OF MAX CHARGE AND DISCHARGE BESS CAPABILITY
 x = np.linspace(0, 1,1000)
@@ -102,7 +102,7 @@ n_gen = 3500
 
 # 8-bis) DEFINE TOLERANCE AS THE ALGORITHM INTERRUPTION CRITERIA
 tolerance = 10
-period = 5
+period = 15
 
 # number of iteration in which tolerance is evaluated
 

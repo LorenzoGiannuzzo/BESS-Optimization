@@ -1,9 +1,9 @@
-from argparser_l import input_load  # Importing input load parameter
-import ExcelOpener_l  # Module for opening Excel files
+from argparser import input_load  # Importing input load parameter
+import ExcelOpener  # Module for opening Excel files
 import pandas as pd  # Data manipulation and analysis
 
 # LOAD EXCEL FILE AND SPECIFIC SHEET
-df = ExcelOpener_l.import_file.load_excel(input_load, 'Sheet 1')
+df = ExcelOpener.import_file.load_excel(input_load, 'Sheet 1')
 
 # CONVERT 'Data' COLUMN TO DATETIME FORMAT
 df['Data'] = pd.to_datetime(df['Data'])

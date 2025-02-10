@@ -17,8 +17,8 @@ Last Update of current code: 09/01/2025 - 12:18
 import numpy as np
 from utils import Get_data
 from utils import BESS
-from argparser_l import size, technology
-from argparser_l import soc_min, soc_max, power_energy, n_cycles
+from argparser import size, technology
+from argparser import soc_min, soc_max, power_energy, n_cycles
 
 # SETTING ST FILE PATHS
 file_path = r"data/Input/BESS Data.xlsx"

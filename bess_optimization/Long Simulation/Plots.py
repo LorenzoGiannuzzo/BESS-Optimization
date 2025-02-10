@@ -22,7 +22,7 @@ import numpy as np
 import matplotlib.colors as mcolors
 import matplotlib.gridspec as gridspec
 from matplotlib.colors import Normalize
-from argparser_l import size, POD_power
+from argparser import size, POD_power
 
 matplotlib.use('Agg')
 
@@ -565,7 +565,7 @@ class EnergyPlots:
             ax2.text(11.5 + 23.92 * i, max(rev) + max(rev)*0.05, f'{rev_sums[i]} €', color="black", fontsize=15,
                      horizontalalignment='center')
 
-        from argparser_l import weekends
+        from argparser import weekends
 
         if weekends == 'True':
             ax1.set_title('System Energy Flows - Weekdays')
@@ -835,7 +835,7 @@ class EnergyPlots:
     @staticmethod
     def plot_degradation():
 
-        from BESS_model_l import degradation
+        from BESS_model import degradation
 
         # Generate cycle numbers from 0 to 7000
         cycles = np.arange(0, 7001,1,dtype=float)  # 7001 to include 7000

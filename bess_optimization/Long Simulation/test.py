@@ -15,10 +15,10 @@ Last Update of current code: 09/01/2025 - 17:38
 
 # IMPORT LIBRARIES
 
-import configuration_l
+import configuration
 from pymoo.optimize import minimize
-from objective_function_l import Revenues
-from configuration_l import plot
+from objective_function import Revenues
+from configuration import plot
 
 # DEFINE OPTIMIZER CLASS
 class Optimizer:
@@ -44,8 +44,8 @@ class Optimizer:
         if self.multiprocessing:
 
             problem = self._objective_function
-            algorithm = configuration_l.algorithm
-            termination = configuration_l.termination
+            algorithm = configuration.algorithm
+            termination = configuration.termination
 
             res = minimize(
 
@@ -64,8 +64,8 @@ class Optimizer:
         else:
 
             problem = self._objective_function
-            algorithm = configuration_l.algorithm
-            termination = configuration_l.termination
+            algorithm = configuration.algorithm
+            termination = configuration.termination
 
             res = minimize(
                 problem,

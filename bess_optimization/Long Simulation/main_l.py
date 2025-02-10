@@ -18,14 +18,14 @@ import numpy as np  # Numerical operations
 import json  # JSON file handling
 from pymoo.core.problem import StarmapParallelization  # Parallelization for optimization
 from multiprocessing import Pool, cpu_count  # Multiprocessing utilities
-from objective_function_l import Revenues  # Objective function for revenue calculation
-from configuration_l import pop_size, soc_0, time_window, plot  # Configuration parameters
-from BESS_model_l import charge_rate_interpolated_func, discharge_rate_interpolated_func, size, technology, BESS_model  # BESS model functions and parameters
-from Economic_parameters_l import PUN_timeseries  # Economic parameters for pricing
-from Optimizer_l import Optimizer  # Optimization class
-from argparser_l import output_json_path, range_str, soc_min, power_energy, POD_power  # Argument parser parameters
-from Plots_l import EnergyPlots  # Plotting utilities
-from PV_l import pv_production  # Photovoltaic production data
+from objective_function import Revenues  # Objective function for revenue calculation
+from configuration import pop_size, soc_0, time_window, plot  # Configuration parameters
+from BESS_model import charge_rate_interpolated_func, discharge_rate_interpolated_func, size, technology, BESS_model  # BESS model functions and parameters
+from Economic_parameters import PUN_timeseries  # Economic parameters for pricing
+from Optimizer import Optimizer  # Optimization class
+from argparser import output_json_path, range_str, soc_min, power_energy, POD_power  # Argument parser parameters
+from Plots import EnergyPlots  # Plotting utilities
+from PV import pv_production  # Photovoltaic production data
 import subprocess
 
 # CREATION OF CLASS MAIN
@@ -94,7 +94,7 @@ class Main:
 
 
         # GET LOAD DATA
-        from Load_l import data
+        from Load import data
 
         # CALCULATE AND PRINT REVENUES
         self.calculate_and_print_revenues(self.charged_energy, self.discharged_energy, self.taken_from_grid,
@@ -117,11 +117,11 @@ class Main:
         Returns:
             tuple: Contains state of charge, charged energy, discharged energy, and other relevant data.
         """
-        from Load_l import data
-        from argparser_l import n_cycles  # Import number of cycles
-        from BESS_model_l import degradation
-        from argparser_l import n_cycles
-        from argparser_l import soc_max, soc_min
+        from Load import data
+        from argparser import n_cycles  # Import number of cycles
+        from BESS_model import degradation
+        from argparser import n_cycles
+        from argparser import soc_max, soc_min
 
         # GET CHARGE/DISCHARGE INTERPOLATED FUNCTIONS
         c_func = charge_rate_interpolated_func
@@ -172,7 +172,7 @@ class Main:
                                          + production[i])
 
             # EVALUATE THE LOAD SELF-CONSUMPTION AS MINIMUM BETWEEN LOAD AND THE ENERGY AVAILABLE
-            from argparser_l import (self_consumption)
+            from argparser import (self_consumption)
 
             if self_consumption == 'True':
                 load_self_consumption[i] = np.minimum(load[i], total_available_energy[
@@ -287,7 +287,7 @@ class Main:
         total_discharged = np.sum(-discharged_energy)
         total_energy = total_charged + total_discharged
 
-        from argparser_l import n_cycles
+        from argparser import n_cycles
 
         n_cycles_prev = n_cycles
         actual_capacity = size * degradation(n_cycles_prev) / 100
@@ -319,7 +319,7 @@ class Main:
     def plot_results(self, soc, charged_energy, discharged_energy, c_d_energy, PUN_Timeseries, taken_from_grid,
                      taken_from_pv, discharged_from_pv, self_consumption, from_pv_to_load,from_BESS_to_load,load):
 
-        from Load_l import data
+        from Load import data
 
         # EXECUTE PLOTS
         if plot:
@@ -405,7 +405,7 @@ if __name__ == "__main__":
     with open(json_file_path, 'w') as json_file:
         json.dump(data, json_file, indent=4)  # Write data to JSON file with indentation
 
-    from argparser_l import weekends, args2
+    from argparser import weekends, args2
 
     # OLD FLAG NOT INFLUENCING IN THE CURRENT STATE OF THE CODE
     if weekends == 'True':

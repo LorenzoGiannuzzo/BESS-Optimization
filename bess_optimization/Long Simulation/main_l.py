@@ -289,6 +289,7 @@ class Main:
 
         from argparser import n_cycles
 
+
         n_cycles_prev = n_cycles
         actual_capacity = size * degradation(n_cycles_prev) / 100
 

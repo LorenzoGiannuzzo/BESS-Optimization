@@ -1,4 +1,7 @@
 # BESS Optimization For Energy Trading, Self-Consumption and PV Management
+
+# NEED TO BE UPDATED
+
 ### Optimization Task Performed using NSGA-III.
 This repository contains the code and data for optimizing Battery Energy Storage
 Systems (BESS) using evolutionary (NSGA-III) algorithms.The project focuses on maximizing revenues

@@ -1,7 +1,6 @@
 import pandas as pd
 import numpy as np
 import os
-from ExcelOpener import import_file
 
 loads_path_1 = r"data/loads/BTA6_5.xlsx"
 file_path_1 = os.path.join("..","..",loads_path_1)
@@ -12,9 +11,9 @@ file_path_2 = os.path.join("..","..",loads_path_2)
 loads_path_3 = r"data/loads/BTA5_8.xlsx"
 file_path_3 = os.path.join("..","..",loads_path_3)
 
-df_1 = import_file.load_excel(file_path_1, 'Sheet 1')
-df_2 = import_file.load_excel(file_path_2, 'Sheet 1')
-df_3 = import_file.load_excel(file_path_3, 'Sheet 1')
+df_1 = pd.read_excel(file_path_1, 'Sheet 1')
+df_2 = pd.read_excel(file_path_2, 'Sheet 1')
+df_3 = pd.read_excel(file_path_3, 'Sheet 1')
 
 col_1 = df_1.iloc[:, 4] * 5
 col_2 = df_2.iloc[:, 4] * 10
@@ -43,3 +42,5 @@ df = df.drop_duplicates(subset='DateTime', keep='first')  # Keep the first occur
 # CONVERT DATAFRAME TO NUMPY ARRAY AND EXTRACT SPECIFIC COLUMN
 data = df.to_numpy()  # Convert DataFrame to NumPy array
 data = data[:, 4]  # Extract the 5th column (index 4) from the array
+
+#print(len(data))

@@ -26,11 +26,12 @@ Run the main script to start the optimization process:
 - `--technology <BESS_technology>`: Defines the technology type of the Battery Energy Storage System (e.g., "Li-ion" for Lithium-ion).
 - `--size <BESS_size_in_kWh>`: Specifies the size of the Battery Energy Storage System in kilowatt-hours (kWh).
 - `--power <BESS_nominal_power_in_kW>`: Specifies the nominal power of the Battery Energy Storage System in kW.
+- 
 - `--soc <SoC_at_step_0>`: Specifies the initial state of charge of the Battery Energy Storage System in %.
 - `--dod <Depth_of_Discharge>`: Specifies the range of SoC in %.
-- `--minimize_C <Boolean>`: Parameter that requires no values. Default values is FALSE, is it's in command line, it's set to be True. If TRUE, it changes the optimization problem maximizing revenues and minimizing C-rate
-- `--PV <Peak_power_in_kW>`: Define the peak power of the PV plants connected to the BESS. Default values is 0 kW. 
-
+- `--PV_power <Peak_power_in_kW>`: Define the peak power of the PV plants connected to the BESS. Default values is 0 kW. 
+- `--POD_power <POD_power_in_kW>`: Define the power of the POD that is responsible for energy exchanges between the system and the electrical grid. Default values is 100 kW. 
+- `--n_cycles <number_of_cycles>`: Define the number of cycles the battery already sustained before the optimization. Default value is 0. 
 
 ### Output:
 
@@ -42,23 +43,33 @@ The output consists in a .json file structured for each timestep of the consider
         soc: --- State Of Charge (SoC) expressed as a factor between 0 and 1.\
         c_d_energy: --- Energy which is charged/discharged expressed in kWh. Negative if discharged, positive if charged.\
         Nominal C-rate --- Nominal Charge/Discharge velocity, expressed as % of the total capacity of the BESS.
-        C-rate: --- Charge/Discharge velocity, expressed as % of the total capacity of the BESS.
         revenues: --- Cash flow resulted from charging/discharging energy from t BESS, expressed in EUROs.
         technology: --- Typology of BESS.\
         size: --- Total capacity of the battery, expressed in kWh.\
         dod: --- Depth of Discharge, expressed as "Min_SoC - Max_SoC".\
+        n_cycles --- Updated number of cycles battery has after charging or discharging energy.\
         energy_charged_from_pv --- Energy taken from pv and used to charge the BESS, expressed in kWh.\
         energy_taken_from_grid --- Energy taken from the electrical grid and used to charge the BESS, expressed in kWh.\
         energy_sold_from_pv --- Energy produced by PV plants and directly sold to the electrical grid, expressed in kWh.\
         energy_sold_from_BESS --- Energy discharged from the BESS and sold the electrical grid, expressed in kWh.\
 
 }
-### Example:
+### How to call main execution - Example:
 
-`python main.py --input_json C:\Users\lorenzo.giannuzzo\PycharmProjects\BESS-Optimization\Input\pun2.json --output_json C:\Users\lorenzo.giannuzzo\PycharmProjects\BESS-Optimization\Output\output.json --technology Li-ion --size 2500 --power 250  --soc 0.9 --dod 20-80 --minimize_C --PV_power 1000
+`python main.py --type Short --input_json C:\Users\lorenzo.giannuzzo\PycharmProjects\BESS-Optimization\Input
+\year_pun.json --input_PV C:\Users\lorenzo.giannuzzo\PycharmProjects\BESS-Optimization\Input\year_PV.csv --output_json C:\Users\lorenzo.giannuzzo\PycharmProjects\BESS-Optimization\Output\Short_Simulation\output_weekdays.json --technology Li-ion --size 2500 --power_energy 0.125 --soc 60 --dod 0-100  --PV_power 1000 --POD_power 1300 --n_cycles 1000
 `
 
 ## Project Structure
+
+The project is structured so that there is a main.py that is called from the command line, and depending on the din punt parameters requested, it executes one of the scripts: main_s.py and main_l.py. 
+The main_s.py file runs the annual "short" simulation for 12 typical weekday days and 12 typical weekend days (1 typical day for each month). This simulation is intended to provide a
+The main_l.py file runs the "long" simulation, i.e. the optimization of 8760 charge/discharge values.
+(yearly simulation with hourly resolution). Both files refer to other specific Python files named "_l" or "_s" depending on the main to which they refer. The files related to the simulations
+The files related to the "short" simulations are in the "short simulation" folder, while those related to the "long" simulations are in the "long simulation" folder. Since these are substantially different simulations, they use different
+use different input data processing files and different hyperparameter configuration files.
+
+Each of the long or short simulation directory contains the following files:
 
 - `BESS_model.py`: Contains the BESS model definition and related functions.
 - `Economic_parameters.py`: Defines economic parameters and functions related to the PUN timeseries.
@@ -70,6 +81,5 @@ The output consists in a .json file structured for each timestep of the consider
 - `configuration.py`: Configuration settings for the project.
 - `main.py`: The main script that runs the optimization and post-processing.
 - `objective_function.py`: Defines the objective function for the optimization.
-- `requirements.txt`: Lists the dependencies required to run the project.
 - `utils.py`: Utility functions used across the project.
 - `PV.py`: Import data related to the PV size and production.

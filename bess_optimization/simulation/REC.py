@@ -1,5 +1,4 @@
 import pandas as pd
-import numpy as np
 import os
 
 loads_path_1 = r"data/loads/BTA6_5.xlsx"
@@ -41,6 +40,16 @@ df = df.drop_duplicates(subset='DateTime', keep='first')  # Keep the first occur
 
 # CONVERT DATAFRAME TO NUMPY ARRAY AND EXTRACT SPECIFIC COLUMN
 data = df.to_numpy()  # Convert DataFrame to NumPy array
-data = data[:, 4]  # Extract the 5th column (index 4) from the array
+data = data[:,[0,3,4]]  # Extract the 5th column (index 4) from the array
 
-#print(len(data))
+# Convert the extracted data back to a DataFrame
+data_df = pd.DataFrame(data, columns=['DateTime','Time','Consumption'])
+
+# Define the path where you want to save the CSV file
+output_path = r"data/loads/rec_load.csv"  # Modifica il percorso come necessario
+
+# Create the directory if it doesn't exist
+output_path = os.path.join("..","..",output_path)
+
+# Save the DataFrame to a CSV file
+data_df.to_csv(output_path, index=False)

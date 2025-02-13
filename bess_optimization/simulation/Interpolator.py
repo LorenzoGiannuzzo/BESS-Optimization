@@ -16,7 +16,7 @@ Last Update of current code: 09/01/2025 - 17:39
 # IMPORT LIBRARIES
 from scipy.interpolate import interp1d
 
-# CREATE DATA INTERPOLATOR CLASS
+# CREATE DATAINTERPOLATOR CLASS
 
 class DataInterpolator:
 

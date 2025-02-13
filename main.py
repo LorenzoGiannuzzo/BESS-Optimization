@@ -17,9 +17,10 @@ def run_main_l(args):
 
 if __name__ == "__main__":
 
-    input_json_default = r"C:\Users\lorenzo.giannuzzo\PycharmProjects\BESS-Optimization\Input\pun2.json"
-    input_PV_default = r"C:\Users\lorenzo.giannuzzo\PycharmProjects\BESS-Optimization\Input\PV_power.csv"
-    output_json_default = r"C:\Users\lorenzo.giannuzzo\PycharmProjects\BESS-Optimization\Output\output.json"
+    input_json_default = r"C:\Users\lorenzo.giannuzzo\PycharmProjects\BESS-Optimization\data\Input\pun2.json"
+    input_PV_default = r"C:\Users\lorenzo.giannuzzo\PycharmProjects\BESS-Optimization\data\Input\PV_power.csv"
+    output_json_default = r"C:\Users\lorenzo.giannuzzo\PycharmProjects\BESS-Optimization\data\Output\output.json"
+    input_load_default = r"C:\Users\lorenzo.giannuzzo\PycharmProjects\BESS-Optimization\data\Loads\BTA6_5.xlsx"
     technology_default = "Li-ion"
     size_default = 2500
     power_energy_default = 0
@@ -40,6 +41,9 @@ if __name__ == "__main__":
 
     parser.add_argument('--input_PV', type=str, required=False, default=input_PV_default,
                         help='Absolute path of the output file .json')
+
+    parser.add_argument('--input_load', type=str, required=False, default=input_load_default,
+                        help='Absolute path of the output file .xlsx')
 
     parser.add_argument('--output_json', type=str, required=False, default=output_json_default,
                         help='Absolute path of the output file .json')
@@ -67,6 +71,10 @@ if __name__ == "__main__":
                         help='number of cycles previously done by the battery')
 
     parser.add_argument('--weekends', type=str, default='True', help='Execute main for weekends')
+
+    parser.add_argument('--self_consumption', type=str, required=True, default='False',
+                        help='Force the Algorithm to self-consume energy for the load')
+
 
     # ARGUMENTS PARSING
     args = parser.parse_args()

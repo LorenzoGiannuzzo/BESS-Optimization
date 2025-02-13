@@ -22,9 +22,11 @@ class import_file:
 
     def load_excel(file_path, sheetname):
 
+        sheet_names = pd.ExcelFile(file_path).sheet_names
+
         # Attempt to load the Excel file into a Pandas DataFrame
         try:
-            data = pd.read_excel(file_path, sheet_name=sheetname)
+            data = pd.read_excel(file_path, sheet_name=sheet_names[0])
 
         except FileNotFoundError:
 

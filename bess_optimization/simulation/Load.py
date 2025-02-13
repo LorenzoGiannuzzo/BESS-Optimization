@@ -3,8 +3,10 @@ import ExcelOpener  # Module for opening Excel files
 import pandas as pd  # Data manipulation and analysis
 import os
 
+sheet_names = pd.ExcelFile(input_load).sheet_names
+
 # LOAD EXCEL FILE AND SPECIFIC SHEET
-df = ExcelOpener.import_file.load_excel(input_load, 'Sheet 1')
+df = ExcelOpener.import_file.load_excel(input_load, sheet_names[0])
 
 # CONVERT 'Data' COLUMN TO DATETIME FORMAT
 df['Data'] = pd.to_datetime(df['Data'])

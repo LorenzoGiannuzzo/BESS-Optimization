@@ -22,7 +22,7 @@ from argparser import soc_min, soc_max, power_energy, n_cycles
 import os
 
 # SETTING ST FILE PATHS
-file_path = os.path.join('data/Input/BESS Data.xlsx')
+file_path = os.path.join("..","..",'data/Input/BESS Data.xlsx')
 sheetname = "BESS Properties"
 sheetname2 = "Li-ion ChargeDischarge Curve 10"
 

@@ -1,6 +1,7 @@
 from argparser import input_load  # Importing input load parameter
 import ExcelOpener  # Module for opening Excel files
 import pandas as pd  # Data manipulation and analysis
+import os
 
 # LOAD EXCEL FILE AND SPECIFIC SHEET
 df = ExcelOpener.import_file.load_excel(input_load, 'Sheet 1')

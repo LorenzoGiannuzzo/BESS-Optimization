@@ -39,17 +39,18 @@ if len(df) == 8784:  # Assuming 8784 rows indicates a leap year
 df = df.drop_duplicates(subset='DateTime', keep='first')  # Keep the first occurrence of each DateTime
 
 # CONVERT DATAFRAME TO NUMPY ARRAY AND EXTRACT SPECIFIC COLUMN
-data = df.to_numpy()  # Convert DataFrame to NumPy array
-data = data[:,[0,3,4]]  # Extract the 5th column (index 4) from the array
+data = df  # Convert DataFrame to NumPy array
+#data = data[:,[0,3,4]]  # Extract the 5th column (index 4) from the array
 
 # Convert the extracted data back to a DataFrame
-data_df = pd.DataFrame(data, columns=['DateTime','Time','Consumption'])
+#data_df = pd.DataFrame(data, columns=['DateTime','Time','Consumption'])
 
 # Define the path where you want to save the CSV file
-output_path = r"data/loads/rec_load.csv"  # Modifica il percorso come necessario
+output_path = r"data/loads/rec_load.xlsx"  # Modifica il percorso come necessario
 
 # Create the directory if it doesn't exist
 output_path = os.path.join("..","..",output_path)
 
 # Save the DataFrame to a CSV file
-data_df.to_csv(output_path, index=False)
+data.to_excel(output_path, index=False)
+

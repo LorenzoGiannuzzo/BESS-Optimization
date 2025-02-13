@@ -27,7 +27,6 @@ class DataInterpolator:
         self.y_col = y_col
 
     def interpolate(self, kind='linear'):
-
         f = interp1d(self.df[self.x_col], self.df[self.y_col], kind=kind)
 
         return f

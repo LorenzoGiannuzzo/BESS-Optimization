@@ -4,7 +4,7 @@ import pandas as pd  # Data manipulation and analysis
 import os
 
 # LOAD EXCEL FILE AND SPECIFIC SHEET
-df = ExcelOpener.import_file.load_excel(input_load, 'Sheet 1')
+df = ExcelOpener.import_file.load_excel(input_load, 'Sheet1')
 
 # CONVERT 'Data' COLUMN TO DATETIME FORMAT
 df['Data'] = pd.to_datetime(df['Data'])

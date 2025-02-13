@@ -36,7 +36,7 @@ se_sp = 10 #Nominal Capacity / Nominal Power (Specific Energy / Specific Power)
 # LOADING FILES
 properties = Get_data.get_data(file_path, sheetname)
 load_curve = Get_data.get_data(file_path, sheetname2)
-
+print(load_curve)
 # TAKE CHARGE AND DISCHARGE BATTERY LOAD CURVES (to do: still to be automatized)
 charge_rate = load_curve.iloc[:356, [0, 3, 5]]
 discharge_rate = load_curve.iloc[357:, [0, 4, 5]]

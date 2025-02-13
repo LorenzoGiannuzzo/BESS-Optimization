@@ -26,7 +26,7 @@ class import_file:
 
         # Attempt to load the Excel file into a Pandas DataFrame
         try:
-            data = pd.read_excel(file_path, sheet_name=sheet_names[0])
+            data = pd.read_excel(file_path, sheet_name=sheetname)
 
         except FileNotFoundError:
 

@@ -32,7 +32,7 @@ class EnergyPlots:
 
     def __init__(self, time_window, soc, charged_energy, discharged_energy, PUN_timeseries, taken_from_grid,
                  taken_from_pv, produced_from_pv,discharged_from_pv,self_consumption,from_pv_to_load,
-                 from_BESS_to_laod,load):
+                 from_BESS_to_laod,shared_energy,load):
 
         self.time_window = time_window
 
@@ -50,6 +50,7 @@ class EnergyPlots:
         self.from_pv_to_load = np.array(from_pv_to_load)
         self.from_BESS_to_load = np.array(from_BESS_to_laod)
         self.load = load
+        self.shared_energy = shared_energy
 
         if not os.path.exists(self.plots_dir):
             os.makedirs(self.plots_dir)
@@ -439,12 +440,15 @@ class EnergyPlots:
         self_consumption = self.load
         from_pv_to_load = self.from_pv_to_load
         from_BESS_to_load = self.from_BESS_to_load
+        shared_energy = self.shared_energy
 
         # EVALUATE REVENUES
-        rev = (- (np.array(discharged_energy) * pun_values / 1000) - (
-                taken_from_grid * pun_values / 1000) + (
-                  -np.array(discharged_from_pv)) * pun_values / 1000 + from_pv_to_load * pun_values * 1.3 / 1000 +
-               from_BESS_to_load * pun_values / 1000)
+        rev = np.array( np.abs(discharged_energy) * pun_values / 1000
+               - np.abs(taken_from_grid * pun_values * 1.1 / 1000)
+               + np.abs(discharged_from_pv) * pun_values / 1000
+                 #+ np.abs(shared_energy) * 120 / 1000
+                )
+
         rev = np.array(rev, dtype=float)
 
         # SET MONTH NAMES
@@ -501,21 +505,19 @@ class EnergyPlots:
             ax1.text(11.5 + 23.92 * i, max(size * 0.46,0.91*max(produced_from_pv)), f'{total_d[i]} MWh', color="black", fontsize=15,
                      horizontalalignment='center')
 
-        self_consumption = pd.to_numeric(self_consumption, errors='coerce')
-        ax1.fill_between(time_steps, self_consumption, color='orange', alpha=0.3,
-                 label='Electrical Load')
+        load = pd.to_numeric(self.load, errors='coerce')
+        ax1.fill_between(time_steps, load, color='orange', alpha=0.3,
+                 label='REC Load')
         ax1.fill_between(time_steps, 0, produced_from_pv, color='lightblue', alpha=0.3, label='Produced from PV')
         width = 0.4
         ax1.bar(time_steps, [1] * np.array(taken_from_grid), width=width, color='darkgreen', label='From Grid to BESS')
         ax1.bar(time_steps, taken_from_pv, color='darkblue', bottom=-discharged_from_pv + np.array(from_pv_to_load),
                 width=width, label='From PV to BESS')
-        ax1.bar(time_steps, from_pv_to_load, color='cyan',
-                width=width, label='From PV to Load')
-        ax1.bar(time_steps, from_BESS_to_load, color='lime',
-                width=width, label='From BESS to Load', bottom = -discharged_from_pv + np.array(from_pv_to_load) + np.array(taken_from_pv))
+        ax1.bar(time_steps, -discharged_from_pv, width=width, label='From PV to Grid', bottom = from_pv_to_load)
+       # ax1.bar(time_steps, shared_energy, color='cyan',
+       #        width=width, label='Shared_energy')
         ax1.bar(time_steps, discharged_energy, width=width, color='darkred', bottom=np.array(taken_from_grid),
                 label='From BESS to Grid')
-        ax1.bar(time_steps, -discharged_from_pv, width=width, label='From PV to Grid', bottom = from_pv_to_load)
 
         ax1.set_ylabel('Energy [kWh]')
         ax1.set_title('System Energy Flows')

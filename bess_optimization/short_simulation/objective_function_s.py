@@ -49,6 +49,11 @@ class Revenues(ElementwiseProblem):
         self.from_pv_to_load = np.zeros((len(self.PUN_timeseries)))
         self.from_BESS_to_load = np.zeros((len(self.PUN_timeseries)))
         self.load_decision = np.zeros((len(self.PUN_timeseries)))
+        self.shared_energy = np.zeros((len(self.PUN_timeseries)))
+        self.rec_load = np.zeros((len(self.PUN_timeseries)))
+        self.taken_from_pv = np.zeros((len(self.PUN_timeseries)))
+        self.charged_energy_from_grid_to_BESS = np.zeros((len(self.PUN_timeseries)))
+        self.discharged_from_pv = np.zeros((len(self.PUN_timeseries)))
 
         # INITIALIZE SoC AT t=0
         self.soc[0] = configuration_s.soc_0
@@ -59,14 +64,13 @@ class Revenues(ElementwiseProblem):
 
         # DEFINE PV PRODUCTION AND LOAD CONSUMTPION
         self.production = pv_production['P']
-        self.load = data
+        self.rec_load = data
 
     # OBJECTIVE FUNCTION DEFINITION
     def _evaluate(self, x, out, *args, **kwargs):
 
         # SET X-VECTOR TO BE OPTIMIZED AS THE % OF CHARGED AND DISCHARGED ENERGY FROM BESS
         self.c_d_timeseries = np.array(x[:self.time_window]).reshape(configuration_s.time_window)
-        self.load_decision = np.array(x[self.time_window:2*self.time_window]).reshape(configuration_s.time_window)
 
         # EVALUATE THE CHARGED AND DISCHARGED ENERGY AND UPDATE THE SoC FOR EACH TIMESTEP t
         # Create an instance of BESS_model
@@ -75,12 +79,6 @@ class Revenues(ElementwiseProblem):
 
         # GET CHARGED/DISCHARGED VALUES FROM BESS MODEL RUN
         self.charged_energy_from_BESS, self.discharged_energy_from_BESS = bess_model.run_simulation(self.c_d_timeseries)
-
-        # INITIALIZE VARIABLES
-        total_available_energy = np.zeros((len(self.PUN_timeseries)))
-        self.taken_from_pv = np.zeros((len(self.PUN_timeseries)))
-        self.charged_energy_from_grid_to_BESS = np.zeros((len(self.PUN_timeseries)))
-        self.discharged_from_pv = np.zeros((len(self.PUN_timeseries)))
 
         # EXECUTE THE UPDATE FOR EACH i-th TIMESTEP OF ALL THE ENERGY VECTORS. EVALUATING ENERGY BALANCES
         from argparser_s import n_cycles
@@ -94,32 +92,8 @@ class Revenues(ElementwiseProblem):
             max_capacity = degradation(n_cycles_prev) / 100
             soc_max = min(soc_max, max_capacity)
 
-            # EVALUATE THE TOTAL AVAILABLE ENERGY TO PERFORM SELF-CONSUMPTION AT THE i-th TIMESTEP
-            # WHICH IS EVALUATED AS THE BES SOC ABOVE THE LOWER LIMIT VALUE * BESS_SIZE * P/E_RATIO [kWh] +
-            # THE ENERGY PRODUCED FROM PV (Considering also WHAT THE BESS CAN DO, which is BESS_SIZE*P/E_RATIO
-            # In other words is the energy that the BESS can give to the load + the energy produced by PV tp perform
-            # self-consumption
-
-            total_available_energy[i] = (np.minimum((self.soc[i] - soc_min) * size * power_energy, size * power_energy)
-                                         + self.production[i])
-
-            from argparser_s import self_consumption
-
-            if self_consumption == 'True':
-                self.load_self_consumption[i] = np.minimum(self.load[i], total_available_energy[
-                    i])
-            else:
-                self.load_self_consumption[i] = self.load_decision[i] * np.minimum(self.load[i], total_available_energy[
-                    i])
-
-            # EVALUATE THE LOAD SELF-CONSUMPTION AS MINIMUM BETWEEN LOAD AND THE ENERGY AVAILABLE
-            self.load_self_consumption[i] = self.load_decision[i] * np.minimum(self.load[i], total_available_energy[i])
-
-            # EVALUATE THE ENERGY THAT GOES FROM PV TO LOAD FOR SELF-CONSUMPTION PURPOSES
-            self.from_pv_to_load[i] = np.minimum(self.load_self_consumption[i], self.production[i])
-
             # EVALUATE THE ENERGY TAKEN BY THE BESS FROM PV
-            self.taken_from_pv[i] = np.minimum(np.maximum(self.production[i] - self.from_pv_to_load[i], 0.0),
+            self.taken_from_pv[i] = np.minimum(np.maximum(self.production[i], 0.0),
                                                self.charged_energy_from_BESS[i])
 
             # EVALUATE THE ENERGY USED TO CHARGE THE BESS TAKEN FROM THE GRID (IF CHARGED_ENERGY_FROM_BESS IS NEGATIVE,
@@ -127,17 +101,16 @@ class Revenues(ElementwiseProblem):
             self.charged_energy_from_grid_to_BESS[i] = np.maximum(self.charged_energy_from_BESS[i] -
                                                                   self.taken_from_pv[i],0.0)
 
-            # EVALUATE THE ENERGY THAT GOES FROM THE BESS TO THE LOAD FOR SELF-CONSUMPTION
-            self.from_BESS_to_load[i] = np.maximum(self.load_self_consumption[i] - self.from_pv_to_load[i], 0.0)
-
             # UPDATE THE ENERGY THAT THE BESS WANT TO CHARGED AS SUM OF THE ONE CHARGED FROM GRID TO BESS AND THE ENERGY
             # TAKEN FROM PV TO THE BESS
             self.charged_energy_to_BESS[i] = self.charged_energy_from_grid_to_BESS[i] + self.taken_from_pv[i]
 
             # UPDATE THE ENERGY DISCHARGED FROM PV DIRECTLY TO THE GRID REDUCING ITS ORIGINAL VALUE BY THE ONE THAT
             # GOES FROM PV TO THE BESS AND FROM THE PV TO THE LOAD
-            self.discharged_from_pv[i] = np.minimum(-self.production[i] + self.taken_from_pv[i] +
-                                                    self.from_pv_to_load[i], 0.0) # NEGATIVE VALUE
+            self.discharged_from_pv[i] = np.minimum(-self.production[i] + self.taken_from_pv[i]
+                                                    , 0.0) # NEGATIVE VALUE
+
+            self.shared_energy[i] = np.minimum(self.rec_load[i], -self.discharged_from_pv[i])
 
             # EVALUATE THE ENERGY DISCHARGED FROM BESS BASED TO THE VALUE OF THE OTHER OBTAINED ENERGY VECTORS
             self.discharged_energy_from_BESS[i] = np.maximum(np.maximum(self.discharged_energy_from_BESS[i],
@@ -147,13 +120,10 @@ class Revenues(ElementwiseProblem):
             # APPLY POD CONSTRAINTS TO ENERGY VECTORS
 
             # IF POD POWER IS EXCEEDED WHILE TAKING ENERGY FROM THE GRID
-            if self.charged_energy_from_grid_to_BESS[i] + self.load[i] > POD_power:
-
-                # FIRST OF ALL, LIMIT THE LOAD IF EVEN THE LOAD EXCEED THE POD POWER LIMITS (NOT CONTROLLABLE)
-                self.load[i] = np.minimum(POD_power, self.load[i])
+            if self.charged_energy_from_grid_to_BESS[i] > POD_power:
 
                 # THEN LIMIT ALSO THE ENERGY CHARGED FROM GRID TO BESS (CONTROLLABLE)
-                self.charged_energy_from_grid_to_BESS[i] = np.maximum(POD_power - self.load[i], 0.0)
+                self.charged_energy_from_grid_to_BESS[i] = np.maximum(POD_power, 0.0)
 
             # IF POD POWER IS EXCEEDED WHILE DISCHARGING ENERGY TO THE GRID
             if -np.abs(self.discharged_from_pv[i]) - np.abs(self.discharged_energy_from_BESS[i]) < -POD_power:
@@ -165,25 +135,12 @@ class Revenues(ElementwiseProblem):
                 # THEN ALSO LIMIT THE ENERGY DISCHARGED FROM BESS TO THE GRID (CONTROLLABLE)
                 self.discharged_energy_from_BESS[i] = np.minimum(-(POD_power - self.discharged_from_pv[i]), 0.0)
 
-            # AFTER APPLYING POD CONSTRAINTS, LOAD, CHARGED ENERGY FROM BESS, DISCHARGED FROM PV AND DISCHARGED
-            # FROM BESS COULD BE CHANGED
-
-            if self_consumption == 'True':
-                self.load_self_consumption[i] = np.minimum(self.load[i], total_available_energy[
-                    i])
-            else:
-                self.load_self_consumption[i] = self.load_decision[i] * np.minimum(self.load[i], total_available_energy[
-                    i])
-
             # UPDATE AGAIN ALL THE ENERGY VECTOR BASED ON POD POWER CONSTRAINS THAT WERE APPLIED
 
-            self.from_pv_to_load[i] = np.minimum(self.load_self_consumption[i], self.production[i])
-            self.taken_from_pv[i] = np.minimum(np.maximum(self.production[i] - self.from_pv_to_load[i], 0.0),
+            self.taken_from_pv[i] = np.minimum(np.maximum(self.production[i], 0.0),
                                                self.charged_energy_from_BESS[i])
-            self.charged_energy_from_grid_to_BESS[i] = self.charged_energy_from_BESS[i] - self.taken_from_pv[i]
 
-            # EVALUATE THE ENERGY THAT GOES FROM THE BESS TO THE LOAD FOR SELF-CONSUMPTION
-            self.from_BESS_to_load[i] = np.maximum(self.load_self_consumption[i] - self.from_pv_to_load[i], 0.0)
+            self.charged_energy_from_grid_to_BESS[i] = np.maximum(self.charged_energy_from_BESS[i] - self.taken_from_pv[i], 0.0)
 
             # UPDATE THE ENERGY THAT THE BESS WANT TO CHARGED AS SUM OF THE ONE CHARGED FROM GRID TO BESS AND THE ENERGY
             # TAKEN FROM PV TO THE BESS
@@ -191,26 +148,26 @@ class Revenues(ElementwiseProblem):
 
             # UPDATE THE ENERGY DISCHARGED FROM PV DIRECTLY TO THE GRID REDUCING ITS ORIGINAL VALUE BY THE ONE THAT
             # GOES FROM PV TO THE BESS AND FROM THE PV TO THE LOAD
-            self.discharged_from_pv[i] = np.minimum(-self.production[i] + self.taken_from_pv[i] +
-                                                        self.from_pv_to_load[i], 0.0)
+            self.discharged_from_pv[i] = np.minimum(-self.production[i] + self.taken_from_pv[i]
+                                                       , 0.0)
+
+            self.shared_energy[i] = np.minimum(self.rec_load[i], -self.discharged_from_pv[i])
 
             self.discharged_energy_from_BESS[i] = np.maximum(np.maximum(self.discharged_energy_from_BESS[i],
                                                              -(self.soc[i]-soc_min)*size*power_energy),
                                                              -size*power_energy)
-
             # UPDATE SOC
 
             # IF BESS I CHARGING
             if self.c_d_timeseries[i] >= 0:
-
-                self.soc[i + 1] = min(soc_max, self.soc[i] + (self.charged_energy_to_BESS[i] -
-                                                              self.from_BESS_to_load[i]) / size)
+                self.soc[i + 1] = min(soc_max, self.soc[i] + (self.charged_energy_to_BESS[i]
+                                                            ) / size)
 
             # IF BESS IS DISCHARGING
             else:
+                self.soc[i + 1] = max(soc_min, self.soc[i] + (self.discharged_energy_from_BESS[i]
+                                                              ) / size)
 
-                self.soc[i + 1] = max(soc_min, self.soc[i] + (self.discharged_energy_from_BESS[i] -
-                                                              self.from_BESS_to_load[i]) / size)
 
             total_energy = self.charged_energy_from_BESS[i] + np.abs(self.discharged_energy_from_BESS[i])
             actual_capacity = size * degradation(n_cycles_prev) / 100
@@ -232,8 +189,8 @@ class Revenues(ElementwiseProblem):
         revenue_column = np.array(np.abs(self.discharged_energy_from_BESS) * self.PUN_timeseries / 1000 -
                                       np.abs(self.charged_energy_from_grid_to_BESS) * self.PUN_timeseries * 1.1 / 1000
                                       + np.abs(self.discharged_from_pv) * self.PUN_timeseries / 1000
-                                      + np.abs(self.from_pv_to_load) * self.PUN_timeseries * 1.1 / 1000
-                                      + np.abs(self.from_BESS_to_load) * self.PUN_timeseries * 1.1 / 1000)
+                                      #+ np.abs(self.shared_energy) * 120 / 1000
+                                  )
 
         # EVALUATE REVENUES CONSIDERING TYPICAL DAYS FOR EACH MONTH
         num_settimane = 12

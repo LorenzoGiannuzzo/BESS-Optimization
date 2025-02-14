@@ -21,3 +21,5 @@ data = data[:, 4]  # Extract the 5th column (index 4) from the array
 
 # IN CASE YOU WANT TO SIMULATE ONLY PURE TRADING
 #data = np.zeros(len(data))
+
+# test

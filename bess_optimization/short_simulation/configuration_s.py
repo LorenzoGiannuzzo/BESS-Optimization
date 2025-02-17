@@ -15,12 +15,15 @@ Last Update of current code: 17/02/2025 - 17:00
 
 # IMPORT LIBRARIES AND MODULES FROM PROJECT FILES
 import numpy as np
+import pymoo.operators.crossover.expx
+
 from argparser_s import soc
 from Economic_parameters_s import time_window
 from pymoo.termination.robust import RobustTermination
 from pymoo.termination.xtol import DesignSpaceTermination
 from pymoo.algorithms.moo.nsga3 import NSGA3
 from pymoo.operators.crossover.sbx import SBX
+from pymoo.operators.mutation.inversion import InversionMutation
 from pymoo.operators.mutation.pm import PM
 from pymoo.operators.sampling.rnd import FloatRandomSampling
 from pymoo.operators.selection.tournament import TournamentSelection, compare
@@ -157,14 +160,19 @@ algorithm = NSGA3(
     # The probability of crossover being applied. A probability of 1.0 means crossover is always
     # applied.
 
-    crossover=SBX(eta=5, prob=1.0),
+    crossover=  SBX(eta=5, prob=1.0),
+
+    # pymoo.operators.crossover.expx.ExponentialCrossover(prob_exp=0.95),
+
 
     # mutation: This parameter specifies the mutation operator used for generating variation in offspring.
     # PM: Polynomial Mutation (PM) is a common mutation method for real-valued variables.
     # The distribution index for PM. Similar to SBX, a higher value of eta results in smaller mutations,
     # while a lower value results in larger mutations.
 
-    mutation=PM(eta=20, prob=0.9),
+    mutation= PM(eta=20, prob=0.9),
+
+    #InversionMutation(prob=0.3),
 
     eliminate_duplicates=True,
 

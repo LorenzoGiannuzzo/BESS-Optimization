@@ -9,7 +9,7 @@ BESS Optimization using NSGA-III Algorithm
     __version__ = "v0.2.1"
     __license__ = "MIT"
 
-Last Update of current code: 09/01/2025 - 17:00
+Last Update of current code: 17/02/2025 - 17:00
 
 """
 
@@ -74,6 +74,11 @@ def comp_by_cv_then_random(pop, P, **kwargs):
 
     return S[:, None].astype(int)
 
+def adaptive_mutation_rate(generation, max_generations):
+    return 0.9 * (1 - generation / max_generations)
+
+def adaptive_crossover_rate(generation, max_generations):
+    return 0.5 + 0.5 * (generation / max_generations)
 
 # 1) DEFINE TIME WINDOW OBTAINED FROM Economic_parameters.py FILE
 time_window = time_window
@@ -82,7 +87,7 @@ time_window = time_window
 soc_0 = soc
 
 # 3) DEFINE POPULATION SITE USED TO EXPLORE THE OPTIMIZATION DOMAIN
-pop_size = 50
+pop_size = 100
 
 # 4) DEFINE NUMBER OF ELEMENTS INIZIALIZED BY THE NSGA-III (Elements of the chromosome, namely the genes,
 # which are the charged/discharged % of energy at each timestep t, for a lenght of time_window
@@ -101,7 +106,7 @@ xu = [max_charge] * time_window
 n_gen = 1000
 
 # 8-bis) DEFINE TOLERANCE AS THE ALGORITHM INTERRUPTION CRITERIA
-tolerance = 0.5
+tolerance = 0.1
 period = 20
 
 # number of iteration in which tolerance is evaluated
@@ -122,7 +127,7 @@ of points on the unit simplex is determined by a parameter p (we call it n_parti
 indicates the number of gaps between two consecutive points along an objective axis.
 '''
 
-ref_dirs = get_reference_directions("das-dennis", n_obj, n_partitions=n_obj*4)
+ref_dirs = get_reference_directions("das-dennis", n_obj, n_partitions=pop_size)
 
 # RULE OF THUMB FOR n_partitions
 
@@ -152,16 +157,18 @@ algorithm = NSGA3(
     # The probability of crossover being applied. A probability of 1.0 means crossover is always
     # applied.
 
-    crossover=SBX(eta=10, prob=0.8),
+    crossover=SBX(eta=5, prob=1.0),
 
     # mutation: This parameter specifies the mutation operator used for generating variation in offspring.
     # PM: Polynomial Mutation (PM) is a common mutation method for real-valued variables.
     # The distribution index for PM. Similar to SBX, a higher value of eta results in smaller mutations,
     # while a lower value results in larger mutations.
 
-    mutation=PM(eta=30,prob=0.8),
+    mutation=PM(eta=20, prob=0.9),
 
-    eliminate_duplicates=True
+    eliminate_duplicates=True,
+
+    n_offsprings=round(pop_size/2)
 
 )
 

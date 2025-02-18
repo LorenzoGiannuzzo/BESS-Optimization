@@ -32,7 +32,7 @@ class EnergyPlots:
 
     def __init__(self, time_window, soc, charged_energy, discharged_energy, PUN_timeseries, taken_from_grid,
                  taken_from_pv, produced_from_pv,discharged_from_pv,self_consumption,from_pv_to_load,
-                 from_BESS_to_laod,shared_energy,load):
+                 from_BESS_to_laod,shared_energy_bess,load):
 
         self.time_window = time_window
 
@@ -50,7 +50,7 @@ class EnergyPlots:
         self.from_pv_to_load = np.array(from_pv_to_load)
         self.from_BESS_to_load = np.array(from_BESS_to_laod)
         self.load = load
-        self.shared_energy = shared_energy
+        self.shared_energy_bess = shared_energy_bess
 
         if not os.path.exists(self.plots_dir):
             os.makedirs(self.plots_dir)
@@ -440,7 +440,7 @@ class EnergyPlots:
         self_consumption = self.load
         from_pv_to_load = self.from_pv_to_load
         from_BESS_to_load = self.from_BESS_to_load
-        shared_energy = self.shared_energy
+        shared_energy_bess = self.shared_energy_bess
 
         # EVALUATE REVENUES
         rev = np.array( np.abs(discharged_energy) * pun_values / 1000
@@ -506,16 +506,16 @@ class EnergyPlots:
                      horizontalalignment='center')
 
         load = pd.to_numeric(self.load, errors='coerce')
-        ax1.fill_between(time_steps, load, color='orange', alpha=0.3,
-                 label='REC Load')
+        ax1.fill_between(time_steps, load, color='orange', alpha=0.3, label='REC Load')
         ax1.fill_between(time_steps, 0, produced_from_pv, color='lightblue', alpha=0.3, label='Produced from PV')
         width = 0.4
+
+        ax1.bar(time_steps, shared_energy_bess, color='cyan',
+               width=width, label='Shared_energy BESS')
         ax1.bar(time_steps, [1] * np.array(taken_from_grid), width=width, color='darkgreen', label='From Grid to BESS')
         ax1.bar(time_steps, taken_from_pv, color='darkblue', bottom=-discharged_from_pv + np.array(from_pv_to_load),
                 width=width, label='From PV to BESS')
         ax1.bar(time_steps, -discharged_from_pv, width=width, label='From PV to Grid', bottom = from_pv_to_load)
-       # ax1.bar(time_steps, shared_energy, color='cyan',
-       #        width=width, label='Shared_energy')
         ax1.bar(time_steps, discharged_energy, width=width, color='darkred', bottom=np.array(taken_from_grid),
                 label='From BESS to Grid')
 

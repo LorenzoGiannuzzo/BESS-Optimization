@@ -1,6 +1,4 @@
-"""
-
-BESS Optimization using NSGA-III Algorithm
+""" BESS Optimization using NSGA-III Algorithm
 
     __author__ = "Lorenzo Giannuzzo"
     __maintainer__ = "Lorenzo Giannuzzo"
@@ -9,11 +7,9 @@ BESS Optimization using NSGA-III Algorithm
     __version__ = "v0.2.1"
     __license__ = "MIT"
 
-Last Update of current code: 09/01/2025 - 12:18
+Last Update of current code: 19/02/2025 """
 
-"""
-
-# IMPORT LIBRARIES
+# IMPORT LIBRARIES AND MODULES
 import numpy as np
 from utils import Get_data
 from utils import BESS

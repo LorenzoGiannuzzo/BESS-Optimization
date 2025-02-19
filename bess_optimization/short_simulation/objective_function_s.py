@@ -1,5 +1,4 @@
-"""
-BESS Optimization using NSGA-III Algorithm
+""" BESS Optimization using NSGA-III Algorithm
 
     __author__ = "Lorenzo Giannuzzo"
     __maintainer__ = "Lorenzo Giannuzzo"
@@ -8,9 +7,9 @@ BESS Optimization using NSGA-III Algorithm
     __version__ = "v0.2.1"
     __license__ = "MIT"
 
-Last Update of current code: 18/01/2025 - 12:20
-"""
-# IMPORT LIBRARIES
+Last Update of current code: 19/02/2025 """
+
+# IMPORT LIBRARIES AND MODULES
 import numpy as np
 import configuration_s
 import Economic_parameters_s
@@ -22,6 +21,7 @@ from argparser_s import POD_power
 from BESS_model_s import power_energy
 from BESS_model_s import degradation
 
+
 # DEFINE OPTIMIZATION PROBLEM
 class Revenues(ElementwiseProblem):
     def __init__(
@@ -29,10 +29,10 @@ class Revenues(ElementwiseProblem):
             **kwargs
     ) -> None:
         super().__init__(
-            n_var= configuration_s.n_var,
+            n_var=configuration_s.n_var,
             n_obj=configuration_s.n_obj,
-            xl= configuration_s.xl,
-            xu= configuration_s.xu,
+            xl=configuration_s.xl,
+            xu=configuration_s.xu,
             vtype=float,
             **kwargs,
         )
@@ -150,7 +150,7 @@ class Revenues(ElementwiseProblem):
             # EVALUATING SHARED ENERGY
             self.shared_energy_REC[i] = np.minimum(self.rec_load[i], np.abs(self.discharged_from_pv[i]))
 
-            self.remaining_production[i] = np.minimum(np.abs(self.discharged_from_pv[i]) - self.shared_energy_REC[i], 0.0)
+            self.remaining_production[i] = np.maximum(np.abs(self.discharged_from_pv[i]) - self.shared_energy_REC[i], 0.0)
 
             self.shared_energy_BESS[i] = np.minimum(self.remaining_production[i], self.charged_energy_to_BESS[i])
 
@@ -173,6 +173,7 @@ class Revenues(ElementwiseProblem):
         # EVALUATE THE REVENUES OBTAINED FOR EACH TIMESTEP t
         revenue_column = np.array(np.abs(self.discharged_energy_from_BESS) * self.PUN_timeseries / 1000 -
                                       np.abs(self.charged_energy_from_grid_to_BESS) * self.PUN_timeseries * 1.1 / 1000
+                                      #+ self.discharged_from_pv * self.PUN_timeseries / 1000
                                       + np.abs(self.shared_energy_BESS) * 120 / 1000
                                   )
 

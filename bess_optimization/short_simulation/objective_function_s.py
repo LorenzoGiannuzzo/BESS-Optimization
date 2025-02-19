@@ -105,7 +105,6 @@ class Revenues(ElementwiseProblem):
             self.discharged_energy_from_BESS[i] = np.maximum(np.maximum(self.discharged_energy_from_BESS[i],
                                                              -(self.soc[i]-soc_min)*size*power_energy),
                                                              -size*power_energy)  # TODO: REMOVE REDUNDANCY
-                                                                                  # ALREADY GOT IN BESS_MODEL
 
             # APPLY POD CONSTRAINTS TO ENERGY VECTORS
 
@@ -113,7 +112,7 @@ class Revenues(ElementwiseProblem):
             if self.charged_energy_from_grid_to_BESS[i] > POD_power:
 
                 # THEN LIMIT ALSO THE ENERGY CHARGED FROM GRID TO BESS (CONTROLLABLE)
-                self.charged_energy_from_grid_to_BESS[i] = np.maximum(POD_power, 0.0)
+                self.charged_energy_from_grid_to_BESS[i] = np.minimum(POD_power, self.charged_energy_from_grid_to_BESS[i])
 
             # IF POD POWER IS EXCEEDED WHILE DISCHARGING ENERGY TO THE GRID
             if np.abs(self.discharged_energy_from_BESS[i]) > POD_power:
@@ -122,22 +121,18 @@ class Revenues(ElementwiseProblem):
                 self.discharged_energy_from_BESS[i] = np.maximum(-POD_power, self.discharged_energy_from_BESS[i])
 
             # UPDATE AGAIN ALL THE ENERGY VECTOR BASED ON POD POWER CONSTRAINS THAT WERE APPLIED
-            self.charged_energy_from_grid_to_BESS[i] = np.maximum(self.charged_energy_to_BESS[i], 0.0)
 
-            # UPDATE THE ENERGY THAT THE BESS WANT TO CHARGED AS SUM OF THE ONE CHARGED FROM GRID TO BESS AND THE ENERGY
-            # TAKEN FROM PV TO THE BESS
+            # UPDATE THE ENERGY THAT THE BESS WANT TO BE CHARGED AS SUM OF THE ONE CHARGED FROM GRID TO BESS AND THE
+            # ENERGY TAKEN FROM PV TO THE BESS
             self.charged_energy_to_BESS[i] = self.charged_energy_from_grid_to_BESS[i]
 
             # UPDATE THE ENERGY DISCHARGED FROM PV DIRECTLY TO THE GRID REDUCING ITS ORIGINAL VALUE BY THE ONE THAT
-            # GOES FROM PV TO THE BESS AND FROM THE PV TO THE LOAD
-            self.discharged_from_pv[i] = np.minimum(-self.production[i], 0.0)
-
             self.discharged_energy_from_BESS[i] = np.maximum(np.maximum(self.discharged_energy_from_BESS[i],
                                                              -(self.soc[i]-soc_min)*size*power_energy),
                                                              -size*power_energy)
             # UPDATE SOC
 
-            # IF BESS I CHARGING
+            # IF BESS IS CHARGING
             if self.c_d_timeseries[i] >= 0:
                 self.soc[i + 1] = min(soc_max, self.soc[i] + (self.charged_energy_to_BESS[i]
                                                             ) / size)
@@ -172,21 +167,24 @@ class Revenues(ElementwiseProblem):
 
         # EVALUATE THE REVENUES OBTAINED FOR EACH TIMESTEP t
         revenue_column = np.array(np.abs(self.discharged_energy_from_BESS) * self.PUN_timeseries / 1000 -
-                                      np.abs(self.charged_energy_from_grid_to_BESS) * self.PUN_timeseries * 1.1 / 1000
-                                      #+ self.discharged_from_pv * self.PUN_timeseries / 1000
+                                      np.abs(self.charged_energy_from_grid_to_BESS) * self.PUN_timeseries / 1000
+                                      # + self.discharged_from_pv * self.PUN_timeseries / 1000
                                       + np.abs(self.shared_energy_BESS) * 120 / 1000
                                   )
 
+        #print(self.PUN_timeseries/1000)
+
         # EVALUATE REVENUES CONSIDERING TYPICAL DAYS FOR EACH MONTH
-        num_settimane = 12
-        ore_per_settimana = 24
-        revenues_settimanali = np.zeros(num_settimane)
+        # num_settimane = 12
+        # ore_per_settimana = 24
+        # revenues_settimanali = np.zeros(num_settimane)
+        #
+        # for i in range(num_settimane):
+        #     inizio = i * ore_per_settimana
+        #     fine = inizio + ore_per_settimana
+        #     revenues_settimanali[i] = np.sum(revenue_column[inizio:fine]) * 30
 
-        for i in range(num_settimane):
-            inizio = i * ore_per_settimana
-            fine = inizio + ore_per_settimana
-            revenues_settimanali[i] = np.sum(revenue_column[inizio:fine]) * 30
-
+        revenues_settimanali = np.sum(revenue_column)
         revenues_finali = revenues_settimanali
         somma_revenues_finali = np.sum(revenues_finali)
 

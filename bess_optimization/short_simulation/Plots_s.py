@@ -444,7 +444,7 @@ class EnergyPlots:
 
         # EVALUATE REVENUES
         rev = np.array( np.abs(discharged_energy) * pun_values / 1000
-               - np.abs(taken_from_grid * pun_values * 1.1 / 1000)
+               - np.abs(taken_from_grid * pun_values  / 1000)
                # + np.abs(discharged_from_pv) * pun_values / 1000
                + np.abs(shared_energy_bess) * 120 / 1000
                 )

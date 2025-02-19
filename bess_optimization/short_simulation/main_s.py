@@ -167,10 +167,6 @@ class Main:
             # MEANING THAT THE BESS IS DISCHARGING, THIS VALUE IS = 0
             charged_energy_from_grid_to_BESS[i] = charged_energy[i]
 
-            # UPDATE THE ENERGY THAT THE BESS WANT TO CHARGED AS SUM OF THE ONE CHARGED FROM GRID TO BESS AND THE ENERGY
-            # TAKEN FROM PV TO THE BESS
-            charged_energy[i] = charged_energy_from_grid_to_BESS[i]
-
             # UPDATE THE ENERGY DISCHARGED FROM PV DIRECTLY TO THE GRID REDUCING ITS ORIGINAL VALUE BY THE ONE THAT
             # GOES FROM PV TO THE BESS AND FROM THE PV TO THE LOAD
             discharged_from_pv[i] = -production[i]  # NEGATIVE VALUE
@@ -185,19 +181,11 @@ class Main:
                 charged_energy_from_grid_to_BESS[i] = np.maximum(POD_power, 0.0)
 
             if np.abs(discharged_energy[i]) > POD_power:
-                discharged_energy[i] = np.minimum(-POD_power, discharged_energy[i])
+                discharged_energy[i] = np.maximum(-POD_power, discharged_energy[i])
 
-            charged_energy_from_grid_to_BESS[i] = charged_energy[i]
-
-            # UPDATE THE ENERGY THAT THE BESS WANT TO CHARGED AS SUM OF THE ONE CHARGED FROM GRID TO BESS AND THE ENERGY
-            # TAKEN FROM PV TO THE BESS
+            # UPDATE THE ENERGY THAT THE BESS WANT TO BE CHARGED AS SUM OF THE ONE CHARGED FROM GRID TO BESS AND THE
+            # ENERGY TAKEN FROM PV TO THE BESS
             charged_energy[i] = charged_energy_from_grid_to_BESS[i]
-
-            # UPDATE THE ENERGY DISCHARGED FROM PV DIRECTLY TO THE GRID REDUCING ITS ORIGINAL VALUE BY THE ONE THAT
-            # GOES FROM PV TO THE BESS AND FROM THE PV TO THE LOAD
-            discharged_from_pv[i] = np.minimum(-production[i], 0.0)
-            discharged_energy[i] = np.maximum(np.maximum(discharged_energy[i], -(soc[i] - soc_min) * size *
-                                                         power_energy), -size * power_energy)
 
             # UPDATE SOC
             # IF BESS I CHARGING
@@ -241,7 +229,7 @@ class Main:
 
         # EVALUATE REVENUES
         rev = np.array(np.abs(discharged_energy) * PUN_ts / 1000
-                       - np.abs(taken_from_grid * PUN_ts * 1.1 / 1000)
+                       - np.abs(taken_from_grid * PUN_ts  / 1000)
                        + np.array(shared_energy_bess) * 120 / 1000
                        )
 

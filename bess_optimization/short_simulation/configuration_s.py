@@ -18,7 +18,8 @@ from pymoo.termination.xtol import DesignSpaceTermination
 from pymoo.algorithms.moo.nsga3 import NSGA3
 from pymoo.operators.crossover.sbx import SBX
 from pymoo.operators.mutation.pm import PM
-from pymoo.operators.sampling.rnd import FloatRandomSampling
+from pymoo.operators.sampling.rnd import FloatRandomSampling, PermutationRandomSampling
+from pymoo.operators.sampling.lhs import LatinHypercubeSampling
 from pymoo.operators.selection.tournament import TournamentSelection, compare
 from pymoo.util.ref_dirs import get_reference_directions
 from pymoo.core.termination import TerminateIfAny
@@ -95,7 +96,7 @@ xu = [max_charge] * time_window
 n_gen = 1000
 
 # 8-bis) DEFINE TOLERANCE AS THE ALGORITHM INTERRUPTION CRITERIA
-tolerance = 0.5
+tolerance = 0.3
 period = 20
 
 # number of iteration in which tolerance is evaluated
@@ -127,7 +128,7 @@ algorithm = NSGA3(
     # sampling: This parameter specifies the method used to initialize the population. FloatRandomSampling
     # generates random floating-point values for the initial solutions, providing a diverse starting point.
 
-    sampling=FloatRandomSampling(),
+    sampling=LatinHypercubeSampling(), # this seems to be slightly better than other sampling methods
 
     # selection: This defines the selection mechanism used to choose parents for reproduction.
     # TournamentSelection selects individuals based on a comparison function.
@@ -144,7 +145,7 @@ algorithm = NSGA3(
     # The probability of crossover being applied. A probability of 1.0 means crossover is always
     # applied.
 
-    crossover=SBX(eta=30, prob=1.0),
+    crossover=SBX(eta=3, prob=1.0),
 
     # pymoo.operators.crossover.expx.ExponentialCrossover(prob_exp=0.95),
 
@@ -154,13 +155,11 @@ algorithm = NSGA3(
     # The distribution index for PM. Similar to SBX, a higher value of eta results in smaller mutations,
     # while a lower value results in larger mutations.
 
-    mutation=PM(eta=20, prob=0.9),
-
-    #InversionMutation(prob=0.3),
+    mutation=PM(eta=20, prob=0.5),
 
     eliminate_duplicates=True,
 
-    n_offsprings=round(pop_size/2)
+    # n_offsprings=round(pop_size/2)
 
 )
 

@@ -1,6 +1,4 @@
-"""
-
-BESS Optimization using NSGA-III Algorithm
+""" BESS Optimization using NSGA-III Algorithm
 
     __author__ = "Lorenzo Giannuzzo"
     __maintainer__ = "Lorenzo Giannuzzo"
@@ -9,9 +7,7 @@ BESS Optimization using NSGA-III Algorithm
     __version__ = "v0.2.1"
     __license__ = "MIT"
 
-Last Update of current code: 09/01/2025 - 17:49
-
-"""
+Last Update of current code: 21/02/2025 """
 
 # IMPORT LIBRARIES
 import os
@@ -505,14 +501,19 @@ class EnergyPlots:
             ax1.text(11.5 + 23.92 * i, max(size * 0.46,0.91*max(produced_from_pv)), f'{total_d[i]} MWh', color="black", fontsize=15,
                      horizontalalignment='center')
 
+        width = 0.4
+
         load = pd.to_numeric(self.load, errors='coerce')
         ax1.fill_between(time_steps, load, color='orange', alpha=0.3, label='REC Load')
+
         ax1.fill_between(time_steps, 0, produced_from_pv, color='lightblue', alpha=0.3, label='Produced from PV')
-        width = 0.4
-        ax1.bar(time_steps, taken_from_pv, color='darkblue', bottom=-discharged_from_pv + np.array(from_pv_to_load), width=width, label='From PV to BESS')
-        ax1.bar(time_steps, -discharged_from_pv, width=width, label='From PV to Grid', bottom = from_pv_to_load)
+
+        ax1.bar(time_steps, -discharged_from_pv, width=width, bottom = from_pv_to_load, label='From PV to Grid')
+
         ax1.bar(time_steps, discharged_energy, width=width, color='darkred', bottom=np.array(taken_from_grid), label='From BESS to Grid')
+
         ax1.bar(time_steps, shared_energy_bess, color='cyan', width=width, label='Shared_energy BESS', bottom=load)
+
         ax1.bar(time_steps, [1] * np.array(taken_from_grid), width=width, color='darkgreen', label='From Grid to BESS')
 
         ax1.set_ylabel('Energy [kWh]')

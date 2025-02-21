@@ -9,14 +9,17 @@
 
 Last Update of current code: 19/02/2025 """
 
-# IMPORT LIBRARIES AND MODULES
+
+# IMPORT LIBRARIES AND MODULES -----------------------------------------------------------------------------------------
+
 import numpy as np
 from utils import Get_data
 from utils import BESS
 from argparser_s import size, technology
 from argparser_s import soc_min, soc_max, power_energy, n_cycles
 
-# SETTING ST FILE PATHS
+# SETTING FILES PATHS
+
 file_path = r"data/Input/BESS Data.xlsx"
 sheetname = "BESS Properties"
 sheetname2 = "Li-ion ChargeDischarge Curve 10"
@@ -24,9 +27,8 @@ sheetname2 = "Li-ion ChargeDischarge Curve 10"
 # DEFINE BESS PARAMETERS
 technology = technology
 size = size
-
 #TODO STATIC PARAMETER AT THE MOMENT - IT SHOULD BE A PARAMETER OBTAINABLE FROM THE ARGPARSER
-se_sp = 10 #Nominal Capacity / Nominal Power (Specific Energy / Specific Power)
+se_sp = 10 # Nominal Capacity / Nominal Power (Specific Energy / Specific Power)
 
 # LOADING FILES
 properties = Get_data.get_data(file_path, sheetname)
@@ -60,7 +62,7 @@ def degradation(cycle_num):
 
     return capacity_remaining
 
-# DEFINE BESS MODEL CLASS
+# DEFINE BESS MODEL CLASS ----------------------------------------------------------------------------------------------
 class BESS_model:
     def __init__(self, time_window, PUN_timeseries, soc, size, c_func, d_func):
         self.time_window = time_window
@@ -186,3 +188,4 @@ class BESS_model:
 
         # RETURN CHARGED AND DISCHARGE ENERGY
         return self.charged_energy, self.discharged_energy
+

@@ -1,6 +1,4 @@
-"""
-
-BESS Optimization using NSGA-III Algorithm
+""" BESS Optimization using NSGA-III Algorithm
 
     __author__ = "Lorenzo Giannuzzo"
     __maintainer__ = "Lorenzo Giannuzzo"
@@ -9,9 +7,7 @@ BESS Optimization using NSGA-III Algorithm
     __version__ = "v0.2.1"
     __license__ = "MIT"
 
-Last Update of current code: 09/01/2025 - 17:00
-
-"""
+Last Update of current code: 21/02/2025 """
 
 # IMPORT LIBRARIES AND MODULES FROM PROJECT FILES
 import numpy as np
@@ -23,6 +19,7 @@ from pymoo.algorithms.moo.nsga3 import NSGA3
 from pymoo.operators.crossover.sbx import SBX
 from pymoo.operators.mutation.pm import PM
 from pymoo.operators.sampling.rnd import FloatRandomSampling
+from pymoo.operators.sampling.lhs import LatinHypercubeSampling
 from pymoo.operators.selection.tournament import TournamentSelection, compare
 from pymoo.util.ref_dirs import get_reference_directions
 from pymoo.core.termination import TerminateIfAny
@@ -135,7 +132,7 @@ algorithm = NSGA3(
     # sampling: This parameter specifies the method used to initialize the population. FloatRandomSampling
     # generates random floating-point values for the initial solutions, providing a diverse starting point.
 
-    sampling=FloatRandomSampling(),
+    sampling=LatinHypercubeSampling(),
 
     # selection: This defines the selection mechanism used to choose parents for reproduction.
     # TournamentSelection selects individuals based on a comparison function.
@@ -152,14 +149,14 @@ algorithm = NSGA3(
     # The probability of crossover being applied. A probability of 1.0 means crossover is always
     # applied.
 
-    crossover=SBX(eta=1, prob=0.8),
+    crossover=SBX(eta=1, prob=1.0),
 
     # mutation: This parameter specifies the mutation operator used for generating variation in offspring.
     # PM: Polynomial Mutation (PM) is a common mutation method for real-valued variables.
     # The distribution index for PM. Similar to SBX, a higher value of eta results in smaller mutations,
     # while a lower value results in larger mutations.
 
-    mutation=PM(eta=3,prob=0.8),
+    mutation=PM(eta=3,prob=0.5),
 
     eliminate_duplicates=True
 

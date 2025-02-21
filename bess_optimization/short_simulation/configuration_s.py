@@ -132,7 +132,7 @@ algorithm = NSGA3(
     # sampling: This parameter specifies the method used to initialize the population. FloatRandomSampling
     # generates random floating-point values for the initial solutions, providing a diverse starting point.
 
-    sampling=LatinHypercubeSampling(),
+    sampling=FloatRandomSampling(),
 
     # selection: This defines the selection mechanism used to choose parents for reproduction.
     # TournamentSelection selects individuals based on a comparison function.

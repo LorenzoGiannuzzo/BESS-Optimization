@@ -1,6 +1,4 @@
-"""
-
-BESS Optimization using NSGA-III Algorithm
+""" BESS Optimization using NSGA-III Algorithm
 
     __author__ = "Lorenzo Giannuzzo"
     __maintainer__ = "Lorenzo Giannuzzo"
@@ -9,13 +7,16 @@ BESS Optimization using NSGA-III Algorithm
     __version__ = "v0.2.1"
     __license__ = "MIT"
 
-Last Update of current code: 09/01/2025 - 17:36
+Last Update of current code: 21/02/2025 """
 
-"""
+# IMPORT LIBRARIES AND MODULES -----------------------------------------------------------------------------------------
 
-# IMPORT LIBRARIES
 import pandas as pd
 from argparser_s import input_json_path
+from logger import setup_logger
+
+# GET LOGGER
+setup_logger()
 
 # SET PATH FILE
 json_file_path = input_json_path
@@ -39,7 +40,6 @@ df.dropna(subset=['value'], inplace=True)
 df_weekdays = df[~df.index.weekday.isin([5, 6])]  # Exclude Saturdays (5) and Sundays (6)
 
 df_weekdays = df[df.index.weekday.isin([0,1,2,3,4,5,6])]  # Exclude Saturdays (5) and Sundays (6)
-
 
 # Create a DataFrame for weekends (Saturday and Sunday)
 df_weekends = df[df.index.weekday.isin([5, 6])]  # Include only Saturdays (5) and Sundays (6)

@@ -10,10 +10,11 @@
 Last Update of current code: 21/02/2025 """
 
 import pandas as pd
-from argparser_s import input_PV, PV_power
+from argparser_s import input_PV_path, PV_power
+from logger import setup_logger
 
 # File path
-file_path = input_PV
+file_path = input_PV_path
 
 # Read the PV production data
 pv_production = pd.read_csv(file_path, sep=';', usecols=['time', 'P'])

@@ -123,6 +123,21 @@ class Main:
         from argparser_s import n_cycles
         from argparser_s import soc_max, soc_min
 
+        # INITIALIZE VARIABLES
+        n_cycler = [0] * time_window
+        n_cycler[0] = n_cycles
+        # total_available_energy = [0.0] * time_window
+        # self_consumption = [0.0] * time_window
+        from_pv_to_load = [0.0] * time_window
+        from_BESS_to_load = [0.0] * time_window
+        load_self_consumption = [0.0] * time_window
+        taken_from_pv = [0.0] * time_window
+        charged_energy_from_grid_to_BESS = [0.0] * time_window
+        discharged_from_pv = [0.0] * time_window
+        remaining_production = [0.0] * time_window
+        shared_energy_rec = [0.0] * time_window
+        shared_energy_bess = [0.0] * time_window
+
         # GET CHARGE/DISCHARGE INTERPOLATED FUNCTIONS
         c_func = charge_rate_interpolated_func
         d_func = discharge_rate_interpolated_func
@@ -139,25 +154,10 @@ class Main:
         production = pv_production['P']
         rec_load = data
 
-        # INITIALIZE VARIABLES
-        n_cycler = [0] * time_window
-        n_cycler[0] = n_cycles
-        # total_available_energy = [0.0] * time_window
-        # self_consumption = [0.0] * time_window
-        from_pv_to_load = [0.0] * time_window
-        from_BESS_to_load = [0.0] * time_window
-        load_self_consumption = [0.0] * time_window
-        taken_from_pv = [0.0] * time_window
-        charged_energy_from_grid_to_BESS = [0.0] * time_window
-        discharged_from_pv = [0.0] * time_window
-        remaining_production = [0.0] * time_window
-        shared_energy_rec = [0.0] * time_window
-        shared_energy_bess = [0.0] * time_window
-
         # Loop through time window to calculate state of charge and cycles
         for i in range(time_window - 1):
 
-            # UPDATE SOC MAX BESED ON ITS ACTUAL AND PAST DEGRADATION
+            # UPDATE SOC MAX BASED ON ITS ACTUAL AND PAST DEGRADATION
             # GET PREVIOUS NUMBER OF CYCLES
             n_cycles_prev = n_cycles
             max_capacity = degradation(n_cycles_prev) / 100
@@ -172,29 +172,36 @@ class Main:
             discharged_from_pv[i] = -production[i]  # NEGATIVE VALUE
 
             # EVALUATE THE ENERGY DISCHARGED FROM BESS BASED TO THE VALUE OF THE OTHER OBTAINED ENERGY VECTORS
-            discharged_energy[i] = np.maximum(np.maximum(discharged_energy[i],
-                                                         -(soc[i] - soc_min) * size * power_energy),
-                                              -size * power_energy)
+            discharged_energy[i] = -np.minimum(np.minimum(np.abs(discharged_energy[i]),
+                                                             (soc[i]-soc_min)*size*power_energy),
+                                                             size*power_energy)
 
             # APPLY POD CONSTRAINTS TO ENERGY VECTORS
             if charged_energy_from_grid_to_BESS[i] > POD_power:
-                charged_energy_from_grid_to_BESS[i] = np.maximum(POD_power, 0.0)
+                charged_energy_from_grid_to_BESS[i] = np.minimum(POD_power, charged_energy_from_grid_to_BESS[i])
 
             if np.abs(discharged_energy[i]) > POD_power:
-                discharged_energy[i] = np.maximum(-POD_power, discharged_energy[i])
+                discharged_energy[i] = -np.minimum(POD_power, np.abs(discharged_energy[i]))
 
             # UPDATE THE ENERGY THAT THE BESS WANT TO BE CHARGED AS SUM OF THE ONE CHARGED FROM GRID TO BESS AND THE
             # ENERGY TAKEN FROM PV TO THE BESS
             charged_energy[i] = charged_energy_from_grid_to_BESS[i]
 
+            discharged_energy[i] = -np.minimum(np.minimum(np.abs(discharged_energy[i]),
+                                                             (soc[i]-soc_min)*size*power_energy),
+                                                             size*power_energy)
+
             # UPDATE SOC
             # IF BESS I CHARGING
-            if c_d_timeseries[i] >= 0:
-                soc[i + 1] = min(soc_max, soc[i] + (charged_energy[i]) / size)
+            if charged_energy[i] > 0:
+                soc[i + 1] = min(soc_max, soc[i] + (np.abs(charged_energy[i]))/size)
 
             # IF BESS IS DISCHARGING
+            elif discharged_energy[i] < 0:
+                soc[i + 1] = max(soc_min, soc[i] - (np.abs(discharged_energy[i]))/size)
+
             else:
-                soc[i + 1] = max(soc_min, soc[i] + (discharged_energy[i]) / size)
+                soc[i+1] = soc[i]
 
             # EVALUATING SHARED ENERGY
             shared_energy_rec[i] = np.minimum(rec_load[i], np.abs(discharged_from_pv[i]))

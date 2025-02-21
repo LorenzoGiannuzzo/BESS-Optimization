@@ -97,14 +97,23 @@ class Revenues(ElementwiseProblem):
             # MEANING THAT THE BESS IS DISCHARGING, THIS VALUE IS = 0
             self.charged_energy_from_grid_to_BESS[i] = self.charged_energy_to_BESS[i]
 
+            if np.sign(self.charged_energy_from_grid_to_BESS[i]) < 0:
+                print("Warning: Charged Energy from Grid to BESS is Negative!\n\n")
+
             # UPDATE THE ENERGY DISCHARGED FROM PV DIRECTLY TO THE GRID REDUCING ITS ORIGINAL VALUE BY THE ONE THAT
             # GOES FROM PV TO THE BESS AND FROM THE PV TO THE LOAD
             self.discharged_from_pv[i] = -self.production[i]  # NEGATIVE VALUE
 
+            if np.sign(self.discharged_from_pv[i]) > 0:
+                print("Warning: Discharged Energy from PV is Positive!\n\n")
+
             # EVALUATE THE ENERGY DISCHARGED FROM BESS BASED TO THE VALUE OF THE OTHER OBTAINED ENERGY VECTORS
-            self.discharged_energy_from_BESS[i] = np.maximum(np.maximum(self.discharged_energy_from_BESS[i],
-                                                             -(self.soc[i]-soc_min)*size*power_energy),
-                                                             -size*power_energy)  # TODO: REMOVE REDUNDANCY
+            self.discharged_energy_from_BESS[i] = -np.minimum(np.minimum(np.abs(self.discharged_energy_from_BESS[i]),
+                                                             (self.soc[i]-soc_min)*size*power_energy),
+                                                             size*power_energy)  # TODO: REMOVE REDUNDANCY
+
+            if np.sign(self.discharged_energy_from_BESS[i]) > 0:
+                print("Warning: Discharged Energy from BESS is Positive!\n\n")
 
             # APPLY POD CONSTRAINTS TO ENERGY VECTORS
 
@@ -114,11 +123,17 @@ class Revenues(ElementwiseProblem):
                 # THEN LIMIT ALSO THE ENERGY CHARGED FROM GRID TO BESS (CONTROLLABLE)
                 self.charged_energy_from_grid_to_BESS[i] = np.minimum(POD_power, self.charged_energy_from_grid_to_BESS[i])
 
+                if np.sign(self.charged_energy_from_grid_to_BESS[i]) < 0:
+                    print("Warning: Charged Energy from Grid to BESS is Negative when updating POD Constraints!\n\n")
+
             # IF POD POWER IS EXCEEDED WHILE DISCHARGING ENERGY TO THE GRID
             if np.abs(self.discharged_energy_from_BESS[i]) > POD_power:
 
                 # THEN ALSO LIMIT THE ENERGY DISCHARGED FROM BESS TO THE GRID (CONTROLLABLE)
-                self.discharged_energy_from_BESS[i] = np.maximum(-POD_power, self.discharged_energy_from_BESS[i])
+                self.discharged_energy_from_BESS[i] = -np.minimum(POD_power, np.abs(self.discharged_energy_from_BESS[i]))
+
+                if np.sign(self.discharged_energy_from_BESS[i]) > 0:
+                    print("Warning: Discharged Energy from BESS is Positive when updating POD Constraints!\n\n")
 
             # UPDATE AGAIN ALL THE ENERGY VECTOR BASED ON POD POWER CONSTRAINS THAT WERE APPLIED
 
@@ -126,27 +141,34 @@ class Revenues(ElementwiseProblem):
             # ENERGY TAKEN FROM PV TO THE BESS
             self.charged_energy_to_BESS[i] = self.charged_energy_from_grid_to_BESS[i]
 
+            if np.sign(self.charged_energy_to_BESS[i]) < 0:
+                print("Warning: Charged Energy from grid to BESS is Negative!\n\n")
+
             # UPDATE THE ENERGY DISCHARGED FROM PV DIRECTLY TO THE GRID REDUCING ITS ORIGINAL VALUE BY THE ONE THAT
-            self.discharged_energy_from_BESS[i] = np.maximum(np.maximum(self.discharged_energy_from_BESS[i],
-                                                             -(self.soc[i]-soc_min)*size*power_energy),
-                                                             -size*power_energy)
+            self.discharged_energy_from_BESS[i] = -np.minimum(np.minimum(np.abs(self.discharged_energy_from_BESS[i]),
+                                                             (self.soc[i]-soc_min)*size*power_energy),
+                                                             size*power_energy)
+
+            if np.sign(self.discharged_energy_from_BESS[i]) > 0:
+                print("Warning: Discharged Energy from BESS is Positive!\n\n")
+
             # UPDATE SOC
 
             # IF BESS IS CHARGING
-            if self.c_d_timeseries[i] >= 0:
+            if self.charged_energy_from_grid_to_BESS[i] > 0:
                 self.soc[i + 1] = min(soc_max, self.soc[i] + (self.charged_energy_to_BESS[i]
                                                             ) / size)
-
             # IF BESS IS DISCHARGING
-            else:
-                self.soc[i + 1] = max(soc_min, self.soc[i] + (self.discharged_energy_from_BESS[i]
+            elif self.discharged_energy_from_BESS[i] < 0:
+                self.soc[i + 1] = max(soc_min, self.soc[i] - (np.abs(self.discharged_energy_from_BESS[i])
                                                               ) / size)
+            else:
+                self.soc[i+1] = self.soc[i]
+
 
             # EVALUATING SHARED ENERGY
             self.shared_energy_REC[i] = np.minimum(self.rec_load[i], np.abs(self.discharged_from_pv[i]))
-
             self.remaining_production[i] = np.maximum(np.abs(self.discharged_from_pv[i]) - self.shared_energy_REC[i], 0.0)
-
             self.shared_energy_BESS[i] = np.minimum(self.remaining_production[i], self.charged_energy_to_BESS[i])
 
             total_energy = self.charged_energy_to_BESS[i] + np.abs(self.discharged_energy_from_BESS[i])

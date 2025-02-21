@@ -35,8 +35,11 @@ pod_power_default = 100
 n_cycles_default = 0
 
 # GET PARSER ARGUMENTS FROM COMMAND LINE
-parser.add_argument('--input_json', type=str, required=False,default=input_json_default,
-                    help='Absolute path of the file .json for PUN values as input')
+parser.add_argument('--input_sellprice', type=str, required=False, default=input_json_default,
+                    help='Absolute path of the file .json for selling price values as input')
+
+parser.add_argument('--input_buyprice', type=str, required=False, default=input_json_default,
+                    help='Absolute path of the file .json for buying price values as input')
 
 parser.add_argument('--input_PV', type=str, required=False,default=input_PV_default,
                     help='Absolute path of the output file .json')
@@ -78,7 +81,8 @@ parser.add_argument('--self_consumption', type= str, required = True, default = 
 args = parser.parse_args()
 
 # GET PARAMETERS
-input_json_path = args.input_json
+input_sellprice_path = args.input_sellprice
+input_buyprice_path = args.input_buyprice
 input_PV = args.input_PV
 input_load = args.input_load
 output_json_path = args.output_json
@@ -100,21 +104,22 @@ soc_max = float(end_str) / 100
 
 # Execute Long Simulation with new parameters
 args2 = [
-    sys.executable,
-    'main.py',
-    '--type', str('Short'),
-    '--input_json', input_json_path,
-    '--input_PV', input_PV,
-    '--output_json', output_json_path,
-    '--technology', technology,
-    '--size', str(size),
-    '--power_energy', str(power_energy),
-    '--soc', str(soc * 100),  # Converti di nuovo in percentuale
-    '--dod', range_str,
-    '--PV_power', str( str(PV_power)),
-    '--POD_power', str(POD_power),
-    '--n_cycles', str(n_cycles),
-    '--weekends', 'False'
-]
+     sys.executable,
+     'main.py',
+     '--type', str('Short'),
+     '--input_sellprice', input_sellprice_path,
+     '--input_buyprice', input_buyprice_path,
+     '--input_PV', input_PV,
+     '--output_json', output_json_path,
+     '--technology', technology,
+     '--size', str(size),
+     '--power_energy', str(power_energy),
+     '--soc', str(soc * 100),  # Converti di nuovo in percentuale
+     '--dod', range_str,
+     '--PV_power', str( str(PV_power)),
+     '--POD_power', str(POD_power),
+     '--n_cycles', str(n_cycles),
+     '--weekends', 'False'
+ ]
 
 

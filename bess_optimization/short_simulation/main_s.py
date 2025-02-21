@@ -21,7 +21,7 @@ from multiprocessing import Pool, cpu_count  # Multiprocessing utilities
 from objective_function_s import Revenues  # Objective function for revenue calculation
 from configuration_s import pop_size, soc_0, time_window, plot  # Configuration parameters
 from BESS_model_s import charge_rate_interpolated_func, discharge_rate_interpolated_func, size, technology, BESS_model  # BESS model functions and parameters
-from Economic_parameters_s import PUN_timeseries  # Economic parameters for pricing
+from Economic_parameters_s import PUN_timeseries_sell, PUN_timeseries_buy  # Economic parameters for pricing
 from Optimizer_s import Optimizer  # Optimization class
 from argparser_s import output_json_path, range_str, soc_min, power_energy, POD_power  # Argument parser parameters
 from Plots_s import EnergyPlots  # Plotting utilities
@@ -103,7 +103,7 @@ class Main:
 
         # GENERATE PLOTS IF PLOT FLAG IS TRUE
         if plot:
-            self.plot_results(soc, charged_energy, discharged_energy, c_d_timeseries, PUN_timeseries[:, 1],
+            self.plot_results(soc, charged_energy, discharged_energy, c_d_timeseries, PUN_timeseries_sell[:, 1],
                               taken_from_grid, taken_from_pv, discharged_from_pv, load_self_consumption,from_pv_to_load,
                               from_BESS_to_load, data)  # Generate plots for the results
 
@@ -130,7 +130,7 @@ class Main:
         # INITIALIZE FIRST PARAMETERS
         soc = [0.0] * time_window
         soc[0] = soc_0
-        bess_model = BESS_model(time_window, PUN_timeseries, soc, size, c_func, d_func)  # Create BESS model instance
+        bess_model = BESS_model(time_window, PUN_timeseries_sell, soc, size, c_func, d_func)  # Create BESS model instance
 
         charged_energy, discharged_energy = bess_model.run_simulation(c_d_timeseries)
         # Run simulation to get energy values
@@ -300,12 +300,14 @@ class Main:
     def calculate_and_print_revenues(self, charged_energy, discharged_energy, taken_from_grid, discharged_from_pv,
                                      from_pv_to_load, from_BESS_to_load):
 
-        PUN_ts = PUN_timeseries[:, 1]
-        rev = np.array( np.abs(discharged_energy) * PUN_ts / 1000
-               - np.abs(taken_from_grid * PUN_ts * 1.1 / 1000)
-               + np.abs(discharged_from_pv) * PUN_ts / 1000
-               + np.abs(from_pv_to_load) * PUN_ts * 1.1 / 1000
-               + np.abs(from_BESS_to_load) * PUN_ts * 1.1 / 1000)
+        from Economic_parameters_s import PUN_timeseries_sell, PUN_timeseries_buy
+
+
+        rev = np.array(np.abs(discharged_energy) * PUN_timeseries_sell[:,1] / 1000
+               - np.abs(taken_from_grid * PUN_timeseries_buy[:,1] * 1.1 / 1000)
+               + np.abs(discharged_from_pv) * PUN_timeseries_sell[:,1] / 1000
+               + np.abs(from_pv_to_load) * PUN_timeseries_buy[:,1] * 1.1 / 1000
+               + np.abs(from_BESS_to_load) * PUN_timeseries_buy[:,1] * 1.1 / 1000)
 
         self.rev = rev
 
@@ -336,7 +338,7 @@ class Main:
 
         # EXECUTE PLOTS
         if plot:
-            plots = EnergyPlots(time_window, soc, charged_energy, discharged_energy, PUN_timeseries[:, 1],
+            plots = EnergyPlots(time_window, soc, charged_energy, discharged_energy, PUN_timeseries_sell[:, 1],
                                 taken_from_grid, taken_from_pv, pv_production['P'], discharged_from_pv,
                                 self_consumption, from_pv_to_load, from_BESS_to_load, np.array(data))
             plots.Total_View(num_values=time_window)
@@ -383,21 +385,21 @@ if __name__ == "__main__":
     data = []
 
     # OUTPUT CREATION AS .JSON FILE
-    for i in range(len(PUN_timeseries[:, 1])):
+    for i in range(len(PUN_timeseries_sell[:, 1])):
         entry = {
             # DATETIME KEY
-            "datetime": PUN_timeseries[i, 0],  # Timestamp for the entry
+            "datetime": PUN_timeseries_sell[i, 0],  # Timestamp for the entry
 
             # PUN VALUES KEY
-            "PUN": PUN_timeseries[i, 1] / 1000,  # PUN value in kWh
+            "PUN": PUN_timeseries_sell[i, 1] / 1000,  # PUN value in kWh
             "soc": SoC[i],  # State of charge
             "c_d_energy": main.charged_energy[i] + main.discharged_energy[i],  # Total charged/discharged energy from BESS
             "Nominal C-rate": power_energy,  # Nominal charge rate
             "C-rate": (main.charged_energy[i] - main.discharged_energy[i]) / size,  # Actual C-rate
             "revenues": revenues[i],  # Total revenues for the time step
-            "rev_BESS": -main.discharged_energy[i] * PUN_timeseries[i, 1] / 1000,  # Revenue from BESS
-            "rev_PV": main.discharged_from_pv[i] * PUN_timeseries[i, 1] / 1000,  # Revenue from PV
-            "rev_SC": float(main.load_self_consumption[i]) * PUN_timeseries[i, 1] / 1000,  # Revenue from self-consumption
+            "rev_BESS": -main.discharged_energy[i] * PUN_timeseries_sell[i, 1] / 1000,  # Revenue from BESS
+            "rev_PV": main.discharged_from_pv[i] * PUN_timeseries_sell[i, 1] / 1000,  # Revenue from PV
+            "rev_SC": float(main.load_self_consumption[i]) * PUN_timeseries_buy[i, 1] / 1000,  # Revenue from self-consumption
             "technology": technology,  # Technology used
             "size": size,  # Size of the BESS
             "dod": range_str,  # Depth of discharge

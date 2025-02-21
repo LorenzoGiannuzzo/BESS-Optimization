@@ -38,17 +38,18 @@ class Revenues(ElementwiseProblem):
         )
 
         # DEFINE REVENUES ATTRIBUTES FROM IMPORTER PARAMETERS - PUN and C/D Functions
-        self.PUN_timeseries = Economic_parameters_s.PUN_timeseries[:, 1]
+        self.PUN_timeseries_sell = Economic_parameters_s.PUN_timeseries_sell[:, 1]
+        self.PUN_timeseries_buy = Economic_parameters_s.PUN_timeseries_buy[:, 1]
         self.c_func, self.d_func = charge_rate_interpolated_func, discharge_rate_interpolated_func
 
         # DEFINE OBJECTIVE FUNCTION PARAMETERS - SoC, Charged/Discharged Energy (from BESS)
-        self.soc = np.zeros((len(self.PUN_timeseries)))
-        self.charged_energy_to_BESS = np.zeros((len(self.PUN_timeseries)))
-        self.discharged_energy_from_BESS = np.zeros((len(self.PUN_timeseries)))
-        self.load_self_consumption = np.zeros((len(self.PUN_timeseries)))
-        self.from_pv_to_load = np.zeros((len(self.PUN_timeseries)))
-        self.from_BESS_to_load = np.zeros((len(self.PUN_timeseries)))
-        self.load_decision = np.zeros((len(self.PUN_timeseries)))
+        self.soc = np.zeros((len(self.PUN_timeseries_sell)))
+        self.charged_energy_to_BESS = np.zeros((len(self.PUN_timeseries_sell)))
+        self.discharged_energy_from_BESS = np.zeros((len(self.PUN_timeseries_sell)))
+        self.load_self_consumption = np.zeros((len(self.PUN_timeseries_sell)))
+        self.from_pv_to_load = np.zeros((len(self.PUN_timeseries_sell)))
+        self.from_BESS_to_load = np.zeros((len(self.PUN_timeseries_sell)))
+        self.load_decision = np.zeros((len(self.PUN_timeseries_sell)))
 
         # INITIALIZE SoC AT t=0
         self.soc[0] = configuration_s.soc_0
@@ -70,17 +71,17 @@ class Revenues(ElementwiseProblem):
 
         # EVALUATE THE CHARGED AND DISCHARGED ENERGY AND UPDATE THE SoC FOR EACH TIMESTEP t
         # Create an instance of BESS_model
-        bess_model = BESS_model(self.time_window, self.PUN_timeseries, self.soc, self.size, self.c_func,
+        bess_model = BESS_model(self.time_window, self.PUN_timeseries_sell, self.soc, self.size, self.c_func,
                                     self.d_func)
 
         # GET CHARGED/DISCHARGED VALUES FROM BESS MODEL RUN
         self.charged_energy_from_BESS, self.discharged_energy_from_BESS = bess_model.run_simulation(self.c_d_timeseries)
 
         # INITIALIZE VARIABLES
-        total_available_energy = np.zeros((len(self.PUN_timeseries)))
-        self.taken_from_pv = np.zeros((len(self.PUN_timeseries)))
-        self.charged_energy_from_grid_to_BESS = np.zeros((len(self.PUN_timeseries)))
-        self.discharged_from_pv = np.zeros((len(self.PUN_timeseries)))
+        total_available_energy = np.zeros((len(self.PUN_timeseries_sell)))
+        self.taken_from_pv = np.zeros((len(self.PUN_timeseries_sell)))
+        self.charged_energy_from_grid_to_BESS = np.zeros((len(self.PUN_timeseries_sell)))
+        self.discharged_from_pv = np.zeros((len(self.PUN_timeseries_sell)))
 
         # EXECUTE THE UPDATE FOR EACH i-th TIMESTEP OF ALL THE ENERGY VECTORS. EVALUATING ENERGY BALANCES
         from argparser_s import n_cycles
@@ -229,11 +230,11 @@ class Revenues(ElementwiseProblem):
         n_cycles = total_energy / actual_capacity
 
         # EVALUATE THE REVENUES OBTAINED FOR EACH TIMESTEP t
-        revenue_column = np.array(np.abs(self.discharged_energy_from_BESS) * self.PUN_timeseries / 1000 -
-                                      np.abs(self.charged_energy_from_grid_to_BESS) * self.PUN_timeseries * 1.1 / 1000
-                                      + np.abs(self.discharged_from_pv) * self.PUN_timeseries / 1000
-                                      + np.abs(self.from_pv_to_load) * self.PUN_timeseries * 1.1 / 1000
-                                      + np.abs(self.from_BESS_to_load) * self.PUN_timeseries * 1.1 / 1000)
+        revenue_column = np.array(np.abs(self.discharged_energy_from_BESS) * self.PUN_timeseries_sell / 1000 -
+                                      np.abs(self.charged_energy_from_grid_to_BESS) * self.PUN_timeseries_buy / 1000
+                                      + np.abs(self.discharged_from_pv) * self.PUN_timeseries_sell / 1000
+                                      + np.abs(self.from_pv_to_load) * self.PUN_timeseries_buy / 1000
+                                      + np.abs(self.from_BESS_to_load) * self.PUN_timeseries_buy / 1000)
 
         # EVALUATE REVENUES CONSIDERING TYPICAL DAYS FOR EACH MONTH
         num_settimane = 12

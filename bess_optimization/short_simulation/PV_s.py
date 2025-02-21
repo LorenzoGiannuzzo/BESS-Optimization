@@ -1,6 +1,4 @@
-"""
-
-BESS Optimization using NSGA-III Algorithm
+""" BESS Optimization using NSGA-III Algorithm
 
     __author__ = "Lorenzo Giannuzzo"
     __maintainer__ = "Lorenzo Giannuzzo"
@@ -9,9 +7,7 @@ BESS Optimization using NSGA-III Algorithm
     __version__ = "v0.2.1"
     __license__ = "MIT"
 
-Last Update of current code: 09/01/2025 - 17:49
-
-"""
+Last Update of current code: 21/02/2025 """
 
 import pandas as pd
 from argparser_s import input_PV, PV_power

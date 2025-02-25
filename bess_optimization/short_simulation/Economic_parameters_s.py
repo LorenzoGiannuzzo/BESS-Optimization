@@ -7,7 +7,7 @@
     __version__ = "v0.2.1"
     __license__ = "MIT"
 
-Last Update of current code: 21/02/2025 """
+Last Update of current code: 2/02/2025 """
 
 # IMPORT LIBRARIES AND MODULES -----------------------------------------------------------------------------------------
 
@@ -84,7 +84,6 @@ for month in range(1, 13):  # Months from 1 to 12
 
 # Reset index to get hours as a column for the 15th
 final_result_15th.reset_index(drop=True, inplace=True)
-# TODO: FORCING THE EVALUATION TO THE 15th OF EACH MONTH
 final_result_weekdays = final_result_15th
 
 # Create a new column for the month and hour in the weekends DataFrame

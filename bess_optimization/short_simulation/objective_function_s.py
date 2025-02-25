@@ -7,7 +7,8 @@
     __version__ = "v0.2.1"
     __license__ = "MIT"
 
-Last Update of current code: 19/02/2025 """
+Last Update of current code: 25/02/2025 """
+import logging
 
 # IMPORT LIBRARIES AND MODULES
 import numpy as np
@@ -20,7 +21,11 @@ from Load import data
 from argparser_s import POD_power
 from BESS_model_s import power_energy
 from BESS_model_s import degradation
+from logger import setup_logger
 
+# LOGGER SETUP
+
+setup_logger()
 
 # DEFINE OPTIMIZATION PROBLEM
 class Revenues(ElementwiseProblem):
@@ -97,23 +102,19 @@ class Revenues(ElementwiseProblem):
             # MEANING THAT THE BESS IS DISCHARGING, THIS VALUE IS = 0
             self.charged_energy_from_grid_to_BESS[i] = self.charged_energy_to_BESS[i]
 
-            if np.sign(self.charged_energy_from_grid_to_BESS[i]) < 0:
-                print("Warning: Charged Energy from Grid to BESS is Negative!\n\n")
+            assert self.charged_energy_from_grid_to_BESS[i] >= 0, logging.error("Charged Energy from Grid to BESS is Negative and should be Positive.\n\n")
 
             # UPDATE THE ENERGY DISCHARGED FROM PV DIRECTLY TO THE GRID REDUCING ITS ORIGINAL VALUE BY THE ONE THAT
             # GOES FROM PV TO THE BESS AND FROM THE PV TO THE LOAD
             self.discharged_from_pv[i] = -self.production[i]  # NEGATIVE VALUE
 
-            if np.sign(self.discharged_from_pv[i]) > 0:
-                print("Warning: Discharged Energy from PV is Positive!\n\n")
-
             # EVALUATE THE ENERGY DISCHARGED FROM BESS BASED TO THE VALUE OF THE OTHER OBTAINED ENERGY VECTORS
             self.discharged_energy_from_BESS[i] = -np.minimum(np.minimum(np.abs(self.discharged_energy_from_BESS[i]),
                                                              (self.soc[i]-soc_min)*size*power_energy),
-                                                             size*power_energy)  # TODO: REMOVE REDUNDANCY
+                                                             size*power_energy)
 
-            if np.sign(self.discharged_energy_from_BESS[i]) > 0:
-                print("Warning: Discharged Energy from BESS is Positive!\n\n")
+            assert self.discharged_energy_from_BESS[i] <= 0, logging.error(
+                "Discharged Energy from BESS to Grid is Positive and should be Negative (1).\n\n")
 
             # APPLY POD CONSTRAINTS TO ENERGY VECTORS
 
@@ -123,8 +124,8 @@ class Revenues(ElementwiseProblem):
                 # THEN LIMIT ALSO THE ENERGY CHARGED FROM GRID TO BESS (CONTROLLABLE)
                 self.charged_energy_from_grid_to_BESS[i] = np.minimum(POD_power, self.charged_energy_from_grid_to_BESS[i])
 
-                if np.sign(self.charged_energy_from_grid_to_BESS[i]) < 0:
-                    print("Warning: Charged Energy from Grid to BESS is Negative when updating POD Constraints!\n\n")
+                assert self.charged_energy_from_grid_to_BESS[i] >= 0, logging.error(
+                    "Charged Energy from Grid to BESS is Negative and should be Positive.\n\n")
 
             # IF POD POWER IS EXCEEDED WHILE DISCHARGING ENERGY TO THE GRID
             if np.abs(self.discharged_energy_from_BESS[i]) > POD_power:
@@ -132,8 +133,8 @@ class Revenues(ElementwiseProblem):
                 # THEN ALSO LIMIT THE ENERGY DISCHARGED FROM BESS TO THE GRID (CONTROLLABLE)
                 self.discharged_energy_from_BESS[i] = -np.minimum(POD_power, np.abs(self.discharged_energy_from_BESS[i]))
 
-                if np.sign(self.discharged_energy_from_BESS[i]) > 0:
-                    print("Warning: Discharged Energy from BESS is Positive when updating POD Constraints!\n\n")
+                assert self.discharged_energy_from_BESS[i] <= 0, logging.error(
+                    "Discharged Energy from BESS to Grid is Positive and should be Negative.\n\n")
 
             # UPDATE AGAIN ALL THE ENERGY VECTOR BASED ON POD POWER CONSTRAINS THAT WERE APPLIED
 
@@ -141,16 +142,10 @@ class Revenues(ElementwiseProblem):
             # ENERGY TAKEN FROM PV TO THE BESS
             self.charged_energy_to_BESS[i] = self.charged_energy_from_grid_to_BESS[i]
 
-            if np.sign(self.charged_energy_to_BESS[i]) < 0:
-                print("Warning: Charged Energy from grid to BESS is Negative!\n\n")
-
             # UPDATE THE ENERGY DISCHARGED FROM PV DIRECTLY TO THE GRID REDUCING ITS ORIGINAL VALUE BY THE ONE THAT
             self.discharged_energy_from_BESS[i] = -np.minimum(np.minimum(np.abs(self.discharged_energy_from_BESS[i]),
                                                              (self.soc[i]-soc_min)*size*power_energy),
                                                              size*power_energy)
-
-            if np.sign(self.discharged_energy_from_BESS[i]) > 0:
-                print("Warning: Discharged Energy from BESS is Positive!\n\n")
 
             # UPDATE SOC
 
@@ -158,13 +153,18 @@ class Revenues(ElementwiseProblem):
             if self.charged_energy_from_grid_to_BESS[i] > 0:
                 self.soc[i + 1] = min(soc_max, self.soc[i] + (self.charged_energy_to_BESS[i]
                                                             ) / size)
+
+                assert self.soc[i+1] <= 100, logging.error("SoC exceed 100%\n\n")
+
             # IF BESS IS DISCHARGING
             elif self.discharged_energy_from_BESS[i] < 0:
                 self.soc[i + 1] = max(soc_min, self.soc[i] - (np.abs(self.discharged_energy_from_BESS[i])
                                                               ) / size)
+
+                assert self.soc[i + 1] >= 0.0, logging.error("SoC is lower than 0%\n\n")
+
             else:
                 self.soc[i+1] = self.soc[i]
-
 
             # EVALUATING SHARED ENERGY
             self.shared_energy_REC[i] = np.minimum(self.rec_load[i], np.abs(self.discharged_from_pv[i]))
@@ -184,7 +184,6 @@ class Revenues(ElementwiseProblem):
 
         n_cycles_prev = n_cycles
         actual_capacity = size * degradation(n_cycles_prev)/100
-
         n_cycles = total_energy / actual_capacity
 
         # EVALUATE THE REVENUES OBTAINED FOR EACH TIMESTEP t
@@ -194,7 +193,6 @@ class Revenues(ElementwiseProblem):
                                       + np.abs(self.shared_energy_BESS) * 120 / 1000
                                   )
 
-        #print(self.PUN_timeseries/1000)
 
         # EVALUATE REVENUES CONSIDERING TYPICAL DAYS FOR EACH MONTH
         # num_settimane = 12
@@ -207,7 +205,9 @@ class Revenues(ElementwiseProblem):
         #     revenues_settimanali[i] = np.sum(revenue_column[inizio:fine]) * 30
 
         revenues_settimanali = np.sum(revenue_column)
+
         revenues_finali = revenues_settimanali
+
         somma_revenues_finali = np.sum(revenues_finali)
 
         # EVALUATE THE REVENUES OBTAINED DURING THE OPTIMIZATION TIME WINDOW

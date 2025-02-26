@@ -1,5 +1,4 @@
-"""
-BESS Optimization using NSGA-III Algorithm
+""" BESS Optimization using NSGA-III Algorithm
 
     __author__ = "Lorenzo Giannuzzo"
     __maintainer__ = "Lorenzo Giannuzzo"
@@ -8,8 +7,8 @@ BESS Optimization using NSGA-III Algorithm
     __version__ = "v0.2.1"
     __license__ = "MIT"
 
-Last Update of current code: 17/01/2025 - 12:20
-"""
+Last Update of current code: 25/02/2025 """
+
 # IMPORT LIBRARIES
 import numpy as np
 import configuration_s
@@ -230,11 +229,12 @@ class Revenues(ElementwiseProblem):
         n_cycles = total_energy / actual_capacity
 
         # EVALUATE THE REVENUES OBTAINED FOR EACH TIMESTEP t
-        revenue_column = np.array(np.abs(self.discharged_energy_from_BESS) * self.PUN_timeseries_sell / 1000 -
-                                      np.abs(self.charged_energy_from_grid_to_BESS) * self.PUN_timeseries_buy / 1000
+        revenue_column = (np.array(np.abs(self.discharged_energy_from_BESS) * self.PUN_timeseries_sell / 1000 -
+                                      np.abs(self.charged_energy_from_grid_to_BESS) * self.PUN_timeseries_buy * 1.2 / 1000
                                       + np.abs(self.discharged_from_pv) * self.PUN_timeseries_sell / 1000
-                                      + np.abs(self.from_pv_to_load) * self.PUN_timeseries_buy / 1000
-                                      + np.abs(self.from_BESS_to_load) * self.PUN_timeseries_buy / 1000)
+                                      + np.abs(self.from_pv_to_load) * self.PUN_timeseries_buy * 1.2 / 1000
+                                      + np.abs(self.from_BESS_to_load) * self.PUN_timeseries_buy * 1.2/ 1000)
+                          - ( np.abs(self.load) - np.abs(self.from_pv_to_load) - np.abs(self.from_BESS_to_load) ) * self.PUN_timeseries_sell * 1.2 / 1000)
 
         # EVALUATE REVENUES CONSIDERING TYPICAL DAYS FOR EACH MONTH
         num_settimane = 12

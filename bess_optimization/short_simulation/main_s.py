@@ -98,7 +98,7 @@ class Main:
 
         # CALCULATE AND PRINT REVENUES
         self.calculate_and_print_revenues(self.charged_energy, self.discharged_energy, self.taken_from_grid,
-                                          self.discharged_from_pv, self.from_pv_to_load, self.from_BESS_to_load)
+                                          self.discharged_from_pv, self.from_pv_to_load, self.from_BESS_to_load, data)
         # Calculate and display revenues
 
         # GENERATE PLOTS IF PLOT FLAG IS TRUE
@@ -298,16 +298,17 @@ class Main:
                 discharged_from_pv, taken_from_pv, n_cycler, load_self_consumption, from_pv_to_load, from_BESS_to_load)
 
     def calculate_and_print_revenues(self, charged_energy, discharged_energy, taken_from_grid, discharged_from_pv,
-                                     from_pv_to_load, from_BESS_to_load):
+                                     from_pv_to_load, from_BESS_to_load, load):
 
         from Economic_parameters_s import PUN_timeseries_sell, PUN_timeseries_buy
 
-
         rev = np.array(np.abs(discharged_energy) * PUN_timeseries_sell[:,1] / 1000
-               - np.abs(taken_from_grid * PUN_timeseries_buy[:,1] * 1.1 / 1000)
+               - np.abs(taken_from_grid * PUN_timeseries_buy[:,1] * 1.2 / 1000)
                + np.abs(discharged_from_pv) * PUN_timeseries_sell[:,1] / 1000
-               + np.abs(from_pv_to_load) * PUN_timeseries_buy[:,1] * 1.1 / 1000
-               + np.abs(from_BESS_to_load) * PUN_timeseries_buy[:,1] * 1.1 / 1000)
+               + np.abs(from_pv_to_load) * PUN_timeseries_buy[:,1] * 1.2/ 1000
+               + np.abs(from_BESS_to_load) * PUN_timeseries_buy[:,1] * 1.2 / 1000)
+        - ( np.abs(load) - np.abs(from_BESS_to_load) - np.abs(from_pv_to_load) ) * PUN_timeseries_sell[:,1] * 1.2 / 1000
+
 
         self.rev = rev
 

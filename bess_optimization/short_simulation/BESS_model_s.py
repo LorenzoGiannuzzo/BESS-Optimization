@@ -93,12 +93,11 @@ class BESS_model:
             soc_max = min(self.soc_max, max_capacity)
 
             # IF BESS IS CHARGING
-            if self.c_d_timeseries[index] >= 0.0:
+            if self.c_d_timeseries[index] > 0.0:
 
-                # EVALUATE THE PHYSICAL CONSTRAINTS OF BESS TO AVOID OVERCHARGNING
-                #TODO THIS THING SHOULD BE DONE USING A FUNCTION CONTAINED IN A FILE NAMED CONSTRAINER
+                # EVALUATE THE PHYSICAL CONSTRAINTS OF BESS TO AVOID OVERCHARGING
 
-                # THE BESS CAN CHARGE THE MINIMUM BETWEEN WHAT'S DEFINED IN C/D_Timeseries (what quantity the agorithm
+                # THE BESS CAN CHARGE THE MINIMUM BETWEEN WHAT'S DEFINED IN C/D_Timeseries (what quantity the algorithm
                 # would like to charge), HOW MUCH THE BESS CAN CHARGE BASED ON ITS ACTUAL SoC
                 # (self.c_func(self.soc[index])), AND HOW MUCH CAN HE CHARGE LEFT (soc_max - self.soc[index])
 
@@ -116,9 +115,7 @@ class BESS_model:
 
             # IF BESS IS DISCHARGING (specular case as charging)
 
-                # TODO THIS THING SHOULD BE DONE USING A FUNCTION CONTAINED IN A FILE NAMED CONSTRAINER
-
-            else:
+            elif self.c_d_timeseries[index] < 0:
 
                 self.c_d_timeseries[index] = np.maximum(
                     self.c_d_timeseries[index],
@@ -131,10 +128,15 @@ class BESS_model:
                     self.c_d_timeseries[index],
                     np.array(-power_energy)
                 )
-            # IF BESS IS DISCHARGING
-            if self.c_d_timeseries[index] >= 0:
 
-                # EVALAUTE CHARGED ENERGY INTO THE BESS
+            else:
+                self.c_d_timeseries[index] = 0
+
+            # EVALUATE ENERGY FLOWS
+
+            if self.c_d_timeseries[index] > 0:
+
+                # EVALUATE CHARGED ENERGY INTO THE BESS
 
                 self.charged_energy[index] = self.c_d_timeseries[index] * self.size
 
@@ -163,7 +165,7 @@ class BESS_model:
             # UPDATE SoC AT TIMESTEP t + 1
 
             # IF BESS IS CHARGING
-            if self.c_d_timeseries[index] >= 0.0:
+            if self.c_d_timeseries[index] > 0.0:
 
                 # INCREASE SoC
                 self.soc[index + 1] = np.minimum(soc_max, self.soc[index] + self.charged_energy[index] / self.size)
@@ -173,7 +175,7 @@ class BESS_model:
                 self.discharged_energy[index] = 0.0
 
             # IF BESS IS DISCHARGING
-            else:
+            elif self.c_d_timeseries[index] < 0.0:
 
                 # DECREASE SoC (discharged_energy is negative)
                 self.soc[index + 1] = np.maximum(soc_min, self.soc[index] + self.discharged_energy[index] / self.size)
@@ -181,6 +183,12 @@ class BESS_model:
                 # RE-EVALUATE DISCHARGED ENERGY
                 self.discharged_energy[index] = (self.soc[index+1] - self.soc[index])*self.size
                 self.charged_energy[index] = 0
+
+            else:
+
+                self.discharged_energy[index] = 0
+                self.charged_energy[index] = 0
+                self.soc[index + 1] = self.soc[index]
 
             # N_CYCLES UPDATE FOR EACH TIMESTEP
             total_energy = self.charged_energy[index] + np.abs(self.discharged_energy[index])

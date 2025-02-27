@@ -214,7 +214,7 @@ class Main:
             assert taken_from_pv[i] >= 0, "Energy taken from PV to the BESS is negative (2m).\n\n"
 
             # HOW MUCH ENERGY THE BESS CAN CHARGE BASED ON THE CAP OF SOC_MAX
-            taken_from_pv[i] = np.minimum(taken_from_pv[i], (soc_max - soc[i]) * size)
+            taken_from_pv[i] = np.minimum(taken_from_pv[i], np.maximum((soc_max - soc[i]) * size), 0.0)
 
             assert taken_from_pv[i] >= 0, "Energy taken from PV to the BESS is negative (3m).\n\n"
 
@@ -337,7 +337,7 @@ class Main:
             assert taken_from_pv[i] >= 0, "Energy taken from PV to the BESS is negative (5m).\n\n"
 
             # HOW MUCH ENERGY THE BESS CAN CHARGE BASED ON THE CAP OF SOC_MAX
-            taken_from_pv[i] = np.minimum(taken_from_pv[i], (soc_max - soc[i]) * size)
+            taken_from_pv[i] = np.minimum(taken_from_pv[i], np.maximum((soc_max - soc[i]) * size), 0.0)
 
             assert taken_from_pv[i] >= 0, "Energy taken from PV to the BESS is negative (6m).\n\n"
 

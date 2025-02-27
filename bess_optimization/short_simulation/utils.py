@@ -9,9 +9,7 @@ BESS Optimization using NSGA-III Algorithm
     __version__ = "v0.2.1"
     __license__ = "MIT"
 
-Last Update of current code: 09/01/2025 - 17:49
-
-"""
+Last Update of current code: 27/02/2025 """
 
 import ExcelOpener_s
 import Interpolator_s

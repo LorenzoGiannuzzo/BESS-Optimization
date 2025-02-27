@@ -75,8 +75,8 @@ xu = [max_charge] * time_window + [+1.0] * time_window
 n_gen = 1000
 
 # 8-bis) DEFINE TOLERANCE
-tolerance = 0.00001
-period = 50
+tolerance = 0.1
+period = 20
 
 # 9) DEFINITION OF THE TERMINATION CRITERIA
 termination1 = get_termination("n_gen", n_gen)

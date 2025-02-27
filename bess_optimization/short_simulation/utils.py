@@ -15,6 +15,8 @@ Last Update of current code: 09/01/2025 - 17:49
 
 import ExcelOpener_s
 import Interpolator_s
+from pymoo.config import Config
+Config.warnings['not_compiled'] = False
 
 class Get_data:
     @staticmethod

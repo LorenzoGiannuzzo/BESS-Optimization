@@ -18,6 +18,8 @@ import configuration_s
 from pymoo.optimize import minimize
 from objective_function_s import Revenues
 from configuration_s import plot
+from pymoo.config import Config
+Config.warnings['not_compiled'] = False
 
 
 # DEFINE OPTIMIZER CLASS

@@ -19,6 +19,8 @@ from utils import Get_data
 from utils import BESS
 from argparser_s import size, technology
 from argparser_s import soc_min, soc_max, power_energy, n_cycles
+from pymoo.config import Config
+Config.warnings['not_compiled'] = False
 
 # SETTING ST FILE PATHS
 file_path = r"data/Input/BESS Data.xlsx"

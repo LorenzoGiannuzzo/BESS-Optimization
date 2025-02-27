@@ -280,8 +280,7 @@ class Main:
                 # THEN LIMIT ALSO THE ENERGY CHARGED FROM GRID TO BESS (CONTROLLABLE)
                 charged_energy_from_grid_to_BESS[i] = np.maximum(POD_power - load[i], 0.0)
 
-                assert charged_energy_from_grid_to_BESS[
-                           i] >= 0, "Charged Energy from grid to BESS is negative (2m).\n\n"
+                assert charged_energy_from_grid_to_BESS[i] >= 0, "Charged Energy from grid to BESS is negative (2m).\n\n"
 
             # IF POD POWER IS EXCEEDED WHILE DISCHARGING ENERGY TO THE GRID
             if -np.abs(discharged_from_pv[i]) - np.abs(discharged_energy_from_BESS[i]) < -POD_power:

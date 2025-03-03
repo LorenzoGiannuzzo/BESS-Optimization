@@ -72,11 +72,11 @@ xl = [-max_discharge] * time_window + [0.0] * time_window
 xu = [max_charge] * time_window + [+1.0] * time_window
 
 # 8) DEFINE NUMBER OF GENERATIONS
-n_gen = 1000
+n_gen = 2000
 
 # 8-bis) DEFINE TOLERANCE
-tolerance = 0.1
-period = 20
+tolerance = 0.00000000000001
+period = 100
 
 # 9) DEFINITION OF THE TERMINATION CRITERIA
 termination1 = get_termination("n_gen", n_gen)
@@ -93,9 +93,11 @@ eta_mutation = 3
 # DEFINE ETA FOR MUTATION
 prob_crossover = 1.0
 prob_mutation = 0.8
+n_offsprings = pop_size
 
 # 11) ALGORITHM SELECTION
 algorithm_type = "UNSGA3"  # Change this to "NSGA2", "SPEA2", "RNSGA3", "UNSGA3", etc. to test different algorithms
+
 
 # ALGORITHM INITIALIZATION
 if algorithm_type == "NSGA3":
@@ -106,7 +108,8 @@ if algorithm_type == "NSGA3":
         selection=TournamentSelection(),
         crossover=SBX(eta=eta_crossover, prob=prob_crossover),
         mutation=PM(eta=eta_mutation, prob=prob_mutation),
-        eliminate_duplicates=True
+        eliminate_duplicates=True,
+        n_offsprings = n_offsprings
     )
 elif algorithm_type == "NSGA2":
     algorithm = NSGA2(
@@ -124,19 +127,8 @@ elif algorithm_type == "SPEA2":
         selection=TournamentSelection(func_comp=comp_by_cv_then_random),
         crossover=SBX(eta=eta_crossover, prob=prob_crossover),
         mutation=PM(eta=eta_mutation, prob=prob_mutation),
-        eliminate_duplicates=True
-    )
-elif algorithm_type == "RNSGA3":
-    algorithm = RNSGA3(
-        ref_points=None,
-        pop_per_ref_point=int(round(pop_size/5)),
-        pop_size=pop_size,
-        ref_dirs=ref_dirs,
-        sampling=FloatRandomSampling(),
-        selection=TournamentSelection(func_comp=comp_by_cv_then_random),
-        crossover=SBX(eta=eta_crossover, prob=prob_crossover),
-        mutation=PM(eta=eta_mutation, prob=prob_mutation),
-        eliminate_duplicates=True
+        eliminate_duplicates=True,
+        n_offsprings = n_offsprings
     )
 elif algorithm_type == "UNSGA3":
     algorithm = UNSGA3(
@@ -146,7 +138,8 @@ elif algorithm_type == "UNSGA3":
         selection=TournamentSelection(func_comp=comp_by_cv_then_random),
         crossover=SBX(eta=eta_crossover, prob=prob_crossover),
         mutation=PM(eta=eta_mutation, prob=prob_mutation),
-        eliminate_duplicates=True
+        eliminate_duplicates=True,
+        n_offsprings = n_offsprings
     )
 else:
     raise ValueError(f"Algorithm '{algorithm_type}' is not recognized.")

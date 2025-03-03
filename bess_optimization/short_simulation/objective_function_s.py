@@ -7,7 +7,7 @@
     __version__ = "v0.2.1"
     __license__ = "MIT"
 
-Last Update of current code: 27/02/2025 """
+Last Update of current code: 03/03/2025 """
 
 # IMPORT LIBRARIES
 import numpy as np
@@ -20,6 +20,7 @@ from Load import data
 from argparser_s import POD_power
 from BESS_model_s import power_energy
 from BESS_model_s import degradation
+
 
 # DEFINE OPTIMIZATION PROBLEM
 class Revenues(ElementwiseProblem):
@@ -42,7 +43,7 @@ class Revenues(ElementwiseProblem):
         self.c_func, self.d_func = charge_rate_interpolated_func, discharge_rate_interpolated_func
 
         # DEFINE OBJECTIVE FUNCTION PARAMETERS - SoC, Charged/Discharged Energy (from BESS)
-        self.soc = np.zeros((len(self.PUN_timeseries_sell)))
+        self.soc = np.array([configuration_s.soc_0] * (len(self.PUN_timeseries_sell)))
         self.charged_energy_to_BESS = np.zeros((len(self.PUN_timeseries_sell)))
         self.discharged_energy_from_BESS = np.zeros((len(self.PUN_timeseries_sell)))
         self.load_self_consumption = np.zeros((len(self.PUN_timeseries_sell)))
@@ -64,6 +65,8 @@ class Revenues(ElementwiseProblem):
     # OBJECTIVE FUNCTION DEFINITION
     def _evaluate(self, x, out, *args, **kwargs):
 
+        from argparser_s import soc_max, soc_min
+
         # SET X-VECTOR TO BE OPTIMIZED AS THE % OF CHARGED AND DISCHARGED ENERGY FROM BESS
         self.c_d_timeseries = np.array(x[:self.time_window]).reshape(configuration_s.time_window)
         self.load_decision = np.array(x[self.time_window:2*self.time_window]).reshape(configuration_s.time_window)
@@ -79,31 +82,13 @@ class Revenues(ElementwiseProblem):
         self.charged_energy_from_BESS = np.zeros(len(self.c_d_timeseries))
         self.discharged_energy_from_BESS = np.zeros(len(self.c_d_timeseries))
 
-        for i in range(len(self.c_d_timeseries)):
-
-            if self.c_d_timeseries[i] > 0:
-
-                self.charged_energy_from_BESS[i] = self.c_d_timeseries[i] * size
-
-                self.discharged_energy_from_BESS[i] = 0
-
-            elif self.c_d_timeseries[i] < 0:
-
-                self.discharged_energy_from_BESS[i] = self.c_d_timeseries[i] * size
-
-                self.charged_energy_from_BESS[i] = 0
-
-            else:
-
-                self.charged_energy_from_BESS[i] = 0
-
-                self.discharged_energy_from_BESS[i] = 0
-
         # INITIALIZE VARIABLES
         total_available_energy = np.zeros((len(self.PUN_timeseries_sell)))
         self.taken_from_pv = np.zeros((len(self.PUN_timeseries_sell)))
         self.charged_energy_from_grid_to_BESS = np.zeros((len(self.PUN_timeseries_sell)))
         self.discharged_from_pv = np.zeros((len(self.PUN_timeseries_sell)))
+        self.remaining_pv = np.zeros((len(self.PUN_timeseries_sell)))
+        self.remaining_load = np.zeros((len(self.PUN_timeseries_sell)))
 
         # EXECUTE THE UPDATE FOR EACH i-th TIMESTEP OF ALL THE ENERGY VECTORS. EVALUATING ENERGY BALANCES
         from argparser_s import n_cycles
@@ -122,229 +107,295 @@ class Revenues(ElementwiseProblem):
             # In other words is the energy that the BESS can give to the load + the energy produced by PV tp perform
             # self-consumption
 
-            total_available_energy[i] = np.minimum((self.soc[i] - soc_min) * size, size * self.d_func(self.soc[i])) + self.production[i]
+            if self.c_d_timeseries[i] > 0:
+
+                self.charged_energy_from_BESS[i] = np.minimum(self.c_d_timeseries[i] * size, self.c_func(self.soc[i])*size)
+                self.charged_energy_from_BESS[i] = np.minimum(self.charged_energy_from_BESS[i],
+                                                              np.maximum((soc_max - self.soc[i]) * size, 0.0))
+
+                assert self.charged_energy_from_BESS[i] >= 0, f"Charged energy into BESS is negative. {self.c_d_timeseries[i]}\n\n {self.c_func(self.soc[i])}\n\n {soc_max-self.soc[i]}"
+                self.discharged_energy_from_BESS[i] = 0
+
+            elif self.c_d_timeseries[i] < 0:
+
+                self.discharged_energy_from_BESS[i] = np.maximum(self.c_d_timeseries[i] * size,
+                                                                 -self.d_func(self.soc[i]) * size)
+                self.discharged_energy_from_BESS[i] = np.maximum(self.discharged_energy_from_BESS[i],
+                                                                 np.minimum((soc_min - self.soc[i]) * size, 0.0))
+
+                self.charged_energy_from_BESS[i] = 0
+
+            else:
+
+                self.charged_energy_from_BESS[i] = 0
+                self.discharged_energy_from_BESS[i] = 0
+
+            # LOAD ESTIMATION ------------------------------------------------------------------------------------------
+
+            total_available_energy[i] = np.minimum(np.maximum((self.soc[i] - soc_min), 0.0) * size, size * self.d_func(self.soc[i])) + self.production[i]
 
             assert total_available_energy[i] >= 0, "Total Available Energy is negative (1).\n\n"
 
             from argparser_s import self_consumption
 
-            # EVALUATE SELF CONSUMPTION
+            # (A) EVALUATE SELF CONSUMPTION
             if self_consumption == 'True':
 
                 self.load_self_consumption[i] = np.minimum(self.load[i], total_available_energy[i])
 
-                assert self.load_self_consumption[i] >= 0, "Total self consumption is negative (1).\n\n"
+                assert self.load_self_consumption[i] >= 0, "Total self consumption is negative (A).\n\n"
 
             else:
 
                 self.load_self_consumption[i] = self.load_decision[i] * np.minimum(self.load[i], total_available_energy[i])
 
-                assert self.load_self_consumption[i] >= 0, "Total self consumption is negative (2).\n\n"
+                assert self.load_self_consumption[i] >= 0, "Total self consumption is negative (A-2).\n\n"
 
-            # EVALUATE THE ENERGY THAT GOES FROM PV TO LOAD FOR SELF-CONSUMPTION PURPOSES
+            # (B) EVALUATE THE ENERGY THAT GOES FROM PV TO LOAD FOR SELF-CONSUMPTION PURPOSES
             self.from_pv_to_load[i] = np.minimum(self.load_self_consumption[i], self.production[i])
 
-            assert self.from_pv_to_load[i] >= 0, "Energy from PV to the load is negative (1).\n\n"
+            assert self.from_pv_to_load[i] >= 0, "Energy from PV to the load is negative (B).\n\n"
 
-            # EVALUATE THE ENERGY TAKEN BY THE BESS FROM PV
-            self.taken_from_pv[i] = np.minimum(self.production[i] - self.from_pv_to_load[i], self.charged_energy_from_BESS[i])
+            # (C) EVALUATE THE ENERGY THAT'S LEFT TO THE PV
+            self.remaining_pv[i] = self.production[i] - self.from_pv_to_load[i]
 
-            assert self.taken_from_pv[i] >= 0, "Energy taken from PV to the BESS is negative (1).\n\n"
+            assert self.remaining_pv[i] >= 0, "Energy remaining to PV is negative (C).\n\n"
 
-            # APPLY BESS CONSTRAINTS ON ENERGY TAKEN FROM PV
+            # (D) EVALUATE THE ENERGY THAT'S LEFT ON LOAD
+            self.remaining_load[i] = self.load[i] - self.load_self_consumption[i]
 
-            # HOW MUCH ENERGY BESS CAN TAKE IN THE TIME-STAMP
+            assert self.remaining_load[i] >= 0, "Energy remaining to load is negative (D). \n\n"
+
+            # (E) EVALUATE THE ENERGY THAT GOES FROM THE BESS TO THE LOAD FOR SELF-CONSUMPTION
+            self.from_BESS_to_load[i] = np.maximum(self.load_self_consumption[i] - self.from_pv_to_load[i], 0.0)
+
+            assert self.from_BESS_to_load[i] >= 0, "Energy from BESS to load is negative (E).\n\n"
+
+            # (F) APPLY BESS CONSTRAINTS ON ENERGY SENT TO THE LOAD
+
+            # (F-1) HOW MUCH ENERGY THE BESS CAN GIVE
+            self.from_BESS_to_load[i] = np.minimum(self.from_BESS_to_load[i], size * self.d_func(self.soc[i]))
+
+            assert self.from_BESS_to_load[i] >= 0, "Energy from BESS to load is negative (F-1).\n\n"
+
+            # (F-2) HOW MUCH ENERGY THE BESS CAN GIVE BASED ON THE CAP OF SOC_MIN
+            self.from_BESS_to_load[i] = np.minimum(self.from_BESS_to_load[i], (self.soc[i] - soc_min) * size)
+
+            assert self.from_BESS_to_load[i] >= 0, f"Energy from BESS to load is negative (F-2).\n\n {self.soc[i]}\n\n {soc_min}"
+
+            # ----------------------------------------------------------------------------------------------------------
+
+            # BESS ESTIMATION ------------------------------------------------------------------------------------------
+
+            # (G) EVALUATE THE ENERGY TAKEN BY THE BESS FROM PV
+            self.taken_from_pv[i] = np.minimum(self.remaining_pv[i], self.charged_energy_from_BESS[i])
+
+            assert self.taken_from_pv[i] >= 0, "Energy taken from PV to the BESS is negative (G).\n\n"
+
+            # (H) APPLY BESS CONSTRAINTS ON ENERGY TAKEN FROM PV
+
+            # (H-1) HOW MUCH ENERGY BESS CAN TAKE IN THE TIME-STAMP
             self.taken_from_pv[i] = np.minimum(self.taken_from_pv[i], size * self.c_func(self.soc[i]))
 
-            assert self.taken_from_pv[i] >= 0, "Energy taken from PV to the BESS is negative (2).\n\n"
+            assert self.taken_from_pv[i] >= 0, "Energy taken from PV to the BESS is negative (H-1).\n\n"
 
-            # HOW MUCH ENERGY THE BESS CAN CHARGE BASED ON THE CAP OF SOC_MAX
-            self.taken_from_pv[i] = np.minimum(self.taken_from_pv[i], np.maximum((soc_max - self.soc[i]) * size, 0.0))
+            # (H-2) HOW MUCH ENERGY THE BESS CAN CHARGE BASED ON THE CAP OF SOC_MAX
+            self.taken_from_pv[i] = np.minimum(self.taken_from_pv[i], np.maximum((soc_max - self.soc[i]) * size + self.from_BESS_to_load[i], 0.0))
 
-            assert self.taken_from_pv[i] >= 0, "Energy taken from PV to the BESS is negative (3).\n\n"
+            assert self.taken_from_pv[i] >= 0, "Energy taken from PV to the BESS is negative (H-2).\n\n"
 
-            # EVALUATE THE ENERGY USED TO CHARGE THE BESS TAKEN FROM THE GRID (IF CHARGED_ENERGY_FROM_BESS IS NEGATIVE,
+            # (I) EVALUATE THE ENERGY USED TO CHARGE THE BESS TAKEN FROM THE GRID (IF CHARGED_ENERGY_FROM_BESS IS NEGATIVE,
             # MEANING THAT THE BESS IS DISCHARGING, THIS VALUE IS = 0
             self.charged_energy_from_grid_to_BESS[i] = np.maximum(self.charged_energy_from_BESS[i] -
                                                                   self.taken_from_pv[i], 0.0)
 
-            assert self.charged_energy_from_grid_to_BESS[i] >= 0, "Energy taken from Grid to BESS is negative (1).\n\n"
+            assert self.charged_energy_from_grid_to_BESS[i] >= 0, "Energy taken from Grid to BESS is negative (I).\n\n"
 
-            # EVALUATE THE ENERGY THAT GOES FROM THE BESS TO THE LOAD FOR SELF-CONSUMPTION
-            self.from_BESS_to_load[i] = np.maximum(self.load_self_consumption[i] - self.from_pv_to_load[i], 0.0)
+            # (EXTRA)
 
-            assert self.from_BESS_to_load[i] >= 0, "Energy from BESS to load is negative (1).\n\n"
+            if self.from_BESS_to_load[i] > 0:
+                self.charged_energy_from_grid_to_BESS[i] = 0
 
-            # APPLY BESS CONSTRAINTS ON ENERGY SENT TO THE LOAD
-
-            # HOW MUCH ENERGY THE BESS CAN GIVE
-            self.from_BESS_to_load[i] = np.minimum(self.from_BESS_to_load[i], size * self.d_func(self.soc[i]))
-
-            assert self.from_BESS_to_load[i] >= 0, "Energy from BESS to load is negative (2).\n\n"
-
-            # HOW MUCH ENERGY THE BESS CAN GIVE BASED ON THE CAP OF SOC_MIN
-            self.from_BESS_to_load[i] = np.minimum(self.from_BESS_to_load[i], (self.soc[i] - soc_min) * size)
-
-            assert self.from_BESS_to_load[i] >= 0, "Energy from BESS to load is negative (3).\n\n"
-
-            # UPDATE THE ENERGY THAT THE BESS WANT TO CHARGE AS SUM OF THE ONE CHARGED FROM GRID TO BESS AND THE ENERGY
+            # (J) UPDATE THE ENERGY THAT THE BESS WANT TO CHARGE AS SUM OF THE ONE CHARGED FROM GRID TO BESS AND THE ENERGY
             # TAKEN FROM PV TO THE BESS
-            self.charged_energy_to_BESS[i] = self.charged_energy_from_grid_to_BESS[i] + self.taken_from_pv[i]
+            self.charged_energy_from_BESS[i] = self.charged_energy_from_grid_to_BESS[i] + self.taken_from_pv[i]
 
-            assert self.charged_energy_from_BESS[i] >= 0, "Energy that goes inside the BESS is negative (1) .\n\n"
+            assert self.charged_energy_from_BESS[i] >= 0, "Energy that goes inside the BESS is negative (J) .\n\n"
 
-            # UPDATE THE ENERGY DISCHARGED FROM PV DIRECTLY TO THE GRID REDUCING ITS ORIGINAL VALUE BY THE ONE THAT
+            # (K) UPDATE THE ENERGY DISCHARGED FROM PV DIRECTLY TO THE GRID REDUCING ITS ORIGINAL VALUE BY THE ONE THAT
             # GOES FROM PV TO THE BESS AND FROM THE PV TO THE LOAD
-            self.discharged_from_pv[i] = np.minimum(-self.production[i] + self.taken_from_pv[i] +
-                                                    self.from_pv_to_load[i], 0.0) # NEGATIVE VALUE
+            self.discharged_from_pv[i] = np.minimum(-self.remaining_pv[i] + self.taken_from_pv[i], 0.0) # NEGATIVE VALUE
 
-            assert self.discharged_from_pv[i] <= 0, "Energy discharged from PV is positive (1).\n\n"
+            assert self.discharged_from_pv[i] <= 0, "Energy discharged from PV is positive (K).\n\n"
 
-            # APPLY BESS CONSTRAINTS ON ENERGY DISCHARGED FROM BESS
+            # (L) APPLY BESS CONSTRAINTS ON ENERGY DISCHARGED FROM BESS
 
-            # HOW MUCH ENERGY BESS CAN DISCHARGE IN THE TIME-STAMP
+            # (L-1) HOW MUCH ENERGY BESS CAN DISCHARGE IN THE TIME-STAMP
             self.discharged_energy_from_BESS[i] = -np.minimum(np.abs(self.discharged_energy_from_BESS[i]),size * self.d_func(self.soc[i]))
 
-            assert self.discharged_energy_from_BESS[i] <= 0, "Energy discharged from BESS is positive (1).\n\n"
+            assert self.discharged_energy_from_BESS[i] <= 0, "Energy discharged from BESS is positive (L-1).\n\n"
 
-            # HOW MUCH ENERGY THE BESS DISCHARGE GIVE BASED ON THE CAP OF SOC_MIN
-            self.discharged_energy_from_BESS[i] = np.maximum(self.discharged_energy_from_BESS[i], (soc_min - self.soc[i])*size)
+            # (L-2) HOW MUCH ENERGY THE BESS DISCHARGE GIVE BASED ON THE CAP OF SOC_MIN
+            self.discharged_energy_from_BESS[i] = np.maximum(self.discharged_energy_from_BESS[i], (soc_min - self.soc[i])*size + self.from_BESS_to_load[i])
 
-            assert self.discharged_energy_from_BESS[i] <= 0, "Energy discharged from BESS is positive (2).\n\n"
+            assert self.discharged_energy_from_BESS[i] <= 0, "Energy discharged from BESS is positive (L-2).\n\n"
 
-            # APPLY POD CONSTRAINTS TO ENERGY VECTORS
+            # (M) APPLY POD CONSTRAINTS TO ENERGY VECTORS
 
-            # IF POD POWER IS EXCEEDED WHILE TAKING ENERGY FROM THE GRID
+            # (M-1) IF POD POWER IS EXCEEDED WHILE TAKING ENERGY FROM THE GRID
             if self.charged_energy_from_grid_to_BESS[i] + self.load[i] > POD_power:
 
-                # FIRST OF ALL, LIMIT THE LOAD IF EVEN THE LOAD EXCEED THE POD POWER LIMITS (NOT CONTROLLABLE)
+                # (M-1-1) FIRST OF ALL, LIMIT THE LOAD IF EVEN THE LOAD EXCEED THE POD POWER LIMITS (NOT CONTROLLABLE)
                 self.load[i] = np.minimum(POD_power, self.load[i])
 
-                assert self.load[i] >= 0, "Load is negative (1).\n\n"
+                assert self.load[i] >= 0, "Load is negative (M-1-1).\n\n"
 
-                # THEN LIMIT ALSO THE ENERGY CHARGED FROM GRID TO BESS (CONTROLLABLE)
+                # (M-2-2) THEN LIMIT ALSO THE ENERGY CHARGED FROM GRID TO BESS (CONTROLLABLE)
                 self.charged_energy_from_grid_to_BESS[i] = np.maximum(POD_power - self.load[i], 0.0)
 
-                assert self.charged_energy_from_grid_to_BESS[i] >= 0, "Charged Energy from grid to BESS is negative (2).\n\n"
+                assert self.charged_energy_from_grid_to_BESS[i] >= 0, "Charged Energy from grid to BESS is negative (M-2-2).\n\n"
 
-            # IF POD POWER IS EXCEEDED WHILE DISCHARGING ENERGY TO THE GRID
+            # (M-2) IF POD POWER IS EXCEEDED WHILE DISCHARGING ENERGY TO THE GRID
             if -np.abs(self.discharged_from_pv[i]) - np.abs(self.discharged_energy_from_BESS[i]) < -POD_power:
 
-                # FIRST OF ALL LIMIT TGE ENERGY DISCHARGED FROM PV IF IT EXCEED ALONE THE POD POWER LIMIT (NOT
+                # (M-2-1) FIRST OF ALL LIMIT TGE ENERGY DISCHARGED FROM PV IF IT EXCEED ALONE THE POD POWER LIMIT (NOT
                 # CONTROLLABLE)
                 self.discharged_from_pv[i] = np.maximum(-POD_power, -np.abs(self.discharged_from_pv[i]))
 
-                assert self.discharged_from_pv[i] <= 0, "Energy discharged from PV is positive (2).\n\n"
+                assert self.discharged_from_pv[i] <= 0, "Energy discharged from PV is positive (M-2-1).\n\n"
 
-                # THEN ALSO LIMIT THE ENERGY DISCHARGED FROM BESS TO THE GRID (CONTROLLABLE)
+                # (M-2-2) THEN ALSO LIMIT THE ENERGY DISCHARGED FROM BESS TO THE GRID (CONTROLLABLE)
                 self.discharged_energy_from_BESS[i] = -np.maximum(POD_power - np.abs(self.discharged_from_pv[i]), 0.0)
 
-                assert self.discharged_energy_from_BESS[i] <= 0, "Energy discharged from BESS is positive (3).\n\n"
+                assert self.discharged_energy_from_BESS[i] <= 0, "Energy discharged from BESS is positive (M-2-2).\n\n"
 
             # AFTER APPLYING POD CONSTRAINTS, LOAD, CHARGED ENERGY FROM BESS, DISCHARGED FROM PV AND DISCHARGED
             # FROM BESS COULD BE CHANGED
 
-            total_available_energy[i] = np.minimum((self.soc[i] - soc_min) * size, size * self.d_func(self.soc[i])) + \
-                                        self.production[i]
+            # LOAD ESTIMATION ------------------------------------------------------------------------------------------
 
-            assert total_available_energy[i] >= 0, "Total Available Energy is negative (2).\n\n"
+            total_available_energy[i] = np.minimum(np.maximum((self.soc[i] - soc_min), 0.0) * size,
+                                                       size * self.d_func(self.soc[i])) + self.production[i]
+
+            assert total_available_energy[i] >= 0, "Total Available Energy is negative (1p).\n\n"
 
             from argparser_s import self_consumption
 
-            # EVALUATE SELF CONSUMPTION
+            # (N) EVALUATE SELF CONSUMPTION
             if self_consumption == 'True':
 
                 self.load_self_consumption[i] = np.minimum(self.load[i], total_available_energy[i])
 
-                assert self.load_self_consumption[i] >= 0, "Total self consumption is negative (3).\n\n"
+                assert self.load_self_consumption[i] >= 0, "Total self consumption is negative (N).\n\n"
 
             else:
 
                 self.load_self_consumption[i] = self.load_decision[i] * np.minimum(self.load[i],
-                                                                                   total_available_energy[i])
+                                                                                       total_available_energy[i])
 
-                assert self.load_self_consumption[i] >= 0, "Total self consumption is negative (4).\n\n"
+                assert self.load_self_consumption[i] >= 0, "Total self consumption is negative (N-2).\n\n"
 
-            # EVALUATE THE ENERGY THAT GOES FROM PV TO LOAD FOR SELF-CONSUMPTION PURPOSES
+            # (O) EVALUATE THE ENERGY THAT GOES FROM PV TO LOAD FOR SELF-CONSUMPTION PURPOSES
             self.from_pv_to_load[i] = np.minimum(self.load_self_consumption[i], self.production[i])
 
-            assert self.from_pv_to_load[i] >= 0, "Energy from PV to the load is negative (2).\n\n"
+            assert self.from_pv_to_load[i] >= 0, "Energy from PV to the load is negative (O).\n\n"
 
-            # EVALUATE THE ENERGY TAKEN BY THE BESS FROM PV
-            self.taken_from_pv[i] = np.minimum(self.production[i] - self.from_pv_to_load[i],
-                                               self.charged_energy_from_BESS[i])
+            # (P) EVALUATE THE ENERGY THAT'S LEFT TO THE PV
+            self.remaining_pv[i] = self.production[i] - self.from_pv_to_load[i]
 
-            assert self.taken_from_pv[i] >= 0, "Energy taken from PV to the BESS is negative (4).\n\n"
+            assert self.remaining_pv[i] >= 0, "Energy remaining to PV is negative (P).\n\n"
 
-            # APPLY BESS CONSTRAINTS ON ENERGY TAKEN FROM PV
+            # (Q) EVALUATE THE ENERGY THAT'S LEFT ON LOAD
+            self.remaining_load[i] = self.load[i] - self.load_self_consumption[i]
 
-            # HOW MUCH ENERGY BESS CAN TAKE IN THE TIME-STAMP
-            self.taken_from_pv[i] = np.minimum(self.taken_from_pv[i], size * self.c_func(self.soc[i]))
+            assert self.remaining_load[i] >= 0, "Energy remaining to load is negative (Q). \n\n"
 
-            assert self.taken_from_pv[i] >= 0, "Energy taken from PV to the BESS is negative (5).\n\n"
-
-            # HOW MUCH ENERGY THE BESS CAN CHARGE BASED ON THE CAP OF SOC_MAX
-            self.taken_from_pv[i] = np.minimum(self.taken_from_pv[i], np.maximum((soc_max - self.soc[i]) * size, 0.0))
-
-            assert self.taken_from_pv[i] >= 0, "Energy taken from PV to the BESS is negative (6).\n\n"
-
-            # EVALUATE THE ENERGY USED TO CHARGE THE BESS TAKEN FROM THE GRID (IF CHARGED_ENERGY_FROM_BESS IS NEGATIVE,
-            # MEANING THAT THE BESS IS DISCHARGING, THIS VALUE IS = 0
-            self.charged_energy_from_grid_to_BESS[i] = np.maximum(self.charged_energy_from_BESS[i] -
-                                                                  self.taken_from_pv[i], 0.0)
-
-            assert self.charged_energy_from_grid_to_BESS[i] >= 0, "Energy taken from Grid to BESS is negative (3).\n\n"
-
-            # EVALUATE THE ENERGY THAT GOES FROM THE BESS TO THE LOAD FOR SELF-CONSUMPTION
+            # (R) EVALUATE THE ENERGY THAT GOES FROM THE BESS TO THE LOAD FOR SELF-CONSUMPTION
             self.from_BESS_to_load[i] = np.maximum(self.load_self_consumption[i] - self.from_pv_to_load[i], 0.0)
 
-            assert self.from_BESS_to_load[i] >= 0, "Energy from BESS to load is negative (4).\n\n"
+            assert self.from_BESS_to_load[i] >= 0, "Energy from BESS to load is negative (R).\n\n"
 
-            # APPLY BESS CONSTRAINTS ON ENERGY SENT TO THE LOAD
+            # (S) APPLY BESS CONSTRAINTS ON ENERGY SENT TO THE LOAD
 
-            # HOW MUCH ENERGY THE BESS CAN GIVE
+            # (S-1) HOW MUCH ENERGY THE BESS CAN GIVE
             self.from_BESS_to_load[i] = np.minimum(self.from_BESS_to_load[i], size * self.d_func(self.soc[i]))
 
-            assert self.from_BESS_to_load[i] >= 0, "Energy from BESS to load is negative (5).\n\n"
+            assert self.from_BESS_to_load[i] >= 0, "Energy from BESS to load is negative (S-1).\n\n"
 
-            # HOW MUCH ENERGY THE BESS CAN GIVE BASED ON THE CAP OF SOC_MIN
+            # (S-2) HOW MUCH ENERGY THE BESS CAN GIVE BASED ON THE CAP OF SOC_MIN
             self.from_BESS_to_load[i] = np.minimum(self.from_BESS_to_load[i], (self.soc[i] - soc_min) * size)
 
-            assert self.from_BESS_to_load[i] >= 0, "Energy from BESS to load is negative (6).\n\n"
+            assert self.from_BESS_to_load[
+                           i] >= 0, f"Energy from BESS to load is negative (S-2).\n\n {self.soc[i]}\n\n {soc_min}"
 
-            # UPDATE THE ENERGY THAT THE BESS WANT TO CHARGE AS SUM OF THE ONE CHARGED FROM GRID TO BESS AND THE ENERGY
+            # ----------------------------------------------------------------------------------------------------------
+
+            # BESS ESTIMATION ------------------------------------------------------------------------------------------
+
+            # (T) EVALUATE THE ENERGY TAKEN BY THE BESS FROM PV
+            self.taken_from_pv[i] = np.minimum(self.remaining_pv[i], self.charged_energy_from_BESS[i])
+
+            assert self.taken_from_pv[i] >= 0, "Energy taken from PV to the BESS is negative (T).\n\n"
+
+            # (U) APPLY BESS CONSTRAINTS ON ENERGY TAKEN FROM PV
+
+            # (U-1) HOW MUCH ENERGY BESS CAN TAKE IN THE TIME-STAMP
+            self.taken_from_pv[i] = np.minimum(self.taken_from_pv[i], size * self.c_func(self.soc[i]))
+
+            assert self.taken_from_pv[i] >= 0, "Energy taken from PV to the BESS is negative (U-1).\n\n"
+
+            # (U-2) HOW MUCH ENERGY THE BESS CAN CHARGE BASED ON THE CAP OF SOC_MAX
+            self.taken_from_pv[i] = np.minimum(self.taken_from_pv[i], np.maximum(
+                    (soc_max - self.soc[i]) * size + self.from_BESS_to_load[i], 0.0))
+
+            assert self.taken_from_pv[i] >= 0, "Energy taken from PV to the BESS is negative (U-2).\n\n"
+
+            # (V) EVALUATE THE ENERGY USED TO CHARGE THE BESS TAKEN FROM THE GRID (IF CHARGED_ENERGY_FROM_BESS IS NEGATIVE,
+            # MEANING THAT THE BESS IS DISCHARGING, THIS VALUE IS = 0
+            self.charged_energy_from_grid_to_BESS[i] = np.maximum(self.charged_energy_from_BESS[i] -
+                                                                      self.taken_from_pv[i], 0.0)
+
+            assert self.charged_energy_from_grid_to_BESS[
+                           i] >= 0, "Energy taken from Grid to BESS is negative (V).\n\n"
+
+            # (EXTRA)
+
+            if self.from_BESS_to_load[i] > 0:
+                self.charged_energy_from_grid_to_BESS[i] = 0
+
+            # (Z) UPDATE THE ENERGY THAT THE BESS WANT TO CHARGE AS SUM OF THE ONE CHARGED FROM GRID TO BESS AND THE ENERGY
             # TAKEN FROM PV TO THE BESS
-            self.charged_energy_to_BESS[i] = self.charged_energy_from_grid_to_BESS[i] + self.taken_from_pv[i]
+            self.charged_energy_from_BESS[i] = self.charged_energy_from_grid_to_BESS[i] + self.taken_from_pv[i]
 
-            assert self.charged_energy_from_BESS[i] >= 0, "Energy that goes inside the BESS is negative (2).\n\n"
+            assert self.charged_energy_from_BESS[i] >= 0, "Energy that goes inside the BESS is negative (Z) .\n\n"
 
-            # UPDATE THE ENERGY DISCHARGED FROM PV DIRECTLY TO THE GRID REDUCING ITS ORIGINAL VALUE BY THE ONE THAT
+            # (W) UPDATE THE ENERGY DISCHARGED FROM PV DIRECTLY TO THE GRID REDUCING ITS ORIGINAL VALUE BY THE ONE THAT
             # GOES FROM PV TO THE BESS AND FROM THE PV TO THE LOAD
-            self.discharged_from_pv[i] = np.minimum(-self.production[i] + self.taken_from_pv[i] +
-                                                    self.from_pv_to_load[i], 0.0)  # NEGATIVE VALUE
+            self.discharged_from_pv[i] = np.minimum(-self.remaining_pv[i] + self.taken_from_pv[i], 0.0) # NEGATIVE VALUE
 
-            assert self.discharged_from_pv[i] <= 0, "Energy discharged from PV is positive (2).\n\n"
+            assert self.discharged_from_pv[i] <= 0, "Energy discharged from PV is positive (W).\n\n"
 
-            # APPLY BESS CONSTRAINTS ON ENERGY DISCHARGED FROM BESS
+            # (X) APPLY BESS CONSTRAINTS ON ENERGY DISCHARGED FROM BESS
 
-            # HOW MUCH ENERGY BESS CAN DISCHARGE IN THE TIME-STAMP
+            # (X-1) HOW MUCH ENERGY BESS CAN DISCHARGE IN THE TIME-STAMP
             self.discharged_energy_from_BESS[i] = -np.minimum(np.abs(self.discharged_energy_from_BESS[i]),
-                                                              size * self.d_func(self.soc[i]))
+                                                                  size * self.d_func(self.soc[i]))
 
-            assert self.discharged_energy_from_BESS[i] <= 0, "Energy discharged from BESS is positive (3).\n\n"
+            assert self.discharged_energy_from_BESS[i] <= 0, "Energy discharged from BESS is positive (X-1).\n\n"
 
-            # HOW MUCH ENERGY THE BESS DISCHARGE GIVE BASED ON THE CAP OF SOC_MIN
+            # (X-2) HOW MUCH ENERGY THE BESS DISCHARGE GIVE BASED ON THE CAP OF SOC_MIN
             self.discharged_energy_from_BESS[i] = np.maximum(self.discharged_energy_from_BESS[i],
-                                                             (soc_min - self.soc[i]) * size)
+                                                                 (soc_min - self.soc[i]) * size +
+                                                                 self.from_BESS_to_load[i])
 
-            assert self.discharged_energy_from_BESS[i] <= 0, "Energy discharged from BESS is positive (4).\n\n"
+            assert self.discharged_energy_from_BESS[i] <= 0, "Energy discharged from BESS is positive (X-2).\n\n"
 
-            # UPDATE SOC
+            # (FINAL) UPDATE SOC
 
             # IF BESS IS CHARGING
             if self.c_d_timeseries[i] > 0:
 
-                self.soc[i + 1] = min(soc_max, self.soc[i] + (self.charged_energy_to_BESS[i] -
+                self.soc[i + 1] = min(soc_max, self.soc[i] + (self.charged_energy_from_BESS[i] -
                                                               np.abs(self.from_BESS_to_load[i])) / size)
                 self.discharged_energy_from_BESS[i] = 0
 
@@ -363,7 +414,8 @@ class Revenues(ElementwiseProblem):
 
                 self.discharged_energy_from_BESS[i] = 0
                 self.charged_energy_from_BESS[i] = 0
-                self.soc[i+1] = self.soc[i]
+
+                self.soc[i+1] = self.soc[i] + (self.taken_from_pv[i] - np.abs(self.from_BESS_to_load[i]))/size
 
             total_energy = self.charged_energy_from_grid_to_BESS[i] + np.abs(self.discharged_energy_from_BESS[i]) + np.abs(self.from_BESS_to_load[i])
             actual_capacity = size * degradation(n_cycles_prev) / 100

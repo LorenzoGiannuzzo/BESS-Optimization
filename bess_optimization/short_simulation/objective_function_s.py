@@ -114,6 +114,7 @@ class Revenues(ElementwiseProblem):
                                                               np.maximum((soc_max - self.soc[i]) * size, 0.0))
 
                 assert self.charged_energy_from_BESS[i] >= 0, f"Charged energy into BESS is negative. {self.c_d_timeseries[i]}\n\n {self.c_func(self.soc[i])}\n\n {soc_max-self.soc[i]}"
+
                 self.discharged_energy_from_BESS[i] = 0
 
             elif self.c_d_timeseries[i] < 0:

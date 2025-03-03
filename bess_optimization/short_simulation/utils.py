@@ -10,6 +10,7 @@ BESS Optimization using NSGA-III Algorithm
     __license__ = "MIT"
 
 Last Update of current code: 27/02/2025 """
+import statistics
 
 import ExcelOpener_s
 import Interpolator_s
@@ -61,5 +62,32 @@ class BESS:
 
         # Return the interpolated functions for charge and discharge rates.
         return charge_rate_interpolated_func, discharge_rate_interpolated_func
+
+
+def CustomSampling(energy_price, max_charge, max_discharge):
+
+    import numpy as np
+
+    energy_price = np.array(energy_price)
+    mean_price = np.mean(energy_price)  # Use numpy's mean
+    n = len(energy_price)
+
+    # Initialize X with double length
+    X = np.zeros(2 * n)
+
+    # First half: Charge/discharge logic
+    for i in range(n):
+        if energy_price[i] > mean_price * 1.2:
+            X[i] = max_discharge
+        elif energy_price[i] < mean_price * 0.8:
+            X[i] = max_charge
+        else:
+            X[i] = 0.0
+
+    # Second half: All 1.0 values
+    X[n:] = 1.0
+
+    return X
+
 
 

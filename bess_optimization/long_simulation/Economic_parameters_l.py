@@ -21,7 +21,7 @@ PUN_timeseries = df
 PUN_timeseries_sell = PUN_timeseries.to_numpy()
 
 # EXTRACTIN OPTIMIZAITON TIME WINDOW
-time_window = len(PUN_timeseries[:,1])
+time_window = len(PUN_timeseries_sell[:,1])
 
 
 # SET PATH FILE

@@ -1,6 +1,4 @@
-"""
-
-BESS Optimization using NSGA-III Algorithm
+""" BESS Optimization using NSGA-III Algorithm
 
     __author__ = "Lorenzo Giannuzzo"
     __maintainer__ = "Lorenzo Giannuzzo"
@@ -9,9 +7,7 @@ BESS Optimization using NSGA-III Algorithm
     __version__ = "v0.2.1"
     __license__ = "MIT"
 
-Last Update of current code: 09/01/2025 - 17:00
-
-"""
+Last Update of current code: 04/03/2025 """
 
 # IMPORT LIBRARIES AND MODULES FROM PROJECT FILES
 import numpy as np
@@ -98,11 +94,11 @@ xl = [-max_discharge]*time_window + [0.0]*time_window
 xu = [max_charge] * time_window + [+1.0] * time_window
 
 # 8) DEFINE NUMBER OF GENERATIONS USED TO INTERRUPT THE ALGORITHM EXECUTION
-n_gen = 3500
+n_gen = 5000
 
 # 8-bis) DEFINE TOLERANCE AS THE ALGORITHM INTERRUPTION CRITERIA
 tolerance = 10
-period = 5
+period = 10
 
 # number of iteration in which tolerance is evaluated
 
@@ -159,7 +155,7 @@ algorithm = NSGA3(
     # The distribution index for PM. Similar to SBX, a higher value of eta results in smaller mutations,
     # while a lower value results in larger mutations.
 
-    mutation=PM(eta=1,prob=0.8),
+    mutation=PM(eta=3,prob=0.8),
 
     eliminate_duplicates=True
 

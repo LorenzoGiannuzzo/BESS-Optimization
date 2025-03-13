@@ -465,7 +465,7 @@ class Revenues(ElementwiseProblem):
         # CORRECT THE VALUES OF THE REVENUES IN ORDER TO MINIMIZE THE OBJECTIVE FUNCTION
         final_revenues = -revv
 
-        print(final_revenues)
+        #print(final_revenues)
 
         # DEFINE THE OUTPUT OF THE OPTIMIZATION PROBLEM
         out["F"] = [final_revenues]

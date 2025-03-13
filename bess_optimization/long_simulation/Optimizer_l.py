@@ -34,7 +34,6 @@ from pymoo.termination import get_termination
 from pymoo.problems import get_problem
 
 
-
 class CustomCallback:
     def __init__(self, update_interval):
 
@@ -53,11 +52,11 @@ class CustomCallback:
 
             # Update parameters based on diversity
             if diversity < 0.1:  # If diversity is low, increase eta
-                self.new_eta_crossover *= 1.1  # Increase eta for crossover
-                self.new_eta_mutation *= 1.1  # Increase eta for mutation
+                self.new_eta_crossover = np.minimum(1.5 * self.new_eta_crossover, 20.0)  # Increase eta for crossover
+                self.new_eta_mutation = np.minimum(1.5 * self.new_eta_mutation, 30.0)  # Increase eta for mutation
             else:  # If diversity is high, decrease eta to encourage convergence
-                self.new_eta_crossover *= 0.9
-                self.new_eta_mutation *= 0.9
+                self.new_eta_crossover = np.maximum(0.5 * self.new_eta_crossover, 1.0)
+                self.new_eta_mutation = np.maximum(0.5 * self.new_eta_mutation, 3.0)
 
             # Create new instances of crossover and mutation with updated parameters
             algorithm.mating.crossover = SBX(eta=self.new_eta_crossover, prob=self.new_prob_crossover)
@@ -132,7 +131,6 @@ class Optimizer:
             print('Execution Time:', res.exec_time)
 
         return res
-
 
 
 

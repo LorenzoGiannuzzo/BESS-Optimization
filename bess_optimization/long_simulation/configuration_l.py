@@ -117,6 +117,11 @@ A reference direction is constructed by a vector originating from the origin and
 of points on the unit simplex is determined by a parameter p (we call it n_partitions in our implementation), which
 indicates the number of gaps between two consecutive points along an objective axis.
 '''
+eta_crossover = 1
+eta_mutation = 3
+prob_crossover = 0.8
+prob_mutation = 1
+
 
 ref_dirs = get_reference_directions("das-dennis", n_obj, n_partitions=n_obj*4)
 
@@ -148,14 +153,14 @@ algorithm = NSGA3(
     # The probability of crossover being applied. A probability of 1.0 means crossover is always
     # applied.
 
-    crossover=SBX(eta=1, prob=1),
+    crossover=SBX(eta=eta_crossover, prob=prob_crossover),
 
     # mutation: This parameter specifies the mutation operator used for generating variation in offspring.
     # PM: Polynomial Mutation (PM) is a common mutation method for real-valued variables.
     # The distribution index for PM. Similar to SBX, a higher value of eta results in smaller mutations,
     # while a lower value results in larger mutations.
 
-    mutation=PM(eta=3,prob=0.8),
+    mutation=PM(eta=eta_mutation,prob=prob_mutation),
 
     eliminate_duplicates=True
 

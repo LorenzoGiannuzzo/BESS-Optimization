@@ -123,7 +123,7 @@ if n_gen < 100:
     logging.info("A low number of generations is used. Convergence is not assured.")
 
 # 8-bis) DEFINE TOLERANCE AS THE ALGORITHM INTERRUPTION CRITERIA
-tolerance = 0.3
+tolerance = 0.1
 period = 20
 
 # number of iteration in which tolerance is evaluated
@@ -143,6 +143,12 @@ A reference direction is constructed by a vector originating from the origin and
 of points on the unit simplex is determined by a parameter p (we call it n_partitions in our implementation), which
 indicates the number of gaps between two consecutive points along an objective axis.
 '''
+
+eta_crossover = 1
+eta_mutation = 3
+prob_crossover = 1.0
+prob_mutation = 0.8
+
 
 ref_dirs = get_reference_directions("das-dennis", n_obj, n_partitions=pop_size)
 
@@ -172,7 +178,7 @@ algorithm = NSGA3(
     # The probability of crossover being applied. A probability of 1.0 means crossover is always
     # applied.
 
-    crossover=SBX(eta=3, prob=1.0),
+    crossover=SBX(eta=eta_crossover, prob=prob_crossover),
 
     # pymoo.operators.crossover.expx.ExponentialCrossover(prob_exp=0.95),
 
@@ -181,7 +187,7 @@ algorithm = NSGA3(
     # The distribution index for PM. Similar to SBX, a higher value of eta results in smaller mutations,
     # while a lower value results in larger mutations.
 
-    mutation=PM(eta=20, prob=0.5),
+    mutation=PM(eta=eta_mutation, prob=prob_mutation),
 
     eliminate_duplicates=True,
 

@@ -7,7 +7,7 @@
     __version__ = "v0.2.1"
     __license__ = "MIT"
 
-Last Update of current code: 19/02/2025  """
+Last Update of current code: 13/03/2025  """
 
 # IMPORT LIBRARIES AND MODULES -----------------------------------------------------------------------------------------
 
@@ -102,7 +102,7 @@ if pop_size < 20:
 
 # 4) DEFINE NUMBER OF ELEMENTS INITIALIZED BY THE NSGA-III (Elements of the chromosome, namely the genes,
 # which are the charged/discharged % of energy at each timestep t, for a length of time_window
-n_var = time_window
+n_var = time_window * 2
 
 # 5) DEFINE NUMBER OF VARIABLES (OUTPUTS NEEDED TO BE EVALUATED AS OBJECTIVE FUNCTION)
 n_obj = 1
@@ -111,13 +111,13 @@ if n_obj == 1:
     logging.info("Only 1 variable is optimized (no multi-objective).\n\n")
 
 # 6) DEFINE THE LOWER BOUNDARIES OF THE RESEARCH DOMAIN, NAMELY THE MAXIMUM % OF SoC WHICH CAN BE DISCHARGED
-xl = [-max_discharge] * time_window
+xl = [-max_discharge] * time_window + [0.0] * time_window
 
 # 7) DEFINE THE UPPER BOUNDARIES OF THE RESEARCH DOMAIN, NAMELY THE MAXIMUM % OF SoC WHICH CAN BE CHARGED
-xu = [max_charge] * time_window
+xu = [max_charge] * time_window + [+1.0] * time_window
 
 # 8) DEFINE NUMBER OF GENERATIONS USED TO INTERRUPT THE ALGORITHM EXECUTION
-n_gen = 1000
+n_gen = 100
 
 if n_gen < 100:
     logging.info("A low number of generations is used. Convergence is not assured.")

@@ -48,8 +48,8 @@ class CustomCallback:
 
             # Update parameters based on diversity
             if diversity < 1:  # If diversity is low, increase eta
-                self.new_eta_crossover = np.minimum(1.5 * self.new_eta_crossover, 80.0)  # Increase eta for crossover
-                self.new_eta_mutation = np.minimum(1.5 * self.new_eta_mutation, 80.0)  # Increase eta for mutation
+                self.new_eta_crossover = np.minimum(1.5 * self.new_eta_crossover, 20.0)  # Increase eta for crossover
+                self.new_eta_mutation = np.minimum(1.5 * self.new_eta_mutation, 30.0)  # Increase eta for mutation
             else:  # If diversity is high, decrease eta to encourage convergence
                 self.new_eta_crossover = np.maximum(0.5 * self.new_eta_crossover, 1.0)
                 self.new_eta_mutation = np.maximum(0.5 * self.new_eta_mutation, 3.0)

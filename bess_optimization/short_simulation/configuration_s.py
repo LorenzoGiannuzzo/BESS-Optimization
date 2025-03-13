@@ -7,7 +7,7 @@
     __version__ = "v0.2.1"
     __license__ = "MIT"
 
-Last Update of current code: 21/02/2025 """
+Last Update of current code: 12/03/2025 """
 
 # IMPORT LIBRARIES AND MODULES FROM PROJECT FILES
 import numpy as np
@@ -73,7 +73,7 @@ xl = [-max_discharge] * time_window + [0.0] * time_window
 xu = [max_charge] * time_window + [+1.0] * time_window
 
 # 8) DEFINE NUMBER OF GENERATIONS
-n_gen = 3000
+n_gen = 1000
 
 # 8-bis) DEFINE TOLERANCE
 tolerance = 0.01
@@ -138,7 +138,9 @@ elif algorithm_type == "UNSGA3":
         seed=seed,
         n_offsprings = n_offsprings,
 
+
     )
+
 else:
     raise ValueError(f"Algorithm '{algorithm_type}' is not recognized.")
 

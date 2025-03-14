@@ -458,7 +458,6 @@ class Revenues(ElementwiseProblem):
                                       - (np.abs(self.load) - np.abs(self.from_pv_to_load) - np.abs(self.from_BESS_to_load)) * self.PUN_timeseries * 1.2 / 1000
                                   )
 
-
         # EVALUATE REVENUES CONSIDERING TYPICAL DAYS FOR EACH MONTH
         num_settimane = 12
         ore_per_settimana = 24

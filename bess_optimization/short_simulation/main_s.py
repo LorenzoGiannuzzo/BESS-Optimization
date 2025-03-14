@@ -495,7 +495,8 @@ class Main:
                 soc[i + 1] = soc[i] + (taken_from_pv[i] - np.abs(from_BESS_to_load[i])) / size
 
             # EVALUATING SHARED ENERGY
-            shared_energy_REC[i] = np.minimum(rec_load[i], np.abs(production[i] * 10)) # TODO: da cambiare
+            shared_energy_REC[i] = np.minimum(rec_load[i], np.abs(
+                production[i] * 10))  # TODO: questo è da cambiare, dovrei prendere un file a parte in realtà
             remaining_production[i] = np.maximum(np.abs(discharged_from_pv[i]) - shared_energy_REC[i],
                                                       0.0)
             shared_energy_BESS[i] = np.minimum(remaining_production[i], charged_energy_from_BESS[i])
@@ -525,36 +526,36 @@ class Main:
         # GET PUN VALUES
         PUN_ts = PUN_timeseries[:, 1]
 
-        # EVALUATE REVENUES
-        rev = np.array(np.abs(discharged_energy_from_BESS) * PUN_ts / 1000 -
-                                      np.abs(charged_energy_from_grid_to_BESS) * PUN_ts * 1.2 / 1000
-                                      # + self.discharged_from_pv * self.PUN_timeseries / 1000
-                                      + np.abs(shared_energy_BESS) * 120 / 1000
-                                      + np.abs(from_pv_to_load) * PUN_ts * 1.2 / 1000
-                                      + np.abs(from_BESS_to_load) * PUN_ts * 1.2 / 1000
-                                      - (np.abs(load) - np.abs(from_pv_to_load) - np.abs(from_BESS_to_load)) * PUN_ts * 1.2 / 1000
+        # EVALUATE THE REVENUES OBTAINED FOR EACH TIMESTEP t
+        revenue_column = np.array(np.abs(discharged_energy_from_BESS) * PUN_ts / 1000 -
+                                  np.abs(charged_energy_from_grid_to_BESS) * PUN_ts * 1.2 / 1000
+                                  # + self.discharged_from_pv * self.PUN_timeseries / 1000
+                                  + np.abs(shared_energy_BESS) * 120 / 1000
+                                  + np.abs(from_pv_to_load) * PUN_ts * 1.2 / 1000
+                                  + np.abs(from_BESS_to_load) * PUN_ts * 1.2 / 1000
+                                  - (np.abs(load) - np.abs(from_pv_to_load) - np.abs(
+            from_BESS_to_load)) * PUN_ts * 1.2 / 1000
                                   )
 
-        self.rev = rev
-
         # EVALUATES TYPICAL DAYS REVENUES
-        num_weeks = 12  # Number of weeks to evaluate
-        hours_per_week = 24  # Hours per week
-        revenues_weeks = np.zeros(num_weeks)  # Initialize weekly revenues array
+        num_settimane = 12  # Number of weeks to evaluate
+        ore_per_settimana = 24  # Hours per week
+        revenues_settimanali = np.zeros(num_settimane)  # Initialize weekly revenues array
 
         # EVALUATE REVENUES
-        for i in range(num_weeks):
-            start = i * hours_per_week  # Start index for the week
-            end = start + hours_per_week  # End index for the week
-            revenues_weeks[i] = np.sum(rev[start:end]) * 30  # Calculate weekly revenues
+        for i in range(num_settimane):
+            inizio = i * ore_per_settimana  # Start index for the week
+            fine = inizio + ore_per_settimana  # End index for the week
+            revenues_settimanali[i] = np.sum(revenue_column[inizio:fine]) * 30  # Calculate weekly revenues
 
-        revenues_final = revenues_weeks
+        revenues_finali = revenues_settimanali
+        self.rev = revenue_column
 
         # EVALUATE TOTAL REVENUES
-        rev = np.sum(revenues_final)
+        revv = np.sum(revenues_finali)
 
         # DISPLAY TOTAL REVENUES
-        print("\nRevenues for optimized time window [EUROs]:\n\n", rev.sum())
+        print("\nRevenues for optimized time window [EUROs]:\n\n", revv)
 
     # DEFINE PLOT RESULTS FUNCTION
     def plot_results(self, soc, charged_energy, discharged_energy, c_d_energy, PUN_Timeseries, taken_from_grid,

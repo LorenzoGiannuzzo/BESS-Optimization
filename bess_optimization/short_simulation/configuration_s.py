@@ -15,9 +15,14 @@ from argparser_s import soc
 from Economic_parameters_s import time_window
 from pymoo.termination.robust import RobustTermination
 from pymoo.termination.xtol import DesignSpaceTermination
+
+from pymoo.algorithms.moo.nsga2 import NSGA2
 from pymoo.algorithms.moo.nsga3 import NSGA3
 from pymoo.algorithms.moo.spea2 import SPEA2
 from pymoo.algorithms.moo.unsga3 import UNSGA3
+from pymoo.algorithms.moo.rnsga3 import RNSGA3  # Import R-NSGA-II
+from pymoo.algorithms.moo.moead import MOEAD  # Import MOEA/D
+from pymoo.algorithms.soo.nonconvex.brkga import BRKGA
 from pymoo.operators.crossover.sbx import SBX
 from pymoo.operators.mutation.pm import PM
 from pymoo.operators.sampling.rnd import FloatRandomSampling
@@ -41,6 +46,8 @@ max_charge = max(charge_values)
 max_discharge = max(discharge_values)
 
 # DEFINE RANDOM SET FUNCTION EXTRACTION
+
+
 def comp_by_cv_then_random(pop, P, **kwargs):
     S = np.full(P.shape[0], np.nan)
     for i in range(P.shape[0]):
@@ -50,6 +57,32 @@ def comp_by_cv_then_random(pop, P, **kwargs):
         else:
             S[i] = np.random.choice([a, b])
     return S[:, None].astype(int)
+
+
+def binary_tournament(pop, P, **kwargs):
+    # The P input defines the tournaments and competitors
+    n_tournaments, n_competitors = P.shape
+
+    if n_competitors != 2:
+        raise Exception("Only pressure=2 allowed for binary tournament!")
+
+    # the result this function returns
+    import numpy as np
+    S = np.full(n_tournaments, -1, dtype=np.integer)
+
+    # now do all the tournaments
+    for i in range(n_tournaments):
+        a, b = P[i]
+
+        # if the first individual is better, choose it
+        if pop[a].F < pop[b].F:
+            S[i] = a
+
+        # otherwise take the other individual
+        else:
+            S[i] = b
+
+    return S
 
 # 1) DEFINE TIME WINDOW OBTAINED FROM Economic_parameters.py FILE
 time_window = time_window
@@ -77,7 +110,7 @@ n_gen = 1000
 
 # 8-bis) DEFINE TOLERANCE
 tolerance = 0.01
-period = 50
+period = 20
 seed = 42
 
 # 9) DEFINITION OF THE TERMINATION CRITERIA
@@ -93,12 +126,12 @@ eta_crossover = 1
 eta_mutation = 3
 
 # DEFINE ETA FOR MUTATION
-prob_crossover = 1.0
+prob_crossover = 1
 prob_mutation = 0.9
-n_offsprings = 200
+n_offsprings = 50
 
 # 11) ALGORITHM SELECTION
-algorithm_type = "UNSGA3"  # Change this to "SPEA2", "NSGA3, "UNSGA3", etc. to test different algorithms
+algorithm_type = "NSGA_2"  # Change this to "SPEA2", "NSGA3, "UNSGA3", etc. to test different algorithms
 
 
 # ALGORITHM INITIALIZATION
@@ -107,7 +140,16 @@ if algorithm_type == "NSGA3":
         pop_size=pop_size,
         ref_dirs=ref_dirs,
         sampling=LatinHypercubeSampling(),
-        selection=TournamentSelection(func_comp=comp_by_cv_then_random),
+        crossover=SBX(eta=eta_crossover, prob=prob_crossover),
+        mutation=PM(eta=eta_mutation, prob=prob_mutation),
+        eliminate_duplicates=True,
+        seed=seed,
+        n_offsprings = n_offsprings
+    )
+elif algorithm_type == "NSGA_2":
+    algorithm = NSGA2(
+        pop_size=pop_size,
+        sampling=LatinHypercubeSampling(),
         crossover=SBX(eta=eta_crossover, prob=prob_crossover),
         mutation=PM(eta=eta_mutation, prob=prob_mutation),
         eliminate_duplicates=True,
@@ -119,7 +161,6 @@ elif algorithm_type == "SPEA2":
     algorithm = SPEA2(
         pop_size=pop_size,
         sampling=LatinHypercubeSampling(),
-        selection=TournamentSelection(func_comp=comp_by_cv_then_random),
         crossover=SBX(eta=eta_crossover, prob=prob_crossover),
         mutation=PM(eta=eta_mutation, prob=prob_mutation),
         eliminate_duplicates=True,
@@ -131,7 +172,6 @@ elif algorithm_type == "UNSGA3":
         pop_size=pop_size,
         ref_dirs=ref_dirs,
         sampling=LatinHypercubeSampling(),
-        selection=TournamentSelection(func_comp=comp_by_cv_then_random),
         crossover=SBX(eta=eta_crossover, prob=prob_crossover),
         mutation=PM(eta=eta_mutation, prob=prob_mutation),
         eliminate_duplicates=True,
@@ -139,6 +179,44 @@ elif algorithm_type == "UNSGA3":
         n_offsprings = n_offsprings,
 
 
+    )
+
+elif algorithm_type == "MOEAD":
+    algorithm = MOEAD(
+        n_neighbors=5,
+        prob_neighbor_mating=0.9,
+        ref_dirs= get_reference_directions("das-dennis", 20, n_partitions=pop_size),
+        sampling=LatinHypercubeSampling(),
+        crossover=SBX(eta=eta_crossover, prob=prob_crossover),
+        mutation=PM(eta=eta_mutation, prob=prob_mutation),
+        #eliminate_duplicates=True,
+        seed=seed,
+        n_offsprings=n_offsprings
+    )
+
+elif algorithm_type == "BRKGA":
+    algorithm = BRKGA(
+        pop_size=pop_size,
+        sampling=LatinHypercubeSampling(),
+        selection=TournamentSelection(func_comp=comp_by_cv_then_random),
+        crossover=SBX(eta=eta_crossover, prob=prob_crossover),
+        mutation=PM(eta=eta_mutation, prob=prob_mutation),
+        eliminate_duplicates=True,
+        seed=seed,
+        n_offsprings=n_offsprings,
+        bias=0.5,  # You can adjust the bias parameter as needed
+    )
+
+elif algorithm_type == "RNSGA3":
+    algorithm = RNSGA3(
+        pop_size=pop_size,
+        sampling=LatinHypercubeSampling(),
+        selection=TournamentSelection(func_comp=comp_by_cv_then_random),
+        crossover=SBX(eta=eta_crossover, prob=prob_crossover),
+        mutation=PM(eta=eta_mutation, prob=prob_mutation),
+        eliminate_duplicates=True,
+        seed=seed,
+        n_offsprings = n_offsprings
     )
 
 else:

@@ -1120,7 +1120,7 @@ class EnergyPlots:
             cmap = matplotlib.colors.LinearSegmentedColormap.from_list("", ["lightblue", "steelblue", "darkblue"])
 
             # Plot SoC
-            ax0.bar(time_steps[week], soc[week].item() * 100, color=cmap(norm(soc[week])), width=width)
+            ax0.bar(time_steps[week], soc[week], color=cmap(norm(soc[week])), width=width)
             ax0.set_title(f'Typical Day of {month_names[i]} - State of Charge', fontsize=14)
             ax0.set_ylabel('SoC [%]', fontsize=12)
             # Set limits for SoC

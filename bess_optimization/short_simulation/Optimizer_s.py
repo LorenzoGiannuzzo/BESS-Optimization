@@ -62,6 +62,7 @@ class CustomCallback:
                 self.new_eta_crossover = np.maximum(0.5 * self.new_eta_crossover, 1.0)
                 self.new_eta_mutation = np.maximum(0.5 * self.new_eta_mutation, 3.0)
 
+
             # Create new instances of crossover and mutation with updated parameters
             algorithm.mating.crossover = SBX(eta=self.new_eta_crossover, prob=self.new_prob_crossover)
             algorithm.mating.mutation = PM(eta=self.new_eta_mutation, prob=self.new_prob_mutation)

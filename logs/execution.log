@@ -1,7 +1,0 @@
-2025-03-04 10:23:28,379 - DEBUG - matplotlib data path: C:\Users\lorenzo.giannuzzo\AppData\Local\Programs\Python\Python312\Lib\site-packages\matplotlib\mpl-data
-2025-03-04 10:23:28,385 - DEBUG - CONFIGDIR=C:\Users\lorenzo.giannuzzo\.matplotlib
-2025-03-04 10:23:28,386 - DEBUG - interactive is False
-2025-03-04 10:23:28,386 - DEBUG - platform is win32
-2025-03-04 10:23:28,462 - DEBUG - CACHEDIR=C:\Users\lorenzo.giannuzzo\.matplotlib
-2025-03-04 10:23:28,466 - DEBUG - Using fontManager instance from C:\Users\lorenzo.giannuzzo\.matplotlib\fontlist-v330.json
-2025-03-04 10:23:28,789 - DEBUG - Loaded backend agg version v2.2.

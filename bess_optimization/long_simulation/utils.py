@@ -1,5 +1,22 @@
+"""
+
+BESS Optimization using NSGA-III Algorithm
+
+    __author__ = "Lorenzo Giannuzzo"
+    __maintainer__ = "Lorenzo Giannuzzo"
+    __email__ = "lorenzo.giannuzzo@polito.it"
+    __status__ = "in progress"
+    __version__ = "v0.2.1"
+    __license__ = "MIT"
+
+Last Update of current code: 24/03/2025 """
+
+import statistics
 import ExcelOpener_l
 import Interpolator_l
+from pymoo.config import Config
+
+Config.warnings['not_compiled'] = False
 
 class Get_data:
     @staticmethod
@@ -29,13 +46,17 @@ class BESS:
 
     @staticmethod
     def get_c_d_functions(load_curve):
+
         # Select charge rate DataFrame from the first 356 rows of load_curve.
         charge_rate = load_curve.iloc[:356, [0, 3.5]]
+
         # Select discharge rate DataFrame from rows 357 onwards of load_curve.
         discharge_rate = load_curve.iloc[357:, [0, 4, 5]]
+
         # Interpolate data for the charge rate.
         charge_interpolator = Interpolator_l.DataInterpolator(charge_rate, 'SoC [%]', 'Charge Rate [kWh/(kWhp*h)]')
         charge_rate_interpolated_func = charge_interpolator.interpolate()
+
         # Interpolate data for the discharge rate.
         discharge_interpolator = Interpolator_l.DataInterpolator(discharge_rate, 'SoC [%]', 'Discharge Rate [kWh/(kWhp*h)]')
         discharge_rate_interpolated_func = discharge_interpolator.interpolate()
@@ -43,4 +64,29 @@ class BESS:
         # Return the interpolated functions for charge and discharge rates.
         return charge_rate_interpolated_func, discharge_rate_interpolated_func
 
+
+def CustomSampling(energy_price, max_charge, max_discharge):
+
+    import numpy as np
+
+    energy_price = np.array(energy_price)
+    mean_price = np.mean(energy_price)  # Use numpy's mean
+    n = len(energy_price)
+
+    # Initialize X with double length
+    X = np.zeros(2 * n)
+
+    # First half: Charge/discharge logic
+    for i in range(n):
+        if energy_price[i] > mean_price * 1.2:
+            X[i] = max_discharge
+        elif energy_price[i] < mean_price * 0.8:
+            X[i] = max_charge
+        else:
+            X[i] = 0.0
+
+    # Second half: All 1.0 values
+    X[n:] = 1.0
+
+    return X
 

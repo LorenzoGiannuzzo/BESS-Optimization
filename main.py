@@ -4,15 +4,12 @@ import sys
 import os
 
 def run_main_s(args):
-    # Prepare the arguments for main_s.py, excluding the --flag argument
-    filtered_args = [arg for arg in sys.argv[1:] if arg != '--type' and arg != 'Short']
-    short_directory = r"bess_optimization/short_simulation"
-    subprocess.run(['python', os.path.join(short_directory, 'main_s.py')] + filtered_args)
+    pass
 
 def run_main_l(args):
     # Run main_p.py with the provided arguments
     filtered_args = [arg for arg in sys.argv[1:] if arg != '--type' and arg != 'Long']
-    short_directory = r"bess_optimization/long_simulation"
+    short_directory = r"bess_optimization/optimization"
     subprocess.run(['python', os.path.join(short_directory, 'main_l.py')] + filtered_args)
 
 if __name__ == "__main__":

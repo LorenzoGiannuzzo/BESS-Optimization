@@ -116,6 +116,15 @@ def process_data(consumption_file_path, pv_file_path):
     df_consumption['Hour'] = pd.to_datetime(df_consumption['time'], format='%H:%M:%S').dt.hour
     typical_days_consumption = df_consumption.groupby(['Season', 'Hour'])['value'].mean().unstack()
 
+    output_file_path = r'C:\Users\lorenzo.giannuzzo\PycharmProjects\BESS-Optimization\data\Loads\typycal_days_consumption.xlsx'  # Modify the path as needed
+    typical_days_consumption.to_excel(output_file_path)
+
+    df = pd.read_excel(output_file_path)
+    df=pd.melt(df, id_vars='Season', value_vars=df.iloc[:,1:], var_name='Hour')
+    df=df.sort_values(by=['Season','Hour'],ignore_index=True)
+    df.to_excel(output_file_path, index=False)
+
+
     # Process PV data
     df_pv = pd.read_csv(pv_file_path, sep=';', parse_dates=['time'], dayfirst=True)
     df_pv.columns = ['time', 'P']
@@ -128,6 +137,14 @@ def process_data(consumption_file_path, pv_file_path):
     df_pv['P'] = (df_pv['P'] / 1000) * 15  # Divide by 1000 and multiply by 15
 
     typical_days_pv = df_pv.groupby(['Season', 'Hour'])['P'].mean().unstack()
+
+    output_file_path = r'C:\Users\lorenzo.giannuzzo\PycharmProjects\BESS-Optimization\data\Input\pv\typycal_days_pv.xlsx'  # Modify the path as needed
+    typical_days_pv.to_excel(output_file_path)
+
+    df = pd.read_excel(output_file_path)
+    df=pd.melt(df, id_vars='Season', value_vars=df.iloc[:,1:], var_name='Hour')
+    df=df.sort_values(by=['Season','Hour'],ignore_index=True)
+    df.to_excel(output_file_path, index=False)
 
     # Create subplots
     seasons = typical_days_consumption.index
@@ -179,6 +196,7 @@ def process_data(consumption_file_path, pv_file_path):
     plt.savefig(
         r'C:\Users\lorenzo.giannuzzo\PycharmProjects\BESS-Optimization\Plots\General\combined_typical_days_plot.png',
         dpi=500)
+
 
 
 # Example usage

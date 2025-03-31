@@ -107,6 +107,7 @@ def get_season(month):
         return 'Autumn'
 
 
+
 def process_data(consumption_file_path, pv_file_path, pun_file_path):
     # Process consumption data
     df_consumption = pd.read_excel(consumption_file_path, decimal=',', parse_dates=['Data'])

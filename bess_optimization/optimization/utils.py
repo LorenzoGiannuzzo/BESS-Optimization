@@ -10,7 +10,7 @@ BESS Optimization using NSGA-III Algorithm
     __license__ = "MIT"
 
 Last Update of current code: 24/03/2025 """
-
+import json
 import statistics
 import ExcelOpener_l
 import Interpolator_l
@@ -90,10 +90,9 @@ def CustomSampling(energy_price, max_charge, max_discharge):
 
     return X
 
-
 import pandas as pd
+import json
 import matplotlib.pyplot as plt
-
 from matplotlib.colors import LinearSegmentedColormap
 
 def get_season(month):
@@ -108,7 +107,7 @@ def get_season(month):
         return 'Autumn'
 
 
-def process_data(consumption_file_path, pv_file_path):
+def process_data(consumption_file_path, pv_file_path, pun_file_path):
     # Process consumption data
     df_consumption = pd.read_excel(consumption_file_path, decimal=',', parse_dates=['Data'])
     df_consumption['Month'] = df_consumption['Data'].dt.month
@@ -120,10 +119,9 @@ def process_data(consumption_file_path, pv_file_path):
     typical_days_consumption.to_excel(output_file_path)
 
     df = pd.read_excel(output_file_path)
-    df=pd.melt(df, id_vars='Season', value_vars=df.iloc[:,1:], var_name='Hour')
-    df=df.sort_values(by=['Season','Hour'],ignore_index=True)
+    df = pd.melt(df, id_vars='Season', value_vars=df.iloc[:, 1:], var_name='Hour')
+    df = df.sort_values(by=['Season', 'Hour'], ignore_index=True)
     df.to_excel(output_file_path, index=False)
-
 
     # Process PV data
     df_pv = pd.read_csv(pv_file_path, sep=';', parse_dates=['time'], dayfirst=True)
@@ -138,13 +136,45 @@ def process_data(consumption_file_path, pv_file_path):
 
     typical_days_pv = df_pv.groupby(['Season', 'Hour'])['P'].mean().unstack()
 
-    output_file_path = r'C:\Users\lorenzo.giannuzzo\PycharmProjects\BESS-Optimization\data\Input\pv\typycal_days_pv.xlsx'  # Modify the path as needed
-    typical_days_pv.to_excel(output_file_path)
+    # Change the output file path to save as CSV
+    output_file_path_pv = r'C:\Users\lorenzo.giannuzzo\PycharmProjects\BESS-Optimization\data\Input\pv\typycal_days_pv.csv'  # Modify the path as needed
+    typical_days_pv.to_csv(output_file_path_pv)  # Save as CSV instead of Excel
 
-    df = pd.read_excel(output_file_path)
-    df=pd.melt(df, id_vars='Season', value_vars=df.iloc[:,1:], var_name='Hour')
-    df=df.sort_values(by=['Season','Hour'],ignore_index=True)
-    df.to_excel(output_file_path, index=False)
+    df = pd.read_csv(output_file_path_pv)  # Read the CSV file
+    df = pd.melt(df, id_vars='Season', value_vars=df.iloc[:, 1:], var_name='Hour')
+    df = df.sort_values(by=['Season', 'Hour'], ignore_index=True)
+    df.to_csv(output_file_path_pv, index=False)  # Save the melted DataFrame back to CSV
+
+    # PROCESS PUN DATA
+    with open(pun_file_path, 'r') as f:  # Open the file in read mode
+        pun_data = json.load(f)
+
+    df_pun = pd.DataFrame(pun_data)
+    df_pun['datetime'] = pd.to_datetime(df_pun['datetime'].str.replace('Z', ''), utc=True)
+
+    df_pun['Month'] = df_pun['datetime'].dt.month
+    df_pun['Season'] = df_pun['Month'].apply(get_season)
+    df_pun['Hour'] = df_pun['datetime'].dt.hour
+
+    # Calculate average PUN prices for each hour and season
+    typical_days_pun = df_pun.groupby(['Season', 'Hour'])['value'].mean().unstack()
+
+    # Save typical days to JSON
+    output_file_path_pun = (r'C:\Users\lorenzo.giannuzzo\PycharmProjects\BESS-Optimization\data\Input\prices\typical_pun.json')
+
+    # Prepare the data for JSON output
+    output_data = []
+    for season in typical_days_pun.index:
+        for hour in typical_days_pun.columns:
+            output_data.append({
+                "datetime": f"{season} Hour {hour}:00",
+                "value": typical_days_pun.loc[season, hour],
+                "source": "processed"
+            })
+
+    # Save the output data to a JSON file
+    with open(output_file_path_pun, 'w') as f:
+        json.dump(output_data, f, indent=4)
 
     # Create subplots
     seasons = typical_days_consumption.index
@@ -167,7 +197,6 @@ def process_data(consumption_file_path, pv_file_path):
     }
 
     for i, season in enumerate(seasons):
-
         axes[i].fill_between(typical_days_pv.columns,
                              0, typical_days_pv.loc[season],
                              color='orange', alpha=0.4)
@@ -177,15 +206,12 @@ def process_data(consumption_file_path, pv_file_path):
                              color=colors[season], alpha=0.7)
         # Fill the area under the PV curve with a blue gradient (without the line)
 
-
-
-
         axes[i].set_title(f'{season} Typical Day')
         axes[i].set_xlabel('Hour [h]')
         axes[i].set_ylabel('Power [kW]')
         axes[i].set_xticks(range(0, 24))
         axes[i].grid(True, linestyle='--', alpha=0.3)
-        axes[i].legend(['PV production','Consumption'], loc='upper right')
+        axes[i].legend(['PV production', 'Consumption'], loc='upper right')
 
         # Rotate x-axis labels by 0 degrees (horizontal labels)
         axes[i].tick_params(axis='x', rotation=0)
@@ -197,10 +223,8 @@ def process_data(consumption_file_path, pv_file_path):
         r'C:\Users\lorenzo.giannuzzo\PycharmProjects\BESS-Optimization\Plots\General\combined_typical_days_plot.png',
         dpi=500)
 
-
-
-# Example usage
 process_data(
     r"C:\Users\lorenzo.giannuzzo\PycharmProjects\BESS-Optimization\data\Loads\BTA6_5.XLSX",
-    r'C:\Users\lorenzo.giannuzzo\PycharmProjects\BESS-Optimization\data\Input\pv\year_PV.csv'
+    r'C:\Users\lorenzo.giannuzzo\PycharmProjects\BESS-Optimization\data\Input\pv\year_PV.csv',
+    r'C:\Users\lorenzo.giannuzzo\PycharmProjects\BESS-Optimization\data\Input\prices\year_pun.json'
 )

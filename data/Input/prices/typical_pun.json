@@ -1,0 +1,482 @@
+[
+    {
+        "datetime": "Autumn Hour 0:00",
+        "value": 103885604.3956044,
+        "source": "processed"
+    },
+    {
+        "datetime": "Autumn Hour 1:00",
+        "value": 106448461.53846154,
+        "source": "processed"
+    },
+    {
+        "datetime": "Autumn Hour 2:00",
+        "value": 103405604.3956044,
+        "source": "processed"
+    },
+    {
+        "datetime": "Autumn Hour 3:00",
+        "value": 106255494.5054945,
+        "source": "processed"
+    },
+    {
+        "datetime": "Autumn Hour 4:00",
+        "value": 103626373.62637363,
+        "source": "processed"
+    },
+    {
+        "datetime": "Autumn Hour 5:00",
+        "value": 106621538.46153846,
+        "source": "processed"
+    },
+    {
+        "datetime": "Autumn Hour 6:00",
+        "value": 104122527.47252747,
+        "source": "processed"
+    },
+    {
+        "datetime": "Autumn Hour 7:00",
+        "value": 106761648.35164835,
+        "source": "processed"
+    },
+    {
+        "datetime": "Autumn Hour 8:00",
+        "value": 104430329.67032968,
+        "source": "processed"
+    },
+    {
+        "datetime": "Autumn Hour 9:00",
+        "value": 107494285.71428572,
+        "source": "processed"
+    },
+    {
+        "datetime": "Autumn Hour 10:00",
+        "value": 105397802.1978022,
+        "source": "processed"
+    },
+    {
+        "datetime": "Autumn Hour 11:00",
+        "value": 107692857.14285715,
+        "source": "processed"
+    },
+    {
+        "datetime": "Autumn Hour 12:00",
+        "value": 104726153.84615384,
+        "source": "processed"
+    },
+    {
+        "datetime": "Autumn Hour 13:00",
+        "value": 106509010.98901099,
+        "source": "processed"
+    },
+    {
+        "datetime": "Autumn Hour 14:00",
+        "value": 103617912.08791208,
+        "source": "processed"
+    },
+    {
+        "datetime": "Autumn Hour 15:00",
+        "value": 105513406.59340659,
+        "source": "processed"
+    },
+    {
+        "datetime": "Autumn Hour 16:00",
+        "value": 103286043.95604396,
+        "source": "processed"
+    },
+    {
+        "datetime": "Autumn Hour 17:00",
+        "value": 105521208.79120879,
+        "source": "processed"
+    },
+    {
+        "datetime": "Autumn Hour 18:00",
+        "value": 103187362.63736264,
+        "source": "processed"
+    },
+    {
+        "datetime": "Autumn Hour 19:00",
+        "value": 105617142.85714285,
+        "source": "processed"
+    },
+    {
+        "datetime": "Autumn Hour 20:00",
+        "value": 103441318.68131869,
+        "source": "processed"
+    },
+    {
+        "datetime": "Autumn Hour 21:00",
+        "value": 106859670.32967032,
+        "source": "processed"
+    },
+    {
+        "datetime": "Autumn Hour 22:00",
+        "value": 104694065.93406594,
+        "source": "processed"
+    },
+    {
+        "datetime": "Autumn Hour 23:00",
+        "value": 107863736.26373626,
+        "source": "processed"
+    },
+    {
+        "datetime": "Spring Hour 0:00",
+        "value": 103828913.04347827,
+        "source": "processed"
+    },
+    {
+        "datetime": "Spring Hour 1:00",
+        "value": 107282173.91304348,
+        "source": "processed"
+    },
+    {
+        "datetime": "Spring Hour 2:00",
+        "value": 104812065.2173913,
+        "source": "processed"
+    },
+    {
+        "datetime": "Spring Hour 3:00",
+        "value": 107701195.6521739,
+        "source": "processed"
+    },
+    {
+        "datetime": "Spring Hour 4:00",
+        "value": 104977282.60869566,
+        "source": "processed"
+    },
+    {
+        "datetime": "Spring Hour 5:00",
+        "value": 107790000.0,
+        "source": "processed"
+    },
+    {
+        "datetime": "Spring Hour 6:00",
+        "value": 105105869.56521739,
+        "source": "processed"
+    },
+    {
+        "datetime": "Spring Hour 7:00",
+        "value": 106789347.82608695,
+        "source": "processed"
+    },
+    {
+        "datetime": "Spring Hour 8:00",
+        "value": 104145326.08695652,
+        "source": "processed"
+    },
+    {
+        "datetime": "Spring Hour 9:00",
+        "value": 106051413.04347827,
+        "source": "processed"
+    },
+    {
+        "datetime": "Spring Hour 10:00",
+        "value": 103437934.7826087,
+        "source": "processed"
+    },
+    {
+        "datetime": "Spring Hour 11:00",
+        "value": 105371195.6521739,
+        "source": "processed"
+    },
+    {
+        "datetime": "Spring Hour 12:00",
+        "value": 103106847.82608695,
+        "source": "processed"
+    },
+    {
+        "datetime": "Spring Hour 13:00",
+        "value": 105230543.47826087,
+        "source": "processed"
+    },
+    {
+        "datetime": "Spring Hour 14:00",
+        "value": 103390869.56521739,
+        "source": "processed"
+    },
+    {
+        "datetime": "Spring Hour 15:00",
+        "value": 106364130.43478261,
+        "source": "processed"
+    },
+    {
+        "datetime": "Spring Hour 16:00",
+        "value": 104503152.17391305,
+        "source": "processed"
+    },
+    {
+        "datetime": "Spring Hour 17:00",
+        "value": 107665434.7826087,
+        "source": "processed"
+    },
+    {
+        "datetime": "Spring Hour 18:00",
+        "value": 104525434.7826087,
+        "source": "processed"
+    },
+    {
+        "datetime": "Spring Hour 19:00",
+        "value": 107045326.08695652,
+        "source": "processed"
+    },
+    {
+        "datetime": "Spring Hour 20:00",
+        "value": 103517826.08695652,
+        "source": "processed"
+    },
+    {
+        "datetime": "Spring Hour 21:00",
+        "value": 106020000.0,
+        "source": "processed"
+    },
+    {
+        "datetime": "Spring Hour 22:00",
+        "value": 102883586.95652173,
+        "source": "processed"
+    },
+    {
+        "datetime": "Spring Hour 23:00",
+        "value": 105993586.95652173,
+        "source": "processed"
+    },
+    {
+        "datetime": "Summer Hour 0:00",
+        "value": 103179239.13043478,
+        "source": "processed"
+    },
+    {
+        "datetime": "Summer Hour 1:00",
+        "value": 105509456.52173913,
+        "source": "processed"
+    },
+    {
+        "datetime": "Summer Hour 2:00",
+        "value": 103219673.91304348,
+        "source": "processed"
+    },
+    {
+        "datetime": "Summer Hour 3:00",
+        "value": 106105000.0,
+        "source": "processed"
+    },
+    {
+        "datetime": "Summer Hour 4:00",
+        "value": 103989782.60869566,
+        "source": "processed"
+    },
+    {
+        "datetime": "Summer Hour 5:00",
+        "value": 107189456.52173913,
+        "source": "processed"
+    },
+    {
+        "datetime": "Summer Hour 6:00",
+        "value": 104682173.91304348,
+        "source": "processed"
+    },
+    {
+        "datetime": "Summer Hour 7:00",
+        "value": 107815217.39130434,
+        "source": "processed"
+    },
+    {
+        "datetime": "Summer Hour 8:00",
+        "value": 104364021.73913044,
+        "source": "processed"
+    },
+    {
+        "datetime": "Summer Hour 9:00",
+        "value": 106831086.95652173,
+        "source": "processed"
+    },
+    {
+        "datetime": "Summer Hour 10:00",
+        "value": 103366630.43478261,
+        "source": "processed"
+    },
+    {
+        "datetime": "Summer Hour 11:00",
+        "value": 106039130.43478261,
+        "source": "processed"
+    },
+    {
+        "datetime": "Summer Hour 12:00",
+        "value": 103260869.56521739,
+        "source": "processed"
+    },
+    {
+        "datetime": "Summer Hour 13:00",
+        "value": 106125652.17391305,
+        "source": "processed"
+    },
+    {
+        "datetime": "Summer Hour 14:00",
+        "value": 103664673.91304348,
+        "source": "processed"
+    },
+    {
+        "datetime": "Summer Hour 15:00",
+        "value": 106484673.91304348,
+        "source": "processed"
+    },
+    {
+        "datetime": "Summer Hour 16:00",
+        "value": 104311086.95652173,
+        "source": "processed"
+    },
+    {
+        "datetime": "Summer Hour 17:00",
+        "value": 107461086.95652173,
+        "source": "processed"
+    },
+    {
+        "datetime": "Summer Hour 18:00",
+        "value": 105406086.95652173,
+        "source": "processed"
+    },
+    {
+        "datetime": "Summer Hour 19:00",
+        "value": 108158152.17391305,
+        "source": "processed"
+    },
+    {
+        "datetime": "Summer Hour 20:00",
+        "value": 105260652.17391305,
+        "source": "processed"
+    },
+    {
+        "datetime": "Summer Hour 21:00",
+        "value": 106842608.69565217,
+        "source": "processed"
+    },
+    {
+        "datetime": "Summer Hour 22:00",
+        "value": 103617717.39130434,
+        "source": "processed"
+    },
+    {
+        "datetime": "Summer Hour 23:00",
+        "value": 105490434.7826087,
+        "source": "processed"
+    },
+    {
+        "datetime": "Winter Hour 0:00",
+        "value": 104957777.77777778,
+        "source": "processed"
+    },
+    {
+        "datetime": "Winter Hour 1:00",
+        "value": 107451444.44444445,
+        "source": "processed"
+    },
+    {
+        "datetime": "Winter Hour 2:00",
+        "value": 104769555.55555555,
+        "source": "processed"
+    },
+    {
+        "datetime": "Winter Hour 3:00",
+        "value": 106646666.66666667,
+        "source": "processed"
+    },
+    {
+        "datetime": "Winter Hour 4:00",
+        "value": 103851444.44444445,
+        "source": "processed"
+    },
+    {
+        "datetime": "Winter Hour 5:00",
+        "value": 105734666.66666667,
+        "source": "processed"
+    },
+    {
+        "datetime": "Winter Hour 6:00",
+        "value": 103387000.0,
+        "source": "processed"
+    },
+    {
+        "datetime": "Winter Hour 7:00",
+        "value": 105638111.1111111,
+        "source": "processed"
+    },
+    {
+        "datetime": "Winter Hour 8:00",
+        "value": 103237222.22222222,
+        "source": "processed"
+    },
+    {
+        "datetime": "Winter Hour 9:00",
+        "value": 105651777.77777778,
+        "source": "processed"
+    },
+    {
+        "datetime": "Winter Hour 10:00",
+        "value": 103392222.22222222,
+        "source": "processed"
+    },
+    {
+        "datetime": "Winter Hour 11:00",
+        "value": 106369222.22222222,
+        "source": "processed"
+    },
+    {
+        "datetime": "Winter Hour 12:00",
+        "value": 104192333.33333333,
+        "source": "processed"
+    },
+    {
+        "datetime": "Winter Hour 13:00",
+        "value": 107575555.55555555,
+        "source": "processed"
+    },
+    {
+        "datetime": "Winter Hour 14:00",
+        "value": 104612111.1111111,
+        "source": "processed"
+    },
+    {
+        "datetime": "Winter Hour 15:00",
+        "value": 107254333.33333333,
+        "source": "processed"
+    },
+    {
+        "datetime": "Winter Hour 16:00",
+        "value": 103428777.77777778,
+        "source": "processed"
+    },
+    {
+        "datetime": "Winter Hour 17:00",
+        "value": 106193222.22222222,
+        "source": "processed"
+    },
+    {
+        "datetime": "Winter Hour 18:00",
+        "value": 103434333.33333333,
+        "source": "processed"
+    },
+    {
+        "datetime": "Winter Hour 19:00",
+        "value": 106390333.33333333,
+        "source": "processed"
+    },
+    {
+        "datetime": "Winter Hour 20:00",
+        "value": 103860000.0,
+        "source": "processed"
+    },
+    {
+        "datetime": "Winter Hour 21:00",
+        "value": 106855111.1111111,
+        "source": "processed"
+    },
+    {
+        "datetime": "Winter Hour 22:00",
+        "value": 104232777.77777778,
+        "source": "processed"
+    },
+    {
+        "datetime": "Winter Hour 23:00",
+        "value": 106892333.33333333,
+        "source": "processed"
+    }
+]

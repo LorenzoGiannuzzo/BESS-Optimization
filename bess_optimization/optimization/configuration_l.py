@@ -105,7 +105,7 @@ xl = [-max_discharge] * time_window + [0.0] * time_window
 xu = [max_charge] * time_window + [+1.0] * time_window
 
 # 8) DEFINE NUMBER OF GENERATIONS
-n_gen = 500
+n_gen = 5
 
 # 8-bis) DEFINE TOLERANCE
 tolerance = 0.01
@@ -128,6 +128,8 @@ eta_mutation = 3
 prob_crossover = 1
 prob_mutation = 0.9
 n_offsprings = 50
+
+season = "Autumn"
 
 # 11) ALGORITHM SELECTION
 algorithm_type = "NSGA_2"  # Change this to "SPEA2", "NSGA3, "UNSGA3", etc. to test different algorithms

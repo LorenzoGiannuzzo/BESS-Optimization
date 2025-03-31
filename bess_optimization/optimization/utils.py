@@ -141,8 +141,9 @@ def process_data(consumption_file_path, pv_file_path, pun_file_path):
     typical_days_pv.to_csv(output_file_path_pv)  # Save as CSV instead of Excel
 
     df = pd.read_csv(output_file_path_pv)  # Read the CSV file
-    df = pd.melt(df, id_vars='Season', value_vars=df.iloc[:, 1:], var_name='Hour')
-    df = df.sort_values(by=['Season', 'Hour'], ignore_index=True)
+    df = pd.melt(df, id_vars='Season', value_vars=df.iloc[:, 1:], var_name='time')  # Change 'Hour' to 'time'
+    df = df.sort_values(by=['Season', 'time'], ignore_index=True)
+    df.rename(columns={'value': 'P'}, inplace=True)  # Change 'value' to 'P'
     df.to_csv(output_file_path_pv, index=False)  # Save the melted DataFrame back to CSV
 
     # PROCESS PUN DATA

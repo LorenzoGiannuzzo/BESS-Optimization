@@ -4,7 +4,7 @@ from argparser_l import input_PV
 # File path
 file_path = input_PV
 
-pv_production = pd.read_csv(file_path, sep=';', usecols=['time', 'P'])
+pv_production = pd.read_csv(file_path, sep=',', usecols=['Season','time', 'P'])
 
 from argparser_l import PV_power
 

@@ -9,7 +9,7 @@ BESS Optimization using NSGA-III Algorithm
     __version__ = "v0.2.1"
     __license__ = "MIT"
 
-Last Update of current code: 28/03/2025 - 17:49
+Last Update of current code: 01/04/2025 - 17:49
 
 """
 
@@ -86,751 +86,91 @@ class EnergyPlots:
         plt.ylabel('Discharged Energy [kWh]')
         plt.savefig(os.path.join(self.plots_dir, "Disc_Energy.png"))
 
-    # DEFINE COMBINED PLOTS FIGURE FUCNTION
-    def plot_combined_energy_with_pun(self, num_values):
-
-        # SETTING VALUES
-        time_steps_24 = self.time_steps[:num_values]
-        charged_energy_24 = self.charged_energy[:num_values]
-        discharged_energy_24 = self.discharged_energy[:num_values]
-        pun_values_24 = self.PUN_timeseries[:num_values]
-        soc_24 = self.soc[:num_values]
-        produced_from_pv = self.produced_from_pv[:num_values]
-        taken_from_pv_24 = self.taken_from_pv[:num_values]
-        taken_from_grid_24 = self.taken_from_grid[:num_values]
-        discharged_from_pv = self.discharged_from_pv
-
-        # EVALUATE PV AND BESS REVENUES
-        rev_bess = -(np.array(discharged_energy_24) * pun_values_24 / 1000) - (
-                taken_from_grid_24 * pun_values_24 / 1000)
-
-        rev_bess = np.array(rev_bess, dtype=float)
-
-        # EVALUATE CUMULATIVE GLOBAL REVENUES
-        rev_cumulative = np.cumsum(rev_bess)
-
-        # EVALUATE TOTAL ENERGY TAKEN FROM PV
-        total_from_pv = np.sum(taken_from_pv_24)
-
-        # EVALUATE TOTAL ENERGY TAKEN FROM GRID
-        total_from_grid = np.sum(taken_from_grid_24)
-
-        # EVALUATE TOTAL ENERGY DISCHARGED FROM BESS
-        total_discharged = np.sum(-discharged_energy_24)
-
-        # CREATING FIGURE LAYOUT
-        fig = plt.figure(figsize=(24, 12))
-        gs = gridspec.GridSpec(2, 2, width_ratios=[1, 1], height_ratios=[1, 1])
-
-        # SET AXIS FOR SoC PLOT (UPPER LEFT)
-        ax0 = fig.add_subplot(gs[0, 0])
-
-        # Normalize SoC values to be in the range [0, 1] for the colormap
-        norm = Normalize(vmin=min(soc_24*100), vmax=max(soc_24*100))
-        cmap = matplotlib.colors.LinearSegmentedColormap.from_list("", ["lightblue", "steelblue", "darkblue"])
-
-        # Plot SoC with gradient colored bars based on value
-        for i in range(len(time_steps_24)):
-            ax0.bar(time_steps_24[i], soc_24[i] * 100, color=cmap(norm(soc_24[i])))
-
-        ax0.set_title('State of Charge (SoC)')
-        ax0.set_ylabel('SoC [%]')
-
-        # SET AXIS FOR BOTTOM LEFT GRAPH
-        ax1 = fig.add_subplot(gs[1, 0])
-        width = 0.4
-        ax1.bar(time_steps_24, [1] * np.array(taken_from_grid_24), width=width, color='darkgreen',
-                label='From Grid to BESS')
-        ax1.bar(time_steps_24, [1] * np.array(taken_from_pv_24), width=width, color='darkblue',
-                label='From PV to BESS')
-        ax1.bar(time_steps_24, discharged_energy_24, width=width, color='darkred',
-                bottom= np.array(taken_from_grid_24),
-                label='From BESS to Grid')
-
-        ax1.set_ylabel('Energy [kWh]')
-        ax1.set_title('BESS Energy Flows')
-        ax1.legend(loc='upper left')
-        plt.ylim(-size * 0.6, size * 0.6)
-
-        # Plot PUN values on the secondary axis
-        ax3 = ax1.twinx()
-        ax3.plot(time_steps_24, pun_values_24, color='black', label='PUN')
-        ax3.set_ylabel('PUN [Euro/MWh]')
-        ax3.legend(loc='upper right')
-        ax1.set_xlabel('Time Window [h]')
-
-        ax2 = fig.add_subplot(gs[0, 1])  # Usa solo la prima riga nella colonna di destra
-        ax2.plot(time_steps_24, rev_cumulative, color='lightgreen', label='Cumulative Revenues', alpha=1)
-        ax2.set_title('Cumulative Revenues Over Time')
-        ax2.fill_between(time_steps_24, rev_cumulative, color='green', alpha=0.3)  # Area sottesa con alpha 0.3
-        ax2.set_ylabel('Cumulative BESS Revenues [Euros]')
-        ax2.legend(loc='upper left')
-
-        def func(pct, allvalues):
-            absolute = int(np.round(pct / 100. * np.sum(allvalues)))  # Calculate absolute value
-            return f"{absolute} ({pct:.1f}%)"  # Format as "absolute (percentage)"
-
-        # Create the pie chart
-        ax4 = fig.add_subplot(gs[1, 1])
-
-        sizes = [total_from_pv, total_from_grid, total_discharged]
-        labels = ['From PV to BESS', 'From Grid to BESS', 'From BESS to Grid']
-        colors = ['Steelblue', 'lightblue', 'paleturquoise']
-        explode = (0.05, 0.05, 0.05)  # explode the first slice (Total Curtailment)
-
-        # Create pie chart with custom autopct function
-        ax4.pie(sizes, explode=explode, labels=labels, colors=colors,
-                autopct=lambda pct: func(pct, sizes),  # Use the custom function
-                shadow=False, startangle=90, textprops={'fontsize': 14})
-
-        ax4.axis('equal')  # Equal aspect ratio ensures that pie is drawn as a circle.
-        ax4.set_title('BESS Energy Distribution [kWh]')
-        fig.tight_layout()
-        plt.savefig(os.path.join(self.plots_dir, "BESS_View.png"))
-
-    # CREATING PV_View
-    def PV_View(self, num_values):
-
-        # INITIALIZE ENERGY VECTORS AND TIME WINDOW
-        time_steps = self.time_steps[:num_values]
-        charged_energy = self.charged_energy[:num_values]
-        discharged_energy = self.discharged_energy[:num_values]
-        pun_values = self.PUN_timeseries[:num_values]
-        soc = self.soc[:num_values]
-        produced_from_pv = self.produced_from_pv[:num_values]
-        taken_from_pv = self.taken_from_pv[:num_values]
-        taken_from_grid = self.taken_from_grid[:num_values]
-        discharged_from_pv = self.discharged_from_pv[:num_values]
-
-        # EVALUATING TOTAL CURTAILMENT
-        curtailment = np.maximum(produced_from_pv + discharged_from_pv - taken_from_pv, 0.0)
-        total_curtailment = np.sum(curtailment)
-
-        # EVALUATING TOTAL ENERGY TAKEN FROM PV
-        total_taken_from_pv = np.sum(taken_from_pv)
-
-        # EVALUATING TOTAL ENERGY DISCHARGED FROM PV
-        total_discharged_from_pv = np.sum(-discharged_from_pv)
-
-        # EVALAUTE PV REVENUES
-        rev_pv = (discharged_from_pv) * pun_values / 1000
-        rev_pv = np.array(rev_pv,dtype=float)
-
-        # EVALUATE PV CUMULATIVE REVENUES
-        rev_cumulative = np.cumsum(rev_pv)
-
-        # layout wtih 4 box using gridspec
-        fig = plt.figure(figsize=(24, 12))
-        gs = gridspec.GridSpec(2, 2, width_ratios=[1, 1], height_ratios=[1, 1])
-
-        # Axis for SoC palce up left
-        ax0 = fig.add_subplot(gs[0, 0])
-
-        # Normalize SoC values to be in the range [0, 1] for the colormap
-        norm = Normalize(vmin=min(soc*100), vmax=max(soc*100))
-        cmap = matplotlib.colors.LinearSegmentedColormap.from_list("", ["lightblue", "steelblue", "darkblue"])
-
-        # Plot SoC with gradient colored bars based on value
-        for i in range(len(time_steps)):
-            if taken_from_pv[max(i-1,0.0)] == 0:
-                color = 'lightgray'  # Set color to gray if taken_from_pv is zero
-            else:
-                color = cmap(norm(soc[i]))  # Use colormap for the current timestep
-
-            # Plot the current SoC bar
-            ax0.bar(time_steps[i], soc[i]*100, color=color)
-
-        ax0.set_title('State of Charge - BESS')
-        ax0.set_ylabel('SoC [%]')
-
-        # Axis for charged and discharged energy (second graph) bottom left
-        ax1 = fig.add_subplot(gs[1, 0])
-        ax1.fill_between(time_steps, 0, produced_from_pv, color='lightblue', alpha=0.3, label='Produced from PV')
-        width = 0.4
-
-        ax1.bar(time_steps, taken_from_pv, color='darkblue', bottom=-discharged_from_pv,
-                label='From PV to BESS', width=width)
-        ax1.bar(time_steps, -discharged_from_pv,
-                label='From PV to Grid', width=width)
-
-        ax1.set_ylabel('Energy [kWh]')
-        ax1.set_title('PV Energy Flows')
-        ax1.legend(loc='upper left')
-        ax1.set_xlabel('Time Window [h]')
-        plt.ylim(-size * 0.6, size * 0.6)
-
-        # Plot PUN values on the secondary axis
-        ax3 = ax1.twinx()
-        ax3.plot(time_steps, pun_values, color='black', label='PUN')
-        ax3.set_ylabel('PUN [Euro/MWh]')
-        ax3.legend(loc='upper right')
-
-        # Cumulative revenue axis to the right of the first graph
-        ax2 = fig.add_subplot(gs[0, 1])
-        ax2.plot(time_steps, -rev_cumulative, color='lightgreen', label='Cumulative Revenues', alpha=1)
-        ax2.set_title('Cumulative Revenues Over Time')
-        ax2.fill_between(time_steps, -rev_cumulative, color='green', alpha=0.3)  # Area sottesa con alpha 0.3
-        ax2.set_ylabel('Cumulative PV Revenues [Euros]')
-        ax2.legend(loc='upper left')
-
-        # New pie chart in the bottom right-hand corner
-        ax4 = fig.add_subplot(gs[1, 1])
-
-        if total_curtailment != 0.0:
-            def func(pct, allvalues):
-                absolute = int(np.round(pct / 100. * np.sum(allvalues)))  # Calculate absolute value
-                return f"{absolute} ({pct:.1f}%)"  # Format as "absolute (percentage)"
-
-            # Values for the pie chart
-            # Create the pie chart
-            sizes = [total_curtailment, total_taken_from_pv, total_discharged_from_pv]
-            labels = ['Curtailment', 'From PV to BESS', 'From PV to Grid']
-            colors = ['orange', 'steelblue', 'khaki']
-            explode = (0.05, 0.05, 0.05)  # explode the first slice (Total Curtailment)
-
-            # Create pie chart with custom autopct function
-            ax4.pie(sizes, explode=explode, labels=labels, colors=colors,
-                    autopct=lambda pct: func(pct, sizes),  # Use the custom function
-                    shadow=False, startangle=90, textprops={'fontsize': 14})
-
-            ax4.axis('equal')  # Equal aspect ratio ensures that pie is drawn as a circle.
-            ax4.set_title('BESS Energy Distribution [kWh]')
-            fig.tight_layout()
-
-        else:
-            def func(pct, allvalues):
-                absolute = int(np.round(pct / 100. * np.sum(allvalues)))  # Calculate absolute value
-                return f"{absolute} ({pct:.1f}%)"  # Format as "absolute (percentage)"
-
-            sizes = [total_taken_from_pv, total_discharged_from_pv]
-            labels = [ 'From PV to BESS', 'From PV to Grid']
-            colors = ['steelblue', 'khaki']
-            explode = (0.1, 0)  # explode the first slice (Total Curtailment)
-
-            # Create pie chart
-            ax4.pie(sizes, explode=explode, labels=labels, colors=colors,
-                    autopct=lambda pct: func(pct, sizes),  # Use the custom function
-                    shadow=False, startangle=90, textprops={'fontsize': 14})
-            ax4.axis('equal')  # Equal aspect ratio ensures that pie is drawn as a circle.
-            ax4.set_title('BESS Energy Distribution [kWh]')
-            fig.tight_layout()
-
-        # Save the plot based on the minimize_C condition
-        plt.savefig(os.path.join(self.plots_dir, "PV_View.png"))
-
-    def POD_View(self, num_values):
-
-        # GET VARIABLES FROM SELF
-        time_steps = self.time_steps[:num_values]
-        charged_energy = self.charged_energy[:num_values]
-        discharged_energy = self.discharged_energy[:num_values]
-        pun_values = self.PUN_timeseries[:num_values]
-        soc = self.soc[:num_values]
-        produced_from_pv = self.produced_from_pv[:num_values]
-        taken_from_pv = self.taken_from_pv[:num_values]
-        taken_from_grid = self.taken_from_grid[:num_values]
-        discharged_from_pv = self.discharged_from_pv
-
-        # EVALUATE REVENUES
-        rev = - (np.array(discharged_energy) * pun_values / 1000) - (
-                taken_from_grid * pun_values / 1000) + (
-                      -discharged_from_pv) * pun_values / 1000
-        rev_pv = -discharged_from_pv * pun_values / 1000
-        rev_bess = -(np.array(discharged_energy) * pun_values / 1000) - (
-                taken_from_grid * pun_values / 1000)
-
-        rev = np.array(rev, dtype=float)
-        rev_cumulative = np.cumsum(rev)
-
-        # EVALUATE TOTAL ENERGY QUANTITIES
-        total_from_pv = np.sum(taken_from_pv)
-        total_from_grid = np.sum(taken_from_grid)
-        total_discharged = np.sum(-discharged_energy)
-        total_dicharged_pv = np.sum(-discharged_from_pv)
-        curtailment = np.maximum(produced_from_pv + discharged_from_pv - taken_from_pv, 0.0)
-        total_curtailment = np.sum(curtailment)
-
-        # Creating the layout with 4 boxes using gridspec
-        fig = plt.figure(figsize=(24, 12))  # Aumentato il figsize per adattarsi a 4 grafici
-        gs = gridspec.GridSpec(2, 2, width_ratios=[1, 1], height_ratios=[1, 1])
-
-        # Axis for SoC top left
-        ax0 = fig.add_subplot(gs[0, 0])
-
-        # Normalize SoC values to be in the range [0, 1] for the colormap
-        norm = Normalize(vmin=min(soc*100), vmax=max(soc*100))
-        cmap = matplotlib.colors.LinearSegmentedColormap.from_list("", ["lightblue", "steelblue", "darkblue"])
-
-        # Plot SoC with gradient colored bars based on value
-        for i in range(len(time_steps)):
-            ax0.bar(time_steps[i], soc[i]*100, color='lightgrey')
-        ax0.set_title('State of Charge (SoC)')
-        ax0.set_ylabel('SoC [%]')
-
-        # Axis for charged and discharged energy (second graph) bottom left
-        ax1 = fig.add_subplot(gs[1, 0])
-        ax1.fill_between(time_steps, 0, POD_power, color='lightgrey', alpha=0.3, label='POD Power')
-
-        width = 0.4
-        ax1.bar(time_steps, [1] * np.array(taken_from_grid), width=width, color='darkgreen',
-                label='From Grid to BESS')
-        ax1.bar(time_steps, -discharged_energy, width=width, color='darkred',
-               bottom= np.array(taken_from_grid),
-               label='From BESS to Grid')
-        ax1.bar(time_steps, -discharged_from_pv, width= width, bottom = -discharged_energy,
-                label='From PV to Grid',)
-
-        ax1.set_ylabel('Energy [kWh]')
-        ax1.set_title('POD Energy Flows')
-        ax1.legend(loc='upper left')
-        plt.ylim(-size * 0.6, size * 0.6)
-
-        # Plot PUN values on the secondary axis
-        ax3 = ax1.twinx()
-        ax3.plot(time_steps, pun_values, color='black', label='PUN')
-        ax3.set_ylabel('PUN [Euro/MWh]')
-        ax3.legend(loc='upper right')
-        ax1.set_xlabel('Time Window [h]')
-
-        # Cumulative revenue axis to the right of the first graph
-        ax2 = fig.add_subplot(gs[0, 1])
-        ax2.plot(time_steps, rev_cumulative, color='lightgreen', label='Cumulative Revenues', alpha=1)
-        ax2.set_title('Cumulative Revenues Over Time')
-        ax2.fill_between(time_steps, rev_cumulative, color='green', alpha=0.3)  # Area sottesa con alpha 0.3
-        ax2.set_ylabel('Cumulative Revenues [Euros]')
-        ax2.legend(loc='upper left')
-
-        # New graph for rev_pv and rev_bess (fourth graph) bottom right
-        colors_bess = ['red' if total < 0 else 'limegreen' for total in rev_pv]
-        ax4 = fig.add_subplot(gs[1, 1])
-
-        def func(pct, allvalues):
-            absolute = int(np.round(pct / 100. * np.sum(allvalues)))  # Calculate absolute value
-            return f"{absolute} ({pct:.1f}%)"  # Format as "absolute (percentage)"
-
-        sizes = [ total_dicharged_pv,  total_from_grid, total_discharged]
-        labels = ['From PV to Grid',  'From Grid to BESS', 'From BESS to Grid']
-        colors = ['khaki', 'lightblue', 'paleturquoise' ]
-        explode = (0.05, 0.05,0.05)  # explode the first slice (Total Curtailment)
-
-        # Create pie chart
-        ax4.pie(sizes, explode=explode, labels=labels, colors=colors,
-                autopct=lambda pct: func(pct, sizes),  # Use the custom function
-                shadow=False, startangle=90, textprops={'fontsize': 14})
-        ax4.axis('equal')  # Equal aspect ratio ensures that pie is drawn as a circle.
-        ax4.set_title('POD Energy Distribution [kWh]')
-        fig.tight_layout()
-
-        # Save the plot based on the minimize_C condition
-        plt.savefig(os.path.join(self.plots_dir, "POD_View.png"))
-
     def Total_View(self, num_values):
-
         # GET VARIABLES FROM SELF
         time_steps = self.time_steps[:num_values]
-        charged_energy = self.charged_energy[:num_values]
         discharged_energy = self.discharged_energy[:num_values]
         pun_values = self.PUN_timeseries[:num_values]
-        soc = self.soc[:num_values]
-        produced_from_pv = self.produced_from_pv[:num_values]
-        taken_from_pv = self.taken_from_pv[:num_values]
-        taken_from_grid = self.taken_from_grid[:num_values]
-        discharged_from_pv = self.discharged_from_pv
-        self_consumption = self.load
-        from_pv_to_load = self.from_pv_to_load
-        from_BESS_to_load = self.from_BESS_to_load
+        taken_from_pv = self.taken_from_pv[:num_values]  # Energy taken from PV
+        taken_from_grid = self.taken_from_grid[:num_values]  # Energy taken from the grid
+        pv_prodcution = self.produced_from_pv[:num_values]
+        from_pv_to_load = self.from_pv_to_load[:num_values]
+        from_bess_to_load = self.from_BESS_to_load[:num_values]
+        from_pv_to_grid = self.discharged_from_pv[:num_values]
 
         # EVALUATE REVENUES
         rev = (- (np.array(discharged_energy) * pun_values / 1000) - (
                 taken_from_grid * pun_values / 1000) + (
-                  -np.array(discharged_from_pv)) * pun_values / 1000 + from_pv_to_load * pun_values * 1.3 / 1000 +
-               from_BESS_to_load * pun_values / 1000)
+                   -np.array(discharged_energy)) * pun_values / 1000)  # Adjusted for clarity
         rev = np.array(rev, dtype=float)
 
-        # SET MONTH NAMES
-        month_names = ["January", "February", "March", "April", "May", "June",
-            "July", "August", "September", "October", "November", "December"]
-
-        # Creating the layout with 3 boxes using gridspec
-        fig = plt.figure(figsize=(36, 16))  # Increased height for the new graph
-        gs = gridspec.GridSpec(3, 1, height_ratios=[1, 1, 1])  # Set equal height for all rows
-
-        # Axis for SoC top
-        ax0 = fig.add_subplot(gs[0, 0])
-
-        # Plot SoC
-        norm = Normalize(vmin=min(soc * 100), vmax=max(soc * 100))
-        cmap = plt.cm.get_cmap("Blues")
-        for i in range(12):
-            start = i * 24 - 1
-            end = (i + 1) * 24 - 1
-            plt.axvline(x=i * 24 - 1, ls='--', color="black")
-            ax0.text(11.5 + 23.92 * i, max(soc) * 100 + max(soc) * 100 * 0.04, f'{month_names[i]}', color="black",
-                     fontsize=15, horizontalalignment='center')
-
-        for i in range(len(time_steps)):
-            ax0.bar(time_steps[i], soc[i] * 100, color=cmap(norm(soc[i])))
-        ax0.set_title('State of Charge (SoC)')
-        ax0.set_ylabel('SoC [%]')
-        plt.ylim(0, max(soc) * 100 + max(soc) * 100 * 0.08)
-
-        # Axis for charged and discharged energy (second graph)
-        ax1 = fig.add_subplot(gs[1, 0])
-
-        total_d = []
-        total_dis = np.abs(discharged_energy) + np.abs(discharged_from_pv)
-
-        for i in range(0, len(discharged_energy), 24):
-            somma = sum(total_dis[i:i + 24])
-            total_d.append(somma)
-
-        total_d = np.array(total_d)
-        total_d = total_d * 30 / 1000
-        total_d = np.round(total_d, 2)
-
-        norm = (total_d - np.min(total_d)) / (np.max(total_d) - np.min(total_d))
-        colors = [(1, 1 - n, 0) for n in norm]
-
-        for i in range(12):
-            start = i * 24 - 1
-            end = (i + 1) * 24 - 1
-            plt.axvspan(start, end, facecolor=colors[i], alpha=0.2)
-            plt.axvline(x=i * 24 - 1, ls='--', color="black")
-            ax1.text(11.5 + 23.92 * i, max(size * 0.53,0.98*max(produced_from_pv)), f'{month_names[i]}', color="black", fontsize=15,
-                     horizontalalignment='center')
-            ax1.text(11.5 + 23.92 * i, max(size * 0.46,0.91*max(produced_from_pv)), f'{total_d[i]} MWh', color="black", fontsize=15,
-                     horizontalalignment='center')
-
-        self_consumption = pd.to_numeric(self_consumption, errors='coerce')
-        ax1.fill_between(time_steps, self_consumption, color='orange', alpha=0.3,
-                 label='Electrical Load')
-        ax1.fill_between(time_steps, 0, produced_from_pv, color='lightblue', alpha=0.3, label='Produced from PV')
-        width = 0.4
-        ax1.bar(time_steps, [1] * np.array(taken_from_grid), width=width, color='darkgreen', label='From Grid to BESS')
-        ax1.bar(time_steps, taken_from_pv, color='darkblue', bottom=-discharged_from_pv + np.array(from_pv_to_load),
-                width=width, label='From PV to BESS')
-        ax1.bar(time_steps, from_pv_to_load, color='cyan',
-                width=width, label='From PV to Load')
-        ax1.bar(time_steps, from_BESS_to_load, color='lime',
-                width=width, label='From BESS to Load', bottom = -discharged_from_pv + np.array(from_pv_to_load) + np.array(taken_from_pv))
-        ax1.bar(time_steps, discharged_energy, width=width, color='darkred', bottom=np.array(taken_from_grid),
-                label='From BESS to Grid')
-        ax1.bar(time_steps, -discharged_from_pv, width=width, label='From PV to Grid', bottom = from_pv_to_load)
-
-        ax1.set_ylabel('Energy [kWh]')
-        ax1.set_title('System Energy Flows')
-        ax1.legend(loc='upper left')
-        plt.ylim(min(-size * 0.6,-max(produced_from_pv)), max(size * 0.6,max(produced_from_pv)))
-
-        # Plot PUN values on the secondary axis
-        ax3 = ax1.twinx()
-        ax3.plot(time_steps, pun_values, color='black', label='PUN')
-        ax3.set_ylabel('PUN [Euro/MWh]')
-        ax3.legend(loc='upper right')
-        plt.ylim(min(pun_values) - 0.12 * min(pun_values), max(pun_values) + max(pun_values) * 0.12)
-        ax1.set_xlabel('Time Window [h]')
-
-        rev_sums = []
-
-        for i in range(0, len(rev), 24):
-            somma = sum(rev[i:i + 24])
-            rev_sums.append(somma)
-
-        rev_sums = np.array(rev_sums)
-        rev_sums = rev_sums * 30
-        rev_sums = np.round(rev_sums, 2)
-
-        # New axis for revenues (third graph)
-        ax2 = fig.add_subplot(gs[2, 0])
-
-        # Create a color array based on the values in rev
-        colors_rev = ['green' if r > 0 else 'red' for r in rev]
-
-        ax2.bar(time_steps, rev, color=colors_rev, label='Revenue', width=0.4)
-        ax2.set_ylabel('Revenue [Euro]')
-        ax2.set_title('Revenue from Energy Transactions')
-        ax2.legend(loc='upper left')
-        plt.ylim(min(rev) + 0.25 * min(rev), max(rev) + 0.25 * max(rev))  # Adjust y-limits based on revenue values
-
-        norm = (rev_sums - np.min(rev_sums)) / (np.max(rev_sums) - np.min(rev_sums))
-        colors_rev = [(0.8 * (1 - n), 0.8 + 0.2 * n, 0.8 * (1 - n)) for n in norm]
-
-        for i in range(12):
-            start = i * 24 - 1
-            end = (i + 1) * 24 - 1
-            plt.axvspan(start, end, facecolor=colors_rev[i], alpha=0.2)
-            plt.axvline(x=i * 24 - 1, ls='-', color="black")
-            ax2.text(11.5 + 23.92 * i, max(rev) + max(rev)*0.15, f'{month_names[i]}', color="black", fontsize=15,
-                     horizontalalignment='center')
-            ax2.text(11.5 + 23.92 * i, max(rev) + max(rev)*0.05, f'{rev_sums[i]} €', color="black", fontsize=15,
-                     horizontalalignment='center')
-
-        from argparser_l import weekends
-
-        if weekends == 'True':
-            ax1.set_title('System Energy Flows - Weekdays')
-            ax0.set_title('State of Charge (SoC) - Weekdays')
-            fig.tight_layout()
-            plt.savefig(os.path.join(self.plots_dir, "Total_View.png"))
-        else:
-            ax1.set_title('System Energy Flows - Weekends')  # TODO: SHOULD BE WEEKENDS
-
-        ax0.set_title('State of Charge (SoC) - Weekends')  # TODO: SHOULD BE WEEKENDS
-        fig.tight_layout()
-        plt.savefig(os.path.join(self.plots_dir, "Total_View_2.png"))
-
-    def Total_View_cycles(self, num_values, n_cycles):
-
-        # Create a cycles vector that matches the length of the time window
-        cycles = np.linspace(n_cycles[0], n_cycles[-1], num_values)
-        charged_energy = self.charged_energy[:num_values]
-        discharged_energy = self.discharged_energy[:num_values]
-        pun_values = self.PUN_timeseries[:num_values]
-        soc = self.soc[:num_values]
-        produced_from_pv = self.produced_from_pv[:num_values]
-        taken_from_pv = self.taken_from_pv[:num_values]  # Energy from PV
-        taken_from_grid = self.taken_from_grid[:num_values]  # Energy from the grid
-        discharged_from_pv = self.discharged_from_pv
-
-        # EVALUATE REVENUES
-        rev = - (np.array(discharged_energy) * pun_values / 1000) - (
-                taken_from_grid * pun_values / 1000) + (
-                  -discharged_from_pv) * pun_values / 1000
-        rev_pv = -discharged_from_pv * pun_values / 1000
-        rev_bess = -(np.array(discharged_energy) * pun_values / 1000) - (
-                taken_from_grid * pun_values / 1000)
-        rev = np.array(rev, dtype=float)
-        rev_cumulative = np.cumsum(rev)
-
-        # EVALUATE TOTAL ENTITIES
-        total_from_pv = np.sum(taken_from_pv)
-        total_from_grid = np.sum(taken_from_grid)
-        total_discharged = np.sum(-discharged_energy)
-        total_discharged_pv = np.sum(-discharged_from_pv)
-        curtailment = np.maximum(produced_from_pv + discharged_from_pv - taken_from_pv, 0.0)
-        total_curtailment = np.sum(curtailment)
-
-        # Create layout with 4 boxes using gridspec
-        fig = plt.figure(figsize=(24, 12))
-        gs = gridspec.GridSpec(2, 2, width_ratios=[1, 1], height_ratios=[1, 1])
-
-        # Axes for SoC in top left
-        ax0 = fig.add_subplot(gs[0, 0])
-
-        # Normalize SoC values to be in the range [0, 1] for the colormap
-        norm = Normalize(vmin=min(soc * 100), vmax=max(soc * 100))
-        cmap = matplotlib.colors.LinearSegmentedColormap.from_list("", ["lightblue", "steelblue", "darkblue"])
-        width = 0.1
-
-        # Plot SoC with gradient colored bars based on value
-        for i in range(len(cycles)):
-            ax0.bar(cycles[i], soc[i] * 100, color=cmap(norm(soc[i])), width=width)
-        ax0.set_title('State of Charge (SoC)')
-        ax0.set_ylabel('SoC [%]')
-        width = 0.05
-
-        # Axes for energy charged and discharged (second graph) in bottom left
-        ax1 = fig.add_subplot(gs[1, 0])
-
-        # Add area under 'produced_from_pv' in a lighter blue behind the bars
-        ax1.fill_between(cycles, 0, produced_from_pv, color='lightblue', alpha=0.3, label='Produced from PV')
-        ax1.bar(cycles, [1] * np.array(taken_from_grid), width=width, color='darkgreen',
-                label='From Grid to BESS')
-        ax1.bar(cycles, taken_from_pv, color='darkblue', bottom=-discharged_from_pv, width=width,
-                label='From PV to BESS')
-
-        ax1.bar(cycles, discharged_energy, width=width, color='darkred',
-                bottom=np.array(taken_from_grid),
-                label='From BESS to Grid')
-        ax1.bar(cycles, -discharged_from_pv, width=width,
-                label='From PV to Grid')
-
-        ax1.set_ylabel('Energy [kWh]')
-        ax1.set_title('System Energy Flows')
-        ax1.legend(loc='upper left')
-        plt.ylim(-size * 0.6, size * 0.6)
-
-        # Plot PUN values on the secondary axis
-        ax3 = ax1.twinx()
-        ax3.plot(cycles, pun_values, color='black', label='PUN')
-        ax3.set_ylabel('PUN [Euro/MWh]')
-        ax3.legend(loc='upper right')
-        ax1.set_xlabel('Cycles')
-
-        # Axes for cumulative revenues to the right of the first graph
-        ax2 = fig.add_subplot(gs[0, 1])  # Use only the first row in the right column
-        ax2.plot(cycles, rev_cumulative, color='lightgreen', label='Cumulative Revenues', alpha=1)
-        ax2.set_title('Cumulative Revenues Over Time')
-        ax2.fill_between(cycles, rev_cumulative, color='green', alpha=0.3)  # Area under with alpha 0.3
-        ax2.set_ylabel('Cumulative Revenues [Euros]')
-        ax2.legend(loc='upper left')
-
-        # New graph for rev_pv and rev_bess (fourth graph) in bottom right
-        colors_bess = ['red' if total < 0 else 'limegreen' for total in rev_pv]
-        ax4 = fig.add_subplot(gs[1, 1])
-
-        if total_curtailment != 0.0:
-            def func(pct, allvalues):
-                absolute = int(np.round(pct / 100. * np.sum(allvalues)))  # Calculate absolute value
-                return f"{absolute} ({pct:.1f}%)"  # Format as "absolute (percentage)"
-
-            sizes = [total_curtailment, total_discharged_pv, total_from_pv, total_from_grid, total_discharged]
-            labels = ['Curtailment', 'From PV to Grid', 'From PV to BESS', 'From Grid to BESS', 'From BESS to Grid']
-            colors = ['Orange', 'khaki', 'steelblue', 'lightblue', 'paleturquoise']
-            explode = (0.05, 0.05, 0.05, 0.05, 0.05)  # explode the first slice (Total Curtailment)
-
-            # Create pie chart
-            ax4.pie(sizes, explode=explode, labels=labels, colors=colors,
-                    autopct=lambda pct: func(pct, sizes),  # Use the custom function
-                    shadow=False, startangle=90, textprops={'fontsize': 14})
-            ax4.axis('equal')  # Equal aspect ratio ensures that pie is drawn as a circle.
-            ax4.set_title('System Total Energy Distribution [kWh]')
-
-        else:
-            def func(pct, allvalues):
-                absolute = int(np.round(pct / 100. * np.sum(allvalues)))  # Calculate absolute value
-                return f"{absolute} ({pct:.1f}%)"  # Format as "absolute (percentage)"
-
-            sizes = [total_discharged_pv, total_from_pv, total_from_grid, total_discharged]
-            labels = ['From PV to Grid', 'From PV to BESS', 'From Grid to BESS', 'From BESS to Grid']
-            colors = ['goldenrod', 'steelblue', 'lightblue', 'paleturquoise']
-            explode = (0.05, 0.05, 0.05, 0.05)  # explode the first slice (Total Curtailment)
-
-            # Create pie chart
-            ax4.pie(sizes, explode=explode, labels=labels, colors=colors,
-                    autopct=lambda pct: func(pct, sizes),  # Use the custom function
-                    shadow=False, startangle=90, textprops={'fontsize': 14})
-            ax4.axis('equal')  # Equal aspect ratio ensures that pie is drawn as a circle.
-            ax4.set_title('System Total Energy Distribution [kWh]')
-        fig.tight_layout()
-
-        # Save the plot based on the minimize_C condition
-        plt.savefig(os.path.join(self.plots_dir, "Total_View_cycles.png"))
-
-    def Total_View_Monthly(self, num_values, rows_per_day=24):
-        # Extract relevant data
-        time_steps = self.time_steps[:num_values]
-        charged_energy = self.charged_energy[:num_values]
-        discharged_energy = self.discharged_energy[:num_values]
-        pun_values = self.PUN_timeseries[:num_values]
-        soc = self.soc[:num_values]
-        produced_from_pv = self.produced_from_pv[:num_values]
-        taken_from_pv = self.taken_from_pv[:num_values]  # Energy from PV
-        taken_from_grid = self.taken_from_grid[:num_values]  # Energy from the grid
-        discharged_from_pv = self.discharged_from_pv
-
-        # Create a figure with 12 subplots (one for each month)
-        fig = plt.figure(figsize=(24, 18))
-        gs = gridspec.GridSpec(3, 4)  # 3 rows and 4 columns for 12 months
-
-        # Calculate the row index for the 15th day of each month
-        rows_per_month = 30 * rows_per_day  # Assuming 30 days per month
-        day_15_indices = [(14 * rows_per_day) + (month - 1) * rows_per_month for month in range(1, 13)]
-        month_names = [
-            "January", "February", "March", "April",
-            "May", "June", "July", "August",
-            "September", "October", "November", "December"
-        ]
-
-        # Loop through each month and plot
-        for month, index in enumerate(day_15_indices):
-            if index < num_values:  # Ensure index is within bounds
-                # Filter data for the 15th day of the current month
-                filtered_time_steps = time_steps[index:index + rows_per_day]
-                filtered_soc = soc[index:index + rows_per_day]
-                filtered_produced_from_pv = produced_from_pv[index:index + rows_per_day]
-                filtered_taken_from_pv = taken_from_pv[index:index + rows_per_day]
-                filtered_taken_from_grid = taken_from_grid[index:index + rows_per_day]
-                filtered_discharged_energy = discharged_energy[index:index + rows_per_day]
-                filtered_pun_values = pun_values[index:index + rows_per_day]
-                filtered_discharged_from_pv = discharged_from_pv[index:index + rows_per_day]
-
-                # Determine the subplot position
-                ax = fig.add_subplot(gs[month // 4, month % 4])
-
-                # Normalize SoC values to be in the range [0, 1] for the colormap
-                norm = Normalize(vmin=min(filtered_soc * 100), vmax=max(filtered_soc * 100))
-                cmap = plt.cm.viridis  # Choose any colormap
-
-                # Plot SoC with gradient colored bars based on value
-                ax.bar(filtered_time_steps, -filtered_discharged_from_pv, width=0.4,
-                        label='From PV to Grid', bottom= filtered_taken_from_pv)
-                ax.set_title(month_names[month])
-                ax.set_ylabel('SoC [%]')
-                ax.set_xlabel('Time [h]')
-
-                # Plot energy flows in the same subplot
-                ax.fill_between(filtered_time_steps, 0, filtered_produced_from_pv, color='lightblue', alpha=0.3,
-                                label='Produced from PV')
-                ax.bar(filtered_time_steps, filtered_taken_from_grid, width=0.4, color='darkgreen',
-                       label='From Grid to BESS')
-                ax.bar(filtered_time_steps, filtered_taken_from_pv, width=0.4, color='darkblue',
-                       bottom=-filtered_discharged_energy, label='From PV to BESS')
-                ax.bar(filtered_time_steps, filtered_discharged_energy, width=0.4, color='darkred',
-                       label='From BESS to Grid')
-
-                # Plot PUN values on a secondary axis
-                ax2 = ax.twinx()
-                ax2.plot(filtered_time_steps, filtered_pun_values, color='black', label='PUN', linestyle='--')
-                ax2.set_ylabel('PUN [Euro/MWh]')
-
-                # Add legends
-                ax.legend(loc='upper left')
-                ax2.legend(loc='upper right')
-
-        # Save the figure to the Plots/Results directory
-        plot_dir = '../../Plots/Results'
-        if not os.path.exists(plot_dir):
-            os.makedirs(plot_dir)
-        plt.savefig(os.path.join(plot_dir, 'Monthly_Results.png'), dpi=300, bbox_inches='tight')
-
-    def Total_View_Monthly_SoC(self, num_values, rows_per_day=24):
-        # Extract relevant data
-        time_steps = self.time_steps[:num_values]
-        soc = self.soc[:num_values]
-
-        # Create a figure with 12 subplots (one for each month)
-        fig = plt.figure(figsize=(24, 18))
-        gs = gridspec.GridSpec(3, 4)  # 3 rows and 4 columns for 12 months
-
-        # List of month names
-        month_names = [
-            "January", "February", "March", "April",
-            "May", "June", "July", "August",
-            "September", "October", "November", "December"
-        ]
-
-        # Calculate the row index for the 15th day of each month
-        rows_per_month = 30 * rows_per_day  # Assuming 30 days per month
-        day_15_indices = [(14 * rows_per_day) + (month - 1) * rows_per_month for month in range(1, 13)]
-
-        # Normalize SoC values to be in the range [0, 1] for the colormap
-        norm = Normalize(vmin=min(soc * 100), vmax=max(soc * 100))
-        cmap = matplotlib.colors.LinearSegmentedColormap.from_list("", ["lightblue", "steelblue", "darkblue"])
-
-        # Loop through each month and plot
-        for month, index in enumerate(day_15_indices):
-            if index < num_values:  # Ensure index is within bounds
-                # Filter data for the 15th day of the current month
-                filtered_time_steps = time_steps[index:index + rows_per_day]
-                filtered_soc = soc[index:index + rows_per_day]
-
-                # Determine the subplot position
-                ax = fig.add_subplot(gs[month // 4, month % 4])
-
-                # Plot SoC with gradient colored bars based on value
-                for i in range(len(filtered_time_steps)):
-                    ax.bar(filtered_time_steps[i], filtered_soc[i] * 100, color=cmap(norm(filtered_soc[i])))
-
-                ax.set_title(month_names[month])  # Set title to month name
-                ax.set_ylabel('SoC [%]')
-                ax.set_xlabel('Time [h]')
-
-        # Save the figure to the Plots/Results directory
-        plot_dir = '../../Plots/Results'
-        if not os.path.exists(plot_dir):
-            os.makedirs(plot_dir)
-        plt.savefig(os.path.join(plot_dir, 'Monthly_SoC.png'), dpi=300, bbox_inches='tight')
+        # PLOTTING DISCHARGED ENERGY, TAKEN FROM PV, AND TAKEN FROM GRID
+        bar_width = 0.35  # Adjusted bar width
+        index = np.arange(num_values)
+
+        plt.figure(figsize=(14, 7))  # Increased figure size for better visibility
+
+        # Create primary axis
+        ax1 = plt.gca()
+
+        # Bar plot for discharged energy
+        bar1 = ax1.bar(index, discharged_energy, bar_width, label='BESS to Grid', color='darkred')
+
+        ax1.fill_between(index, 0, pv_prodcution, color='lightblue', alpha=0.3,
+                         label='Produced from PV')
+
+        # Bar plot for taken from PV (lighter green) - this should be above the grid
+        bar3 = ax1.bar(index, taken_from_pv, bar_width, label='PV to BESS', color='darkblue', alpha=0.8, bottom= from_pv_to_load)
+
+        # Bar plot for taken from grid (darker green)
+        bar2 = ax1.bar(index, taken_from_grid, bar_width, label='Grid to BESS', color='darkgreen', alpha=0.8,
+                       bottom=taken_from_pv+from_pv_to_load+from_bess_to_load)  # Stack on top of taken from PV
+
+        # Bar plot for from PV to load
+        bar4 = ax1.bar(index, from_pv_to_load, bar_width, label='PV to Load', color='steelblue', alpha=0.8)
+
+        # Bar plot for from BESS to load, starting from the top of the discharged energy bar
+        bar5 = ax1.bar(index, -from_bess_to_load, bar_width, label='BESS to Load', color='sandybrown', alpha=0.8,
+                       bottom = discharged_energy)
+
+        bar6 = ax1.bar(index, -from_pv_to_grid, bar_width, label='PV to Grid', color='darkturquoise', alpha=0.8,
+                       bottom = taken_from_pv + from_pv_to_load)
+
+
+        # Create a second y-axis for pun_values
+        ax2 = ax1.twinx()
+        line, = ax2.plot(index + bar_width / 2, pun_values, label='PUN Values', color='black', linewidth=2)
+
+        # Set labels and title
+        ax1.set_xlabel('Hours', fontsize=14)  # Increased font size for better visibility
+        ax1.set_ylabel('Energy [kWh]', fontsize=14)  # Increased font size for better visibility
+        ax2.set_ylabel('Zonal Price [Euros/kWh]', fontsize=14)  # Adjust the label as needed
+        plt.title('Energy Flows', fontsize=16)  # Increased font size for better visibility
+        ax1.set_xticks(index + bar_width / 2)
+        ax1.set_xticklabels(time_steps, rotation=0)
+
+        # Combine legends from both axes
+        handles, labels = ax2.get_legend_handles_labels()
+        handles.extend([bar1, bar2, bar3, bar4, bar5, bar6])  # Add all bar plots to the legend
+        labels.extend(['BESS to Grid', 'Grid to BESS', 'PV to BESS', 'PV to Load',
+                       'BESS to Load','PV to Grid'])  # Add corresponding labels
+
+        ax1.legend(handles, labels, loc='upper left', fontsize=12)  # Increased font size for better visibility
+
+        max_energy = np.max(taken_from_grid + taken_from_pv + from_pv_to_load + from_bess_to_load + discharged_energy)
+        min_energy = np.min(np.array(discharged_energy) - np.abs(from_bess_to_load), 0)
+        ax1.set_ylim(min_energy * 1.1, max_energy * 1.1)
+
+        # Add horizontal dashed gray grid lines
+        ax1.yaxis.grid(True, linestyle='--', color='gray', alpha=0.5)  # Adjust alpha for visibility
+
+        # Adjust layout to make room for titles and labels
+        plt.subplots_adjust(left=0.1, right=0.9, top=0.9, bottom=0.2)
+        plt.tight_layout()
+
+        # Save the plot
+        plt.savefig(os.path.join(self.plots_dir, "Total_View.png"), dpi=500)
+        plt.close()
 
     @staticmethod
     def plot_degradation():
@@ -950,20 +290,6 @@ class EnergyPlots:
                 color='white')  # Dashed grid lines with 0.5 linewidth and gray color
 
         # Save the figure
-        plt.savefig('Plots/Results/Long Simulation/total_convergence.png')
-
-    @staticmethod
-    def PUN_plot(PUN_timeseries):
-
-        # Line plot dei valori PUN (terza colonna del DataFrame)
-        pun_values = PUN_timeseries  # Estrazione della terza colonna (indice 2)
-        plt.figure(figsize=(12, 8))
-        plt.plot(pun_values, marker='o', color='b')
-        plt.title('PUN Values')
-        plt.xlabel('Time step')
-        plt.ylabel('PUN Value')
-        plt.savefig(os.path.join("Plots/General", "PUN.png"))
-        plt.close()
 
     @staticmethod
     def convergence(n_gen, timewindow, pop_size, X, Y, max_subplots_per_figure=72):
@@ -1030,64 +356,6 @@ class EnergyPlots:
             # Save the figure in the "Plots" folder
             output_path = os.path.join(output_dir, f'convergence_{fig_num + 1}.png')
             fig.savefig(output_path)
-
-
-    @staticmethod
-    def plot_alpha_vs_timewindow(time_window, alpha_values, PUN_timeseries, new_alpha_values):
-
-        """
-        Creates a bar plot of the values of alpha and new_alpha_values, and a line plot of PUN_timeseries from 1 to time_window
-        with different y-axes scales.
-
-        Parameters:
-        - time_window (int): The length of the time window.
-        - alpha_values (array-like): The alpha values to plot. The length of alpha should be equal to time_window.
-        - PUN_timeseries (array-like): The PUN_timeseries values to plot. Should have the same length as alpha.
-        - new_alpha_values (array-like): The new alpha values to plot alongside the existing ones.
-
-        Returns:
-        - None: Displays the plot.
-        """
-
-        if len(alpha_values) != time_window or len(PUN_timeseries) != time_window or len(
-                new_alpha_values) != time_window:
-            raise ValueError("The lengths of alpha, new_alpha_values, and PUN_timeseries must be equal to time_window")
-
-        # Creating the time vector from 1 to time_window
-        time_vector = range(1, time_window + 1)
-
-        # Creating the figure and the first subplot for alpha (bar plot)
-        fig, ax1 = plt.subplots(figsize=(10, 6))
-        bar_width = 0.4  # Width of the bars
-
-        # Positions for the bars
-        bar_positions1 = np.arange(time_window - 1)
-        bar_positions2 = bar_positions1 + bar_width
-        ax1.bar(bar_positions1, np.abs(alpha_values[:-1]), width=bar_width, color='orange', alpha=0.5,
-                label='C-rate')
-        ax1.bar(bar_positions2, np.abs(new_alpha_values[:-1]), width=bar_width, color='green', alpha=0.5,
-                label='Nominal C-rate')
-        ax1.set_xlabel('Time')
-        ax1.set_ylabel('C-rate', color='black')
-        ax1.tick_params(axis='y', labelcolor='black')
-        ax1.grid(False)
-
-        # Creating the second subplot for PUN_timeseries (line plot)
-        ax2 = ax1.twinx()
-        ax2.plot(time_vector, PUN_timeseries, linestyle='-', color='black', label='PUN_timeseries', alpha=0.8)
-        ax2.set_ylabel('PUN_timeseries Values', color='black')
-        ax2.tick_params(axis='y', labelcolor='black')
-
-        # Adding title and legend
-        plt.title('C-rate and PUN_timeseries Values over Time Window')
-        ax1.legend(loc='upper left')
-        ax2.legend(loc='upper right')
-
-        # Saving the plot to a file
-        output_dir = 'Plots/Results/Long Simulation'
-        os.makedirs(output_dir, exist_ok=True)
-        output_path = os.path.join(output_dir, 'C_rate.png')
-        plt.savefig(output_path)
 
     def plot_daily_energy_flows(self, num_values):
 

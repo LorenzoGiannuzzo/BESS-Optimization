@@ -7,7 +7,7 @@
     __version__ = "v0.2.1"
     __license__ = "MIT"
 
-Last Update of current code: 24/03/2025 """
+Last Update of current code: 01/04/2025 """
 
 
 
@@ -93,6 +93,7 @@ class Main:
         self.load_self_consumption = load_self_consumption
         self.from_pv_to_load = from_pv_to_load
         self.from_BESS_to_load = from_BESS_to_load
+
 
         # GET LOAD DATA
         from Load_l import data

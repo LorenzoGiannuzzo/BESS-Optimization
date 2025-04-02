@@ -90,7 +90,7 @@ time_window = time_window
 soc_0 = soc
 
 # 3) DEFINE POPULATION SIZE USED TO EXPLORE THE OPTIMIZATION DOMAIN
-pop_size = 20
+pop_size = 100
 
 # 4) DEFINE NUMBER OF ELEMENTS INIZIALIZED BY THE ALGORITHM
 n_var = time_window * 2
@@ -121,11 +121,11 @@ termination = TerminateIfAny(termination1, termination2)
 ref_dirs = get_reference_directions("das-dennis", n_obj, n_partitions=n_obj*8)
 
 # DEFINE ETA FOR CROSSOVER
-eta_crossover = 1
-eta_mutation = 3
+eta_crossover = 20
+eta_mutation = 30
 
 # DEFINE ETA FOR MUTATION
-prob_crossover = 0.3
+prob_crossover = 0.9
 prob_mutation = 1.0
 n_offsprings = 50
 

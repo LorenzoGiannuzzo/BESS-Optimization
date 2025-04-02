@@ -86,6 +86,12 @@ class EnergyPlots:
         plt.ylabel('Discharged Energy [kWh]')
         plt.savefig(os.path.join(self.plots_dir, "Disc_Energy.png"))
 
+    import numpy as np
+    import matplotlib.pyplot as plt
+    import matplotlib
+    from matplotlib.colors import Normalize
+    import os
+
     def Total_View(self, num_values):
         # GET VARIABLES FROM SELF
         time_steps = self.time_steps[:num_values]
@@ -97,6 +103,8 @@ class EnergyPlots:
         from_pv_to_load = self.from_pv_to_load[:num_values]
         from_bess_to_load = self.from_BESS_to_load[:num_values]
         from_pv_to_grid = self.discharged_from_pv[:num_values]
+        soc = self.soc[:num_values]  # Assuming you have a soc attribute in self
+        load = self.load[:num_values]
 
         # EVALUATE REVENUES
         rev = (- (np.array(discharged_energy) * pun_values / 1000) - (
@@ -108,43 +116,49 @@ class EnergyPlots:
         bar_width = 0.35  # Adjusted bar width
         index = np.arange(num_values)
 
-        plt.figure(figsize=(14, 7))  # Increased figure size for better visibility
+        plt.figure(figsize=(14, 14))  # Increased figure size for better visibility
 
-        # Create primary axis
-        ax1 = plt.gca()
+        # Create primary axis for energy flows
+        ax1 = plt.subplot(211)  # First subplot for energy flows
 
         # Bar plot for discharged energy
         bar1 = ax1.bar(index, discharged_energy, bar_width, label='BESS to Grid', color='darkred')
 
-        ax1.fill_between(index, 0, pv_prodcution, color='lightblue', alpha=0.3,
-                         label='Produced from PV')
+        # Fill areas for produced from PV and electrical load
+        fill1 = ax1.fill_between(index, 0, pv_prodcution, color='lightblue', alpha=0.5,
+                                 label='Produced from PV')
 
-        # Bar plot for taken from PV (lighter green) - this should be above the grid
-        bar3 = ax1.bar(index, taken_from_pv, bar_width, label='PV to BESS', color='darkblue', alpha=0.8, bottom= from_pv_to_load)
+        load = np.array(load, dtype=float)
 
-        # Bar plot for taken from grid (darker green)
-        bar2 = ax1.bar(index, taken_from_grid, bar_width, label='Grid to BESS', color='darkgreen', alpha=0.8,
-                       bottom=taken_from_pv+from_pv_to_load+from_bess_to_load)  # Stack on top of taken from PV
+        fill2 = ax1.fill_between(index, 0, load, color='lightsalmon', alpha=0.3,
+                                 label='Electrical Load')
+
+        # Bar plot for taken from PV (lighter green)
+        bar3 = ax1.bar(index, taken_from_pv, bar_width, label='PV to BESS', color='mediumpurple', alpha=0.8,
+                       bottom=from_pv_to_load)
+
+        # Bar plot for taken from grid (darker green) - now paired with other bars
+        bar2 = ax1.bar(index + bar_width, taken_from_grid, bar_width, label='Grid to BESS', color='darkgreen',
+                       alpha=0.8)
 
         # Bar plot for from PV to load
-        bar4 = ax1.bar(index, from_pv_to_load, bar_width, label='PV to Load', color='steelblue', alpha=0.8)
+        bar4 = ax1.bar(index, from_pv_to_load, bar_width, label='PV to Load', color='darkorange', alpha=0.8)
 
         # Bar plot for from BESS to load, starting from the top of the discharged energy bar
-        bar5 = ax1.bar(index, -from_bess_to_load, bar_width, label='BESS to Load', color='sandybrown', alpha=0.8,
-                       bottom = discharged_energy)
+        bar5 = ax1.bar(index, from_bess_to_load, bar_width, label='BESS to Load', color='indigo', alpha=0.8,
+                       bottom=from_pv_to_load)
 
-        bar6 = ax1.bar(index, -from_pv_to_grid, bar_width, label='PV to Grid', color='darkturquoise', alpha=0.8,
-                       bottom = taken_from_pv + from_pv_to_load)
-
+        bar6 = ax1.bar(index, -from_pv_to_grid, bar_width, label='PV to Grid', color='lightblue', alpha=0.8,
+                       bottom=taken_from_pv + from_pv_to_load)
 
         # Create a second y-axis for pun_values
         ax2 = ax1.twinx()
         line, = ax2.plot(index + bar_width / 2, pun_values, label='PUN Values', color='black', linewidth=2)
 
         # Set labels and title
-        ax1.set_xlabel('Hours', fontsize=14)  # Increased font size for better visibility
-        ax1.set_ylabel('Energy [kWh]', fontsize=14)  # Increased font size for better visibility
-        ax2.set_ylabel('Zonal Price [Euros/kWh]', fontsize=14)  # Adjust the label as needed
+        ax1.set_xlabel('Hours', fontsize=16)  # Increased font size for better visibility
+        ax1.set_ylabel('Energy [kWh]', fontsize=16)  # Increased font size for better visibility
+        ax2.set_ylabel('Zonal Price [Euros/kWh]', fontsize=16)  # Adjust the label as needed
         plt.title('Energy Flows', fontsize=16)  # Increased font size for better visibility
         ax1.set_xticks(index + bar_width / 2)
         ax1.set_xticklabels(time_steps, rotation=0)
@@ -153,23 +167,43 @@ class EnergyPlots:
         handles, labels = ax2.get_legend_handles_labels()
         handles.extend([bar1, bar2, bar3, bar4, bar5, bar6])  # Add all bar plots to the legend
         labels.extend(['BESS to Grid', 'Grid to BESS', 'PV to BESS', 'PV to Load',
-                       'BESS to Load','PV to Grid'])  # Add corresponding labels
+                       'BESS to Load', 'PV to Grid'])  # Add corresponding labels
 
-        ax1.legend(handles, labels, loc='upper left', fontsize=12)  # Increased font size for better visibility
+        # Add the fill areas to the legend
+        handles.extend([fill1, fill2])
+        labels.extend(['Produced from PV', 'Electrical Load'])
+
+        # Place the legend in the upper left corner
+        ax1.legend(handles, labels, loc='upper left', fontsize=16)  # Increased font size for better visibility
 
         max_energy = np.max(taken_from_grid + taken_from_pv + from_pv_to_load + from_bess_to_load + discharged_energy)
         min_energy = np.min(np.array(discharged_energy) - np.abs(from_bess_to_load), 0)
         ax1.set_ylim(min_energy * 1.1, max_energy * 1.1)
 
         # Add horizontal dashed gray grid lines
-        ax1.yaxis.grid(True, linestyle='--', color='gray', alpha=0.5)  # Adjust alpha for visibility
+        ax1.yaxis.grid(True, linestyle='--', color='gray', alpha=0.3)  # Adjust alpha for visibility
+
+        # Create a second subplot for SoC
+        ax0 = plt.subplot(212)  # Second subplot for SoC
+
+        # Normalize SoC for color mapping
+        norm = Normalize(vmin=min(soc), vmax=max(soc))
+        cmap = matplotlib.colors.LinearSegmentedColormap.from_list("", ["lightblue", "steelblue", "darkblue"])
+
+        # Plot SoC
+        ax0.bar(index, np.array(soc) * float(100), color=cmap(norm(soc)), width=bar_width)
+        ax0.set_title('State of Charge (SoC)', fontsize=16)
+        ax0.set_ylabel('SoC [%]', fontsize=16)
+        ax0.set_xlabel('Hours', fontsize=16)  # Label for x-axis
+        ax0.set_ylim(0, 100)  # Assuming SoC is a percentage
+        ax0.grid(axis='y', linestyle='--', alpha=0.3)
 
         # Adjust layout to make room for titles and labels
-        plt.subplots_adjust(left=0.1, right=0.9, top=0.9, bottom=0.2)
+        plt.subplots_adjust(left=0.1, right=0.9, top=0.9, bottom=0.1)
         plt.tight_layout()
 
         # Save the plot
-        plt.savefig(os.path.join(self.plots_dir, "Total_View.png"), dpi=500)
+        plt.savefig(os.path.join(self.plots_dir, "Total_View.pdf"), dpi=500)
         plt.close()
 
     @staticmethod
@@ -290,6 +324,7 @@ class EnergyPlots:
                 color='white')  # Dashed grid lines with 0.5 linewidth and gray color
 
         # Save the figure
+        plt.savefig('Plots/Results/Long Simulation/total_convergence.png')
 
     @staticmethod
     def convergence(n_gen, timewindow, pop_size, X, Y, max_subplots_per_figure=72):

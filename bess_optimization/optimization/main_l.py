@@ -548,7 +548,6 @@ class Main:
             plots.Total_View(num_values=time_window)
             plots.plot_daily_energy_flows(num_values=time_window)
             plots.plot_degradation()
-            plots.total_convergence()
             plots.c_d_plot(charge_rate, discharge_rate)
 
 
@@ -578,8 +577,7 @@ if __name__ == "__main__":
     Y = np.array(Y)
 
     # EXECUTE ADDITIONAL PLOTS IF PLOT FLAG IS TRUE
-    if plot:
-        EnergyPlots.total_convergence(len(main.history), time_window, pop_size, X, Y)
+    EnergyPlots.total_convergence(len(main.history), time_window, pop_size, X, Y)
 
     # GET SOC VALUES
     SoC = main.soc

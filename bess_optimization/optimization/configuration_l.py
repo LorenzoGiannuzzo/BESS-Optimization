@@ -217,7 +217,7 @@ elif algorithm_type == "RNSGA3":
         mutation=PM(eta=eta_mutation, prob=prob_mutation),
         eliminate_duplicates=True,
         seed=seed,
-        n_offsprings = n_offsprings
+        n_offsprings=n_offsprings
     )
 
 else:

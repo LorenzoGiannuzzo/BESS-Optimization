@@ -577,7 +577,8 @@ if __name__ == "__main__":
     Y = np.array(Y)
 
     # EXECUTE ADDITIONAL PLOTS IF PLOT FLAG IS TRUE
-    EnergyPlots.total_convergence(len(main.history), time_window, pop_size, X, Y)
+    if plot:
+        EnergyPlots.total_convergence(len(main.history), time_window, pop_size, X, Y)
 
     # GET SOC VALUES
     SoC = main.soc

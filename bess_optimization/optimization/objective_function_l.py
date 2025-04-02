@@ -443,9 +443,10 @@ class Revenues(ElementwiseProblem):
                                       + np.abs(self.from_BESS_to_load) * self.PUN_timeseries_buy * 1.2/ 1000)
                           - ( np.abs(self.load) - np.abs(self.from_pv_to_load) - np.abs(self.from_BESS_to_load) ) * self.PUN_timeseries_sell * 1.2 / 1000)
 
-
         # EVALUATE THE REVENUES OBTAINED DURING THE OPTIMIZATION TIME WINDOW
         total_revenue = np.sum(revenue_column)
+
+        print(total_revenue)
 
         # CORRECT THE VALUES OF THE REVENUES IN ORDER TO MINIMIZE THE OBJECTIVE FUNCTION
         final_revenues = -total_revenue

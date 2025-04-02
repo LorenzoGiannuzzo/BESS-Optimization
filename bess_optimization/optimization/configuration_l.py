@@ -125,8 +125,8 @@ eta_crossover = 1
 eta_mutation = 3
 
 # DEFINE ETA FOR MUTATION
-prob_crossover = 1
-prob_mutation = 0.9
+prob_crossover = 0.3
+prob_mutation = 1.0
 n_offsprings = 50
 
 season = "Autumn"
@@ -145,7 +145,7 @@ if algorithm_type == "NSGA3":
         mutation=PM(eta=eta_mutation, prob=prob_mutation),
         eliminate_duplicates=True,
         seed=seed,
-        n_offsprings = n_offsprings
+        n_offsprings=n_offsprings
     )
 elif algorithm_type == "NSGA_2":
     algorithm = NSGA2(
@@ -155,7 +155,7 @@ elif algorithm_type == "NSGA_2":
         mutation=PM(eta=eta_mutation, prob=prob_mutation),
         eliminate_duplicates=True,
         seed=seed,
-        n_offsprings = n_offsprings
+        n_offsprings=n_offsprings
     )
 
 elif algorithm_type == "SPEA2":

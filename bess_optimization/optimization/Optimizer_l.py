@@ -7,7 +7,7 @@
     __version__ = "v0.2.1"
     __license__ = "MIT"
 
-Last Update of current code: 24/03/2025 """
+Last Update of current code: 01/04/2025 """
 
 # IMPORT LIBRARIES AND MODULES
 import configuration_l
@@ -55,13 +55,12 @@ class CustomCallback:
             diversity = self.calculate_diversity(population)
 
             # Update parameters based on diversity
-            if diversity < 0.1:  # If diversity is low, increase eta
-                self.new_eta_crossover = np.minimum(1.5 * self.new_eta_crossover, 20.0)
-                self.new_eta_mutation = np.minimum(1.5 * self.new_eta_mutation, 30.0)
+            if diversity <= 0.1:  # If diversity is low, increase eta
+                self.new_eta_crossover = np.minimum(float(1.5) * self.new_eta_crossover, 20.0)
+                self.new_eta_mutation = np.minimum(float(1.5) * self.new_eta_mutation, 30.0)
             else:  # If diversity is high, decrease eta to encourage convergence
-                self.new_eta_crossover = np.maximum(0.5 * self.new_eta_crossover, 1.0)
-                self.new_eta_mutation = np.maximum(0.5 * self.new_eta_mutation, 3.0)
-
+                self.new_eta_crossover = np.maximum(float(0.5) * self.new_eta_crossover, 1.0)
+                self.new_eta_mutation = np.maximum(float(0.5) * self.new_eta_mutation, 3.0)
 
             # Create new instances of crossover and mutation with updated parameters
             algorithm.mating.crossover = SBX(eta=self.new_eta_crossover, prob=self.new_prob_crossover)

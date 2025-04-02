@@ -7,9 +7,7 @@
     __version__ = "v0.2.1"
     __license__ = "MIT"
 
-Last Update of current code: 01/04/2025 """
-
-
+Last Update of current code: 02/04/2025 """
 
 # IMPORTING LIBRARIES AND MODULES FROM PROJECT
 import numpy as np  # Numerical operations
@@ -73,7 +71,9 @@ class Main:
             self.history = solution.history  # Store optimization history for plotting
 
         # GET CHARGED/DISCHARGED ENERGY FROM SOLUTION
-        c_d_timeseries = solution.X[:time_window]  # Extract charge/discharge time series from solution
+        c_d_timeseries = solution.X[:time_window]
+
+        # Extract charge/discharge time series from solution
         load_decision = solution.X[time_window:2*time_window]
 
         # APPLY PHYSICAL CONSTRAINTS
@@ -548,6 +548,7 @@ class Main:
             plots.Total_View(num_values=time_window)
             plots.plot_daily_energy_flows(num_values=time_window)
             plots.plot_degradation()
+            plots.total_convergence()
             plots.c_d_plot(charge_rate, discharge_rate)
 
 

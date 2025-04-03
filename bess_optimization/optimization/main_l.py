@@ -95,12 +95,17 @@ class Main:
         self.from_BESS_to_load = from_BESS_to_load
 
 
+
         # GET LOAD DATA
         from Load_l import data
 
         # CALCULATE AND PRINT REVENUES
         self.calculate_and_print_revenues(self.charged_energy, self.discharged_energy, self.taken_from_grid,
                                           self.discharged_from_pv, self.from_pv_to_load, self.from_BESS_to_load, data)
+
+        self.load = data
+        self.pv_production = pv_production['P']
+
         # Calculate and display revenues
 
         # GENERATE PLOTS IF PLOT FLAG IS TRUE
@@ -597,8 +602,8 @@ if __name__ == "__main__":
             "datetime": PUN_timeseries_sell[i, 0],  # Timestamp for the entry
 
             # PUN VALUES KEY
-            "PUN": PUN_timeseries_sell[i, 1] / 1000,  # PUN value in kWh
-            "soc": SoC[i],  # State of charge
+            "PUN": PUN_timeseries_sell[i, 1],   # PUN value in kWh
+            "soc": SoC[i] * 100,  # State of charge
             "c_d_energy": main.charged_energy[i] + main.discharged_energy[i],  # Total charged/discharged energy from BESS
             "Nominal C-rate": power_energy,  # Nominal charge rate
             "C-rate": (main.charged_energy[i] - main.discharged_energy[i]) / size,  # Actual C-rate
@@ -616,7 +621,9 @@ if __name__ == "__main__":
             "energy_sold_from_BESS": -main.discharged_energy[i],  # Energy sold from BESS
             "energy_from_BESS_to_load": -main.from_BESS_to_load[i],  # Energy from BESS to load
             "energy_from_PV_to_load": -main.from_pv_to_load[i],  # Energy from PV to load
-            "energy_self_consumed": main.load_self_consumption[i]  # Energy self consumed (load)
+            "energy_self_consumed": main.load_self_consumption[i],  # Energy self consumed (load)
+            "electrical_load": main.load[i],
+            "pv_production": main.pv_production[i]
 
         }
 
@@ -625,6 +632,14 @@ if __name__ == "__main__":
     json_file_path = output_json_path  # Path for output JSON file
     with open(json_file_path, 'w') as json_file:
         json.dump(data, json_file, indent=4)  # Write data to JSON file with indentation
+
+    import pandas as pd
+
+    df = pd.DataFrame(data)
+
+    # Excel file path
+    excel_file_path = r'C:\Users\lorenzo.giannuzzo\PycharmProjects\BESS-Optimization\data\output\xlsx\results.xlsx' # Define your output path for the Excel file
+    df.to_excel(excel_file_path, index=False)
 
     from argparser_l import weekends, args2
 

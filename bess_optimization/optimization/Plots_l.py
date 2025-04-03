@@ -125,16 +125,16 @@ class EnergyPlots:
         bar1 = ax1.bar(index, discharged_energy, bar_width, label='BESS to Grid', color='darkred')
 
         # Fill areas for produced from PV and electrical load
-        fill1 = ax1.fill_between(index, 0, pv_prodcution, color='lightblue', alpha=0.5,
+        fill1 = ax1.fill_between(index, 0, pv_prodcution, color='red', alpha=0.1,
                                  label='Produced from PV')
 
         load = np.array(load, dtype=float)
 
-        fill2 = ax1.fill_between(index, 0, load, color='lightsalmon', alpha=0.3,
+        fill2 = ax1.fill_between(index, 0, load, color='lightblue', alpha=0.3,
                                  label='Electrical Load')
 
         # Bar plot for taken from PV (lighter green)
-        bar3 = ax1.bar(index, taken_from_pv, bar_width, label='PV to BESS', color='mediumpurple', alpha=0.8,
+        bar3 = ax1.bar(index, taken_from_pv, bar_width, label='PV to BESS', color='lightgreen', alpha=0.8,
                        bottom=from_pv_to_load)
 
         # Bar plot for taken from grid (darker green) - now paired with other bars
@@ -142,13 +142,13 @@ class EnergyPlots:
                        alpha=0.8)
 
         # Bar plot for from PV to load
-        bar4 = ax1.bar(index, from_pv_to_load, bar_width, label='PV to Load', color='darkorange', alpha=0.8)
+        bar4 = ax1.bar(index, from_pv_to_load, bar_width, label='PV to Load', color='indianred', alpha=0.8)
 
         # Bar plot for from BESS to load, starting from the top of the discharged energy bar
-        bar5 = ax1.bar(index, from_bess_to_load, bar_width, label='BESS to Load', color='indigo', alpha=0.8,
+        bar5 = ax1.bar(index, from_bess_to_load, bar_width, label='BESS to Load', color='steelblue', alpha=0.8,
                        bottom=from_pv_to_load)
 
-        bar6 = ax1.bar(index, -from_pv_to_grid, bar_width, label='PV to Grid', color='lightblue', alpha=0.8,
+        bar6 = ax1.bar(index, -from_pv_to_grid, bar_width, label='PV to Grid', color='aquamarine', alpha=0.8,
                        bottom=taken_from_pv + from_pv_to_load)
 
         # Create a second y-axis for pun_values
@@ -163,18 +163,17 @@ class EnergyPlots:
         ax1.set_xticks(index + bar_width / 2)
         ax1.set_xticklabels(time_steps, rotation=0)
 
-        # Combine legends from both axes
-        handles, labels = ax2.get_legend_handles_labels()
-        handles.extend([bar1, bar2, bar3, bar4, bar5, bar6])  # Add all bar plots to the legend
-        labels.extend(['BESS to Grid', 'Grid to BESS', 'PV to BESS', 'PV to Load',
-                       'BESS to Load', 'PV to Grid'])  # Add corresponding labels
+        # Create separate legends
+        # Legend for fill areas
+        fill_handles = [fill1, fill2]
+        fill_labels = ['PV Production', 'Electrical Load']
+        ax1.legend(fill_handles, fill_labels, loc='upper right', fontsize=16)  # Place in upper left
 
-        # Add the fill areas to the legend
-        handles.extend([fill1, fill2])
-        labels.extend(['Produced from PV', 'Electrical Load'])
-
-        # Place the legend in the upper left corner
-        ax1.legend(handles, labels, loc='upper left', fontsize=16)  # Increased font size for better visibility
+        # Legend for bar plots
+        bar_handles = [bar1, bar2, bar3, bar4, bar5, bar6]
+        bar_labels = ['BESS to Grid', 'Grid to BESS', 'PV to BESS', 'PV to Load',
+                      'BESS to Load', 'PV to Grid']
+        ax2.legend(bar_handles, bar_labels, loc='upper left', fontsize=16)  # Place in upper right
 
         max_energy = np.max(taken_from_grid + taken_from_pv + from_pv_to_load + from_bess_to_load + discharged_energy)
         min_energy = np.min(np.array(discharged_energy) - np.abs(from_bess_to_load), 0)

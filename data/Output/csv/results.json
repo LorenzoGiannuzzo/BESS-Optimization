@@ -1,8 +1,8 @@
 [
     {
         "datetime": "Autumn Hour 0:00",
-        "PUN": 0.09605492926823898,
-        "soc": 0.6,
+        "PUN": 96.05492926823898,
+        "soc": 60.0,
         "c_d_energy": 0.0,
         "Nominal C-rate": 0.125,
         "C-rate": 0.0,
@@ -20,12 +20,14 @@
         "energy_sold_from_BESS": 0,
         "energy_from_BESS_to_load": -2.5786918860412524,
         "energy_from_PV_to_load": -0.0,
-        "energy_self_consumed": 2.5786918860412524
+        "energy_self_consumed": 2.5786918860412524,
+        "electrical_load": 2.764490036231884,
+        "pv_production": 0.0
     },
     {
         "datetime": "Autumn Hour 1:00",
-        "PUN": 0.10591644366451025,
-        "soc": 0.47106540569793737,
+        "PUN": 105.91644366451025,
+        "soc": 47.10654056979374,
         "c_d_energy": 0.0,
         "Nominal C-rate": 0.125,
         "C-rate": 0.0,
@@ -43,12 +45,14 @@
         "energy_sold_from_BESS": 0,
         "energy_from_BESS_to_load": -2.720088453087106,
         "energy_from_PV_to_load": -0.0,
-        "energy_self_consumed": 2.720088453087106
+        "energy_self_consumed": 2.720088453087106,
+        "electrical_load": 2.740370018115942,
+        "pv_production": 0.0
     },
     {
         "datetime": "Autumn Hour 2:00",
-        "PUN": 0.12222997832438688,
-        "soc": 0.33506098304358206,
+        "PUN": 122.22997832438688,
+        "soc": 33.506098304358204,
         "c_d_energy": 0.0,
         "Nominal C-rate": 0.125,
         "C-rate": 0.0,
@@ -66,12 +70,14 @@
         "energy_sold_from_BESS": 0,
         "energy_from_BESS_to_load": -2.7011422162331096,
         "energy_from_PV_to_load": -0.0,
-        "energy_self_consumed": 2.7011422162331096
+        "energy_self_consumed": 2.7011422162331096,
+        "electrical_load": 2.701315217391305,
+        "pv_production": 0.0
     },
     {
         "datetime": "Autumn Hour 3:00",
-        "PUN": 0.089729705482559,
-        "soc": 0.2000038722319266,
+        "PUN": 89.729705482559,
+        "soc": 20.000387223192657,
         "c_d_energy": -7.083792575843172e-06,
         "Nominal C-rate": 0.125,
         "C-rate": 3.541896287921586e-07,
@@ -89,12 +95,14 @@
         "energy_sold_from_BESS": 7.083792575843172e-06,
         "energy_from_BESS_to_load": -7.036084595569987e-05,
         "energy_from_PV_to_load": -0.0,
-        "energy_self_consumed": 7.036084595569987e-05
+        "energy_self_consumed": 7.036084595569987e-05,
+        "electrical_load": 2.70391259057971,
+        "pv_production": 0.0
     },
     {
         "datetime": "Autumn Hour 4:00",
-        "PUN": 0.07799005802293599,
-        "soc": 0.2,
+        "PUN": 77.99005802293598,
+        "soc": 20.0,
         "c_d_energy": 9.570888597260158,
         "Nominal C-rate": 0.125,
         "C-rate": 0.4785444298630079,
@@ -112,12 +120,14 @@
         "energy_sold_from_BESS": 0,
         "energy_from_BESS_to_load": -0.0,
         "energy_from_PV_to_load": -0.0,
-        "energy_self_consumed": 0.0
+        "energy_self_consumed": 0.0,
+        "electrical_load": 2.690738224637681,
+        "pv_production": 0.0
     },
     {
         "datetime": "Autumn Hour 5:00",
-        "PUN": 0.10351547032437458,
-        "soc": 0.6785444298630079,
+        "PUN": 103.51547032437458,
+        "soc": 67.8544429863008,
         "c_d_energy": 0.0,
         "Nominal C-rate": 0.125,
         "C-rate": 0.0,
@@ -135,12 +145,14 @@
         "energy_sold_from_BESS": 0,
         "energy_from_BESS_to_load": -3.351485188045559,
         "energy_from_PV_to_load": -0.000619780219780219,
-        "energy_self_consumed": 3.352104968265339
+        "energy_self_consumed": 3.352104968265339,
+        "electrical_load": 3.352118206521739,
+        "pv_production": 0.000619780219780219
     },
     {
         "datetime": "Autumn Hour 6:00",
-        "PUN": 0.12145582288165488,
-        "soc": 0.5109701704607299,
+        "PUN": 121.45582288165488,
+        "soc": 51.09701704607299,
         "c_d_energy": -2.371900527940436,
         "Nominal C-rate": 0.125,
         "C-rate": 0.1185950263970218,
@@ -158,12 +170,14 @@
         "energy_sold_from_BESS": 2.371900527940436,
         "energy_from_BESS_to_load": -3.847502881274162,
         "energy_from_PV_to_load": -0.19567252747252747,
-        "energy_self_consumed": 4.04317540874669
+        "energy_self_consumed": 4.04317540874669,
+        "electrical_load": 4.505302536231884,
+        "pv_production": 0.19567252747252747
     },
     {
         "datetime": "Autumn Hour 7:00",
-        "PUN": 0.08350490953228044,
-        "soc": 0.2,
+        "PUN": 83.50490953228045,
+        "soc": 20.0,
         "c_d_energy": 9.570888597260158,
         "Nominal C-rate": 0.125,
         "C-rate": 0.4785444298630079,
@@ -181,12 +195,14 @@
         "energy_sold_from_BESS": 0,
         "energy_from_BESS_to_load": -0.0,
         "energy_from_PV_to_load": -1.405899646052821,
-        "energy_self_consumed": 1.405899646052821
+        "energy_self_consumed": 1.405899646052821,
+        "electrical_load": 4.443215126811594,
+        "pv_production": 1.4060670329670326
     },
     {
         "datetime": "Autumn Hour 8:00",
-        "PUN": 0.08354949562883922,
-        "soc": 0.6785444298630079,
+        "PUN": 83.54949562883922,
+        "soc": 67.8544429863008,
         "c_d_energy": 4.429111402739842,
         "Nominal C-rate": 0.125,
         "C-rate": 0.2214555701369921,
@@ -204,12 +220,14 @@
         "energy_sold_from_BESS": 0,
         "energy_from_BESS_to_load": -0.0,
         "energy_from_PV_to_load": -2.9214798864667433,
-        "energy_self_consumed": 2.9214798864667433
+        "energy_self_consumed": 2.9214798864667433,
+        "electrical_load": 4.400345108695652,
+        "pv_production": 2.9214923076923083
     },
     {
         "datetime": "Autumn Hour 9:00",
-        "PUN": 0.10759054966510755,
-        "soc": 0.9,
+        "PUN": 107.59054966510755,
+        "soc": 90.0,
         "c_d_energy": 0.0,
         "Nominal C-rate": 0.125,
         "C-rate": 0.0,
@@ -227,12 +245,14 @@
         "energy_sold_from_BESS": 0,
         "energy_from_BESS_to_load": -0.4052932313276161,
         "energy_from_PV_to_load": -4.112717582417583,
-        "energy_self_consumed": 4.518010813745199
+        "energy_self_consumed": 4.518010813745199,
+        "electrical_load": 4.518040307971015,
+        "pv_production": 4.112717582417583
     },
     {
         "datetime": "Autumn Hour 10:00",
-        "PUN": 0.11146798194174726,
-        "soc": 0.8797353384336192,
+        "PUN": 111.46798194174725,
+        "soc": 87.97353384336192,
         "c_d_energy": 0.0,
         "Nominal C-rate": 0.125,
         "C-rate": 0.0,
@@ -250,12 +270,14 @@
         "energy_sold_from_BESS": 0,
         "energy_from_BESS_to_load": -0.8290059524356153,
         "energy_from_PV_to_load": -4.674841758241758,
-        "energy_self_consumed": 5.503847710677373
+        "energy_self_consumed": 5.503847710677373,
+        "electrical_load": 5.503898550724638,
+        "pv_production": 4.674841758241758
     },
     {
         "datetime": "Autumn Hour 11:00",
-        "PUN": 0.14002458379664748,
-        "soc": 0.8382850408118384,
+        "PUN": 140.02458379664748,
+        "soc": 83.82850408118384,
         "c_d_energy": -4.140636948426824,
         "Nominal C-rate": 0.125,
         "C-rate": 0.2070318474213412,
@@ -273,12 +295,14 @@
         "energy_sold_from_BESS": 4.140636948426824,
         "energy_from_BESS_to_load": -1.0722013992327257,
         "energy_from_PV_to_load": -5.002887912087912,
-        "energy_self_consumed": 6.075089311320638
+        "energy_self_consumed": 6.075089311320638,
+        "electrical_load": 6.075093750000001,
+        "pv_production": 5.002887912087912
     },
     {
         "datetime": "Autumn Hour 12:00",
-        "PUN": 0.1338330227159034,
-        "soc": 0.5776431234288609,
+        "PUN": 133.83302271590338,
+        "soc": 57.76431234288609,
         "c_d_energy": 0.0,
         "Nominal C-rate": 0.125,
         "C-rate": 0.0,
@@ -296,12 +320,14 @@
         "energy_sold_from_BESS": 0,
         "energy_from_BESS_to_load": -1.7260773516088133,
         "energy_from_PV_to_load": -4.69878021978022,
-        "energy_self_consumed": 6.424857571389033
+        "energy_self_consumed": 6.424857571389033,
+        "electrical_load": 6.424865036231884,
+        "pv_production": 4.69878021978022
     },
     {
         "datetime": "Autumn Hour 13:00",
-        "PUN": 0.09356932221264108,
-        "soc": 0.49133925584842025,
+        "PUN": 93.56932221264108,
+        "soc": 49.133925584842025,
         "c_d_energy": 0.0,
         "Nominal C-rate": 0.125,
         "C-rate": 0.0,
@@ -319,12 +345,14 @@
         "energy_sold_from_BESS": 0,
         "energy_from_BESS_to_load": -2.2791420645822793,
         "energy_from_PV_to_load": -4.227712087912088,
-        "energy_self_consumed": 6.506854152494367
+        "energy_self_consumed": 6.506854152494367,
+        "electrical_load": 6.50687545289855,
+        "pv_production": 4.227712087912088
     },
     {
         "datetime": "Autumn Hour 14:00",
-        "PUN": 0.07086499221514897,
-        "soc": 0.3773821526193063,
+        "PUN": 70.86499221514897,
+        "soc": 37.73821526193063,
         "c_d_energy": 9.862892345864116,
         "Nominal C-rate": 0.125,
         "C-rate": 0.4931446172932058,
@@ -342,12 +370,14 @@
         "energy_sold_from_BESS": 0,
         "energy_from_BESS_to_load": -0.0,
         "energy_from_PV_to_load": -3.235159767561625,
-        "energy_self_consumed": 3.235159767561625
+        "energy_self_consumed": 3.235159767561625,
+        "electrical_load": 5.916798913043478,
+        "pv_production": 3.2352494505494507
     },
     {
         "datetime": "Autumn Hour 15:00",
-        "PUN": 0.16644340926883178,
-        "soc": 0.8705267699125121,
+        "PUN": 166.44340926883177,
+        "soc": 87.0526769912512,
         "c_d_energy": -4.184912848450345,
         "Nominal C-rate": 0.125,
         "C-rate": 0.20924564242251725,
@@ -365,12 +395,14 @@
         "energy_sold_from_BESS": 4.184912848450345,
         "energy_from_BESS_to_load": -2.920433658773484,
         "energy_from_PV_to_load": -1.596398901098901,
-        "energy_self_consumed": 4.516832559872385
+        "energy_self_consumed": 4.516832559872385,
+        "electrical_load": 4.516841938405797,
+        "pv_production": 1.596398901098901
     },
     {
         "datetime": "Autumn Hour 16:00",
-        "PUN": 0.1289514380688834,
-        "soc": 0.5152594445513207,
+        "PUN": 128.9514380688834,
+        "soc": 51.52594445513207,
         "c_d_energy": -2.450703476568852,
         "Nominal C-rate": 0.125,
         "C-rate": 0.12253517382844259,
@@ -388,12 +420,14 @@
         "energy_sold_from_BESS": 2.450703476568852,
         "energy_from_BESS_to_load": -3.854485414457561,
         "energy_from_PV_to_load": -0.49239780219780216,
-        "energy_self_consumed": 4.346883216655363
+        "energy_self_consumed": 4.346883216655363,
+        "electrical_load": 4.353493659420289,
+        "pv_production": 0.49239780219780216
     },
     {
         "datetime": "Autumn Hour 17:00",
-        "PUN": 0.08609931164964732,
-        "soc": 0.2,
+        "PUN": 86.09931164964732,
+        "soc": 20.0,
         "c_d_energy": 9.570888597260158,
         "Nominal C-rate": 0.125,
         "C-rate": 0.4785444298630079,
@@ -411,12 +445,14 @@
         "energy_sold_from_BESS": 0,
         "energy_from_BESS_to_load": -0.0,
         "energy_from_PV_to_load": -0.034681119640092684,
-        "energy_self_consumed": 0.034681119640092684
+        "energy_self_consumed": 0.034681119640092684,
+        "electrical_load": 5.965471467391303,
+        "pv_production": 0.03471428571428571
     },
     {
         "datetime": "Autumn Hour 18:00",
-        "PUN": 0.09952787598991143,
-        "soc": 0.6785444298630079,
+        "PUN": 99.52787598991144,
+        "soc": 67.8544429863008,
         "c_d_energy": 0.0,
         "Nominal C-rate": 0.125,
         "C-rate": 0.0,
@@ -434,12 +470,14 @@
         "energy_sold_from_BESS": 0,
         "energy_from_BESS_to_load": -4.005702703123265,
         "energy_from_PV_to_load": -0.0,
-        "energy_self_consumed": 4.005702703123265
+        "energy_self_consumed": 4.005702703123265,
+        "electrical_load": 6.186221014492753,
+        "pv_production": 0.0
     },
     {
         "datetime": "Autumn Hour 19:00",
-        "PUN": 0.09360128767093309,
-        "soc": 0.47825929470684464,
+        "PUN": 93.60128767093309,
+        "soc": 47.825929470684464,
         "c_d_energy": -1.7476048500087797,
         "Nominal C-rate": 0.125,
         "C-rate": 0.08738024250043899,
@@ -457,12 +495,14 @@
         "energy_sold_from_BESS": 1.7476048500087797,
         "energy_from_BESS_to_load": -3.8175810441281124,
         "energy_from_PV_to_load": -0.0,
-        "energy_self_consumed": 3.8175810441281124
+        "energy_self_consumed": 3.8175810441281124,
+        "electrical_load": 5.604785778985508,
+        "pv_production": 0.0
     },
     {
         "datetime": "Autumn Hour 20:00",
-        "PUN": 0.10010172444344465,
-        "soc": 0.2,
+        "PUN": 100.10172444344464,
+        "soc": 20.0,
         "c_d_energy": 7.5227950958782746,
         "Nominal C-rate": 0.125,
         "C-rate": 0.3761397547939137,
@@ -480,12 +520,14 @@
         "energy_sold_from_BESS": 0,
         "energy_from_BESS_to_load": -0.0,
         "energy_from_PV_to_load": -0.0,
-        "energy_self_consumed": 0.0
+        "energy_self_consumed": 0.0,
+        "electrical_load": 5.350741847826087,
+        "pv_production": 0.0
     },
     {
         "datetime": "Autumn Hour 21:00",
-        "PUN": 0.1266537162367117,
-        "soc": 0.5761397547939138,
+        "PUN": 126.65371623671172,
+        "soc": 57.61397547939138,
         "c_d_energy": 0.0,
         "Nominal C-rate": 0.125,
         "C-rate": 0.0,
@@ -503,12 +545,14 @@
         "energy_sold_from_BESS": 0,
         "energy_from_BESS_to_load": -3.9162899192955636,
         "energy_from_PV_to_load": -0.0,
-        "energy_self_consumed": 3.9162899192955636
+        "energy_self_consumed": 3.9162899192955636,
+        "electrical_load": 4.774904438405797,
+        "pv_production": 0.0
     },
     {
         "datetime": "Autumn Hour 22:00",
-        "PUN": 0.08512846470743518,
-        "soc": 0.3803252588291356,
+        "PUN": 85.12846470743519,
+        "soc": 38.03252588291356,
         "c_d_energy": -0.0004408238318043267,
         "Nominal C-rate": 0.125,
         "C-rate": 2.2041191590216336e-05,
@@ -526,12 +570,14 @@
         "energy_sold_from_BESS": 0.0004408238318043267,
         "energy_from_BESS_to_load": -3.606064352750907,
         "energy_from_PV_to_load": -0.0,
-        "energy_self_consumed": 3.606064352750907
+        "energy_self_consumed": 3.606064352750907,
+        "electrical_load": 3.606088768115942,
+        "pv_production": 0.0
     },
     {
         "datetime": "Autumn Hour 23:00",
-        "PUN": 0.09971725698729442,
-        "soc": 0.2,
+        "PUN": 99.71725698729442,
+        "soc": 20.0,
         "c_d_energy": 0.0,
         "Nominal C-rate": 0.125,
         "C-rate": 0.0,
@@ -549,6 +595,8 @@
         "energy_sold_from_BESS": -0.0,
         "energy_from_BESS_to_load": -0.0,
         "energy_from_PV_to_load": -0.0,
-        "energy_self_consumed": 0.0
+        "energy_self_consumed": 0.0,
+        "electrical_load": 2.877860054347826,
+        "pv_production": 0.0
     }
 ]

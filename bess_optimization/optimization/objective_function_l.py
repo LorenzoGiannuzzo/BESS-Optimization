@@ -418,20 +418,15 @@ class Revenues(ElementwiseProblem):
 
                 self.soc[i+1] = self.soc[i] + (self.taken_from_pv[i] - np.abs(self.from_BESS_to_load[i]))/size
 
-            total_energy = self.charged_energy_from_grid_to_BESS[i] + np.abs(self.discharged_energy_from_BESS[i]) + np.abs(self.from_BESS_to_load[i])
+            total_energy = np.abs(self.charged_energy_from_grid_to_BESS[i]) + np.abs(self.discharged_energy_from_BESS[i]) + np.abs(self.from_BESS_to_load[i]) + np.abs(self.taken_from_pv[i])
             actual_capacity = size * degradation(n_cycles_prev) / 100
             n_cycles = n_cycles_prev + total_energy / actual_capacity
 
         # EVALUATE THE NUMBER OF CYCLES DONE BY BESS
-        total_charged = np.sum(self.charged_energy_from_BESS)
-        total_discharged = np.sum(-self.discharged_energy_from_BESS)
-        additional = np.sum(np.abs(self.from_BESS_to_load))
+        total_charged = np.sum(np.abs(self.charged_energy_from_BESS))
+        total_discharged = np.sum(np.abs(self.discharged_energy_from_BESS))
+        additional = np.sum(np.abs(self.from_BESS_to_load)+np.abs(self.taken_from_pv))
         total_energy = total_charged + total_discharged + additional
-
-        from argparser_l import n_cycles
-
-        n_cycles_prev = n_cycles
-        actual_capacity = size * degradation(n_cycles_prev)/100
 
         n_cycles = total_energy / actual_capacity
 

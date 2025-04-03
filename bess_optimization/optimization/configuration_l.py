@@ -7,12 +7,12 @@
     __version__ = "v0.2.1"
     __license__ = "MIT"
 
-Last Update of current code: 12/03/2025 """
+Last Update of current code: 03/04/2025 """
 
 # IMPORT LIBRARIES AND MODULES FROM PROJECT FILES
 import numpy as np
 from argparser_l import soc
-from Economic_parameters_l import time_window
+from Economic_parameters_l import time_window, season
 from pymoo.termination.robust import RobustTermination
 from pymoo.termination.xtol import DesignSpaceTermination
 
@@ -105,11 +105,11 @@ xl = [-max_discharge] * time_window + [0.0] * time_window
 xu = [max_charge] * time_window + [+1.0] * time_window
 
 # 8) DEFINE NUMBER OF GENERATIONS
-n_gen = 400
+n_gen = 500
 
 # 8-bis) DEFINE TOLERANCE
-tolerance = 0.01
-period = 20
+tolerance = 0.2
+period = 15
 seed = 42
 
 # 9) DEFINITION OF THE TERMINATION CRITERIA
@@ -129,10 +129,10 @@ prob_crossover = 0.9
 prob_mutation = 1.0
 n_offsprings = 50
 
-season = "Autumn"
+season = season
 
 # 11) ALGORITHM SELECTION
-algorithm_type = "NSGA_2"  # Change this to "SPEA2", "NSGA3, "UNSGA3", etc. to test different algorithms
+algorithm_type = "UNSGA3"  # Change this to "SPEA2", "NSGA3, "UNSGA3", etc. to test different algorithms
 
 
 # ALGORITHM INITIALIZATION

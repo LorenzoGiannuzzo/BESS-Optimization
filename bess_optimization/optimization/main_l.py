@@ -74,7 +74,7 @@ class Main:
         c_d_timeseries = solution.X[:time_window]
 
         # Extract charge/discharge time series from solution
-        load_decision = solution.X[time_window:2*time_window]
+        load_decision = solution.X[time_window:time_window*2]
 
         # APPLY PHYSICAL CONSTRAINTS
         (soc, charged_energy, discharged_energy, c_d_timeseries, taken_from_grid, discharged_from_pv,

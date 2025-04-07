@@ -7,7 +7,7 @@
     __version__ = "v0.2.1"
     __license__ = "MIT"
 
-Last Update of current code: 03/04/2025 """
+Last Update of current code: 04/04/2025 """
 
 # IMPORT LIBRARIES AND MODULES FROM PROJECT FILES
 import numpy as np
@@ -105,10 +105,10 @@ xl = [-max_discharge] * time_window + [0.0] * time_window
 xu = [max_charge] * time_window + [+1.0] * time_window
 
 # 8) DEFINE NUMBER OF GENERATIONS
-n_gen = 500
+n_gen = 200
 
 # 8-bis) DEFINE TOLERANCE
-tolerance = 0.2
+tolerance = 0.5
 period = 15
 seed = 42
 
@@ -132,7 +132,7 @@ n_offsprings = 50
 season = season
 
 # 11) ALGORITHM SELECTION
-algorithm_type = "UNSGA3"  # Change this to "SPEA2", "NSGA3, "UNSGA3", etc. to test different algorithms
+algorithm_type = "NSGA3"  # Change this to "SPEA2", "NSGA3, "UNSGA3", etc. to test different algorithms
 
 
 # ALGORITHM INITIALIZATION

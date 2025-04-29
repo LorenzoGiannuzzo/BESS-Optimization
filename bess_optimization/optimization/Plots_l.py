@@ -222,7 +222,7 @@ class EnergyPlots:
         plt.title('Battery Capacity Degradation Over Cycles')
         plt.grid(True)
         plt.legend()
-        plt.savefig(os.path.join('Plots/General', 'Degradation.png'), dpi=300, bbox_inches='tight')
+        plt.savefig(os.path.join('Plots/General', 'Degradation.pdf'), dpi=500, bbox_inches='tight')
 
     @staticmethod
     def c_d_plot(charge_rate, discharge_rate):
@@ -316,6 +316,7 @@ class EnergyPlots:
         ax.set_title('Statistics of Fitness', fontsize=16)  # Title of the plot
         ax.set_xlabel('Generations', fontsize=14)  # X-axis label
         ax.set_ylabel('OF Mean Value', fontsize=14)  # Y-axis label
+        #ax.set_ylim(-6, 5)
 
         # Customize background and grid
         ax.set_facecolor('whitesmoke')  # Background color
@@ -372,6 +373,7 @@ class EnergyPlots:
                 ax.set_title(f'C/D Energy % at {start + k + 1}h')
                 ax.set_xlabel('Generations')
                 ax.set_ylabel('% of C/D')
+
                 ax.grid(True)
 
             # Hide any empty subplots if present

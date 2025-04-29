@@ -7,7 +7,7 @@
     __version__ = "v0.2.1"
     __license__ = "MIT"
 
-Last Update of current code: 24/03/2025 """
+Last Update of current code: 10/04/2025 """
 
 # IMPORT LIBRARIES
 import numpy as np
@@ -444,7 +444,13 @@ class Revenues(ElementwiseProblem):
         # CORRECT THE VALUES OF THE REVENUES IN ORDER TO MINIMIZE THE OBJECTIVE FUNCTION
         final_revenues = -total_revenue
 
-        #print(final_revenues)
+        from argparser_l import n_cycles
+
+        actual_capacity = size * degradation(n_cycles) / 100
+        n_cycles_new = n_cycles + total_energy / actual_capacity
+
+        capacity_loss = (actual_capacity - actual_capacity*degradation(n_cycles_new) / 100) #* np.mean(self.PUN_timeseries_sell/1000)
 
         # DEFINE THE OUTPUT OF THE OPTIMIZATION PROBLEM
-        out["F"] = [final_revenues]
+        out["F"] = [final_revenues,
+                    capacity_loss]

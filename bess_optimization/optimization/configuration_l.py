@@ -7,7 +7,7 @@
     __version__ = "v0.2.1"
     __license__ = "MIT"
 
-Last Update of current code: 04/04/2025 """
+Last Update of current code: 10/04/2025 """
 
 # IMPORT LIBRARIES AND MODULES FROM PROJECT FILES
 import numpy as np
@@ -15,7 +15,7 @@ from argparser_l import soc
 from Economic_parameters_l import time_window, season
 from pymoo.termination.robust import RobustTermination
 from pymoo.termination.xtol import DesignSpaceTermination
-
+from pymoo.util.reference_direction import UniformReferenceDirectionFactory, MultiLayerReferenceDirectionFactory
 from pymoo.algorithms.moo.nsga2 import NSGA2
 from pymoo.algorithms.moo.nsga3 import NSGA3
 from pymoo.algorithms.moo.spea2 import SPEA2
@@ -28,6 +28,7 @@ from pymoo.operators.mutation.pm import PM
 from pymoo.operators.sampling.lhs import LatinHypercubeSampling
 from pymoo.operators.selection.tournament import TournamentSelection, compare
 from pymoo.util.ref_dirs import get_reference_directions
+
 from pymoo.core.termination import TerminateIfAny
 from pymoo.termination import get_termination
 from BESS_model_l import charge_rate_interpolated_func, discharge_rate_interpolated_func
@@ -96,7 +97,7 @@ pop_size = 100
 n_var = time_window * 2
 
 # 5) DEFINE NUMBER OF OBJECTIVES
-n_obj = 1
+n_obj = 2
 
 # 6) DEFINE LOWER BOUNDARIES
 xl = [-max_discharge] * time_window + [0.0] * time_window
@@ -108,8 +109,8 @@ xu = [max_charge] * time_window + [+1.0] * time_window
 n_gen = 200
 
 # 8-bis) DEFINE TOLERANCE
-tolerance = 0.5
-period = 15
+tolerance = 0.05
+period = 200
 seed = 42
 
 # 9) DEFINITION OF THE TERMINATION CRITERIA
@@ -118,7 +119,8 @@ termination2 = RobustTermination(DesignSpaceTermination(tol=tolerance), period=p
 termination = TerminateIfAny(termination1, termination2)
 
 # 10) DEFINITION OF THE REFERENCE DIRECTION
-ref_dirs = get_reference_directions("das-dennis", n_obj, n_partitions=n_obj*8)
+ref_dirs = get_reference_directions("das-dennis", n_obj, n_partitions=12)
+ref_dire = UniformReferenceDirectionFactory(n_obj, n_points=pop_size).do()
 
 # DEFINE ETA FOR CROSSOVER
 eta_crossover = 20
@@ -132,7 +134,7 @@ n_offsprings = 50
 season = season
 
 # 11) ALGORITHM SELECTION
-algorithm_type = "NSGA3"  # Change this to "SPEA2", "NSGA3, "UNSGA3", etc. to test different algorithms
+algorithm_type = "NSGA3"
 
 
 # ALGORITHM INITIALIZATION
@@ -166,7 +168,7 @@ elif algorithm_type == "SPEA2":
         mutation=PM(eta=eta_mutation, prob=prob_mutation),
         eliminate_duplicates=True,
         seed=seed,
-        n_offsprings = n_offsprings
+        n_offsprings=n_offsprings
     )
 elif algorithm_type == "UNSGA3":
     algorithm = UNSGA3(
@@ -186,22 +188,19 @@ elif algorithm_type == "MOEAD":
     algorithm = MOEAD(
         n_neighbors=5,
         prob_neighbor_mating=0.9,
-        ref_dirs= get_reference_directions("das-dennis", 20, n_partitions=pop_size),
+        ref_dirs= get_reference_directions("das-dennis", n_obj, n_partitions=n_obj),
         sampling=LatinHypercubeSampling(),
         crossover=SBX(eta=eta_crossover, prob=prob_crossover),
         mutation=PM(eta=eta_mutation, prob=prob_mutation),
-        #eliminate_duplicates=True,
+        eliminate_duplicates=True,
         seed=seed,
         n_offsprings=n_offsprings
     )
 
 elif algorithm_type == "BRKGA":
     algorithm = BRKGA(
-        pop_size=pop_size,
+        n_elites=10,
         sampling=LatinHypercubeSampling(),
-        selection=TournamentSelection(func_comp=comp_by_cv_then_random),
-        crossover=SBX(eta=eta_crossover, prob=prob_crossover),
-        mutation=PM(eta=eta_mutation, prob=prob_mutation),
         eliminate_duplicates=True,
         seed=seed,
         n_offsprings=n_offsprings,
@@ -210,14 +209,15 @@ elif algorithm_type == "BRKGA":
 
 elif algorithm_type == "RNSGA3":
     algorithm = RNSGA3(
-        pop_size=pop_size,
         sampling=LatinHypercubeSampling(),
-        selection=TournamentSelection(func_comp=comp_by_cv_then_random),
         crossover=SBX(eta=eta_crossover, prob=prob_crossover),
         mutation=PM(eta=eta_mutation, prob=prob_mutation),
         eliminate_duplicates=True,
         seed=seed,
-        n_offsprings=n_offsprings
+        mu=0.0035,
+        n_offsprings=n_offsprings,
+        ref_points=ref_dire,
+        pop_per_ref_point=2
     )
 
 else:
@@ -226,5 +226,6 @@ else:
 # 12 DEFINE BOOLEAN VALUE TO ENABLE/DISABLE PLOTS
 plot = True
 plot_monthly = False
+
 
 i = 0

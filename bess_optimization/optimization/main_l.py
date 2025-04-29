@@ -70,11 +70,15 @@ class Main:
         if plot:
             self.history = solution.history  # Store optimization history for plotting
 
+        index_maxrev = np.argmin(solution.F[:, 0])
+
+        #print(solution.F[:,0])
+
         # GET CHARGED/DISCHARGED ENERGY FROM SOLUTION
-        c_d_timeseries = solution.X[:time_window]
+        c_d_timeseries = solution.X[index_maxrev,:time_window]
 
         # Extract charge/discharge time series from solution
-        load_decision = solution.X[time_window:time_window*2]
+        load_decision = solution.X[index_maxrev,time_window:time_window*2]
 
         # APPLY PHYSICAL CONSTRAINTS
         (soc, charged_energy, discharged_energy, c_d_timeseries, taken_from_grid, discharged_from_pv,

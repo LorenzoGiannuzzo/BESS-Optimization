@@ -38,7 +38,11 @@ def euclidean_distance_percentage_exclude_first(df1, df2):
         for j in range(num_rows):
 
             # Calcoliamo la distanza euclidea tra la colonna i di df1 e la colonna j di df2
-            distance = df1_relevant[j, i] - df2_relevant[j, i]
+
+            if max(np.abs(df1_relevant[:,i])) >= 0.000001:
+                distance = (np.abs(df1_relevant[j, i]) - np.abs(df2_relevant[j, i]) ) / max(np.abs(df1_relevant[:,i]))
+            else:
+                distance = (np.abs(df1_relevant[j, i]) - np.abs(df2_relevant[j, i])) / 5
 
             distances_matrix[j,i] = distance
 
@@ -63,6 +67,21 @@ def plot_comparison(distance):
     bess_to_load = np.abs(distance[:,15])
     pv_to_load = np.abs(distance[:,16])
     time_steps = np.arange(24)
+
+    sum_pv_tp_bess = pv_to_bess.sum()
+    sum_grid_to_bess = grid_to_bess.sum()
+    sum_pv_to_grid = pv_to_grid.sum()
+    sum_bess_to_grid = bess_to_grid.sum()
+    sum_bess_to_load = bess_to_load.sum()
+    sum_pv_to_load = pv_to_load.sum()
+
+    mean_distance = (np.abs(sum_pv_to_load) + np.abs(sum_bess_to_load) + np.abs(sum_grid_to_bess) + np.abs(sum_pv_tp_bess) + np.abs(sum_bess_to_grid) + np.abs(sum_pv_to_grid))/6
+
+    similarity = 1/(1 + mean_distance)
+
+    print("\n Similarity Index = ",similarity*100)
+
+    print("\n Mean distance = ", mean_distance)
 
     # PLOTTING DISCHARGED ENERGY, TAKEN FROM PV, AND TAKEN FROM GRID
     bar_width = 0.35  # Adjusted bar width
@@ -123,7 +142,7 @@ def plot_comparison(distance):
     plt.close()
 
 
-# ----------------------------------------------------------------------------------------------------------------------
+# BENCHMARK ------------------------------------------------------------------------------------------------------------
 
 path_benchmark_autumn = r'C:\Users\lorenzo.giannuzzo\PycharmProjects\BESS-Optimization\data\output\xlsx\results_autumn_benchmark.xlsx'
 path_benchmark_spring = r'C:\Users\lorenzo.giannuzzo\PycharmProjects\BESS-Optimization\data\output\xlsx\results_spring_benchmark.xlsx'
@@ -135,6 +154,8 @@ benchmark_spring = pd.read_excel(path_benchmark_spring, 'Sheet1')
 benchmark_summer = pd.read_excel(path_benchmark_summer,'Sheet1')
 benchmark_winter = pd.read_excel(path_benchmark_winter,'Sheet1')
 
+# NSGA3 ----------------------------------------------------------------------------------------------------------------
+
 path_nsga3_autumn = r'C:\Users\lorenzo.giannuzzo\PycharmProjects\BESS-Optimization\data\output\xlsx\nsga3\results_autumn_nsga3.xlsx'
 path_nsga3_spring = r'C:\Users\lorenzo.giannuzzo\PycharmProjects\BESS-Optimization\data\output\xlsx\nsga3\results_spring_nsga3.xlsx'
 path_nsga3_summer = r'C:\Users\lorenzo.giannuzzo\PycharmProjects\BESS-Optimization\data\output\xlsx\nsga3\results_summer_nsga3.xlsx'
@@ -145,12 +166,71 @@ nsga3_spring = pd.read_excel(path_nsga3_spring, 'Sheet1')
 nsga3_summer = pd.read_excel(path_nsga3_summer, 'Sheet1')
 nsga3_winter = pd.read_excel(path_nsga3_winter, 'Sheet1')
 
+# NSGA2 ----------------------------------------------------------------------------------------------------------------
+
+path_nsga2_autumn = r'C:\Users\lorenzo.giannuzzo\PycharmProjects\BESS-Optimization\data\output\xlsx\nsga2\results_autumns_nsga2.xlsx'
+path_nsga2_spring = r'C:\Users\lorenzo.giannuzzo\PycharmProjects\BESS-Optimization\data\output\xlsx\nsga2\results_spring_nsga2.xlsx'
+path_nsga2_summer = r'C:\Users\lorenzo.giannuzzo\PycharmProjects\BESS-Optimization\data\output\xlsx\nsga2\results_summer_nsga2.xlsx'
+path_nsga2_winter = r'C:\Users\lorenzo.giannuzzo\PycharmProjects\BESS-Optimization\data\output\xlsx\nsga2\results_winter_nsga2.xlsx'
+
+nsga2_autumn = pd.read_excel(path_nsga2_autumn, 'Sheet1')
+nsga2_spring = pd.read_excel(path_nsga2_spring, 'Sheet1')
+nsga2_summer = pd.read_excel(path_nsga2_summer, 'Sheet1')
+nsga2_winter = pd.read_excel(path_nsga2_winter, 'Sheet1')
+
+# SPEA2 ----------------------------------------------------------------------------------------------------------------
+
+path_spea2_autumn = r'C:\Users\lorenzo.giannuzzo\PycharmProjects\BESS-Optimization\data\output\xlsx\spea2\results_autumn_spea2.xlsx'
+path_spea2_spring = r'C:\Users\lorenzo.giannuzzo\PycharmProjects\BESS-Optimization\data\output\xlsx\spea2\results_spring_spea2.xlsx'
+path_spea2_summer = r'C:\Users\lorenzo.giannuzzo\PycharmProjects\BESS-Optimization\data\output\xlsx\spea2\results_summer_spea2.xlsx'
+path_spea2_winter = r'C:\Users\lorenzo.giannuzzo\PycharmProjects\BESS-Optimization\data\output\xlsx\spea2\results_winter_spea2.xlsx'
+
+spea2_autumn = pd.read_excel(path_spea2_autumn, 'Sheet1')
+spea2_spring = pd.read_excel(path_spea2_spring, 'Sheet1')
+spea2_summer = pd.read_excel(path_spea2_summer, 'Sheet1')
+spea2_winter = pd.read_excel(path_spea2_winter, 'Sheet1')
+
+# BRKGA ----------------------------------------------------------------------------------------------------------------
+
+path_brkga_autumn = r'C:\Users\lorenzo.giannuzzo\PycharmProjects\BESS-Optimization\data\output\xlsx\brkga\results_autumn_brkga.xlsx'
+path_brkga_spring = r'C:\Users\lorenzo.giannuzzo\PycharmProjects\BESS-Optimization\data\output\xlsx\brkga\results_spring_brkga.xlsx'
+path_brkga_summer = r'C:\Users\lorenzo.giannuzzo\PycharmProjects\BESS-Optimization\data\output\xlsx\brkga\results_summer_brkga.xlsx'
+path_brkga_winter = r'C:\Users\lorenzo.giannuzzo\PycharmProjects\BESS-Optimization\data\output\xlsx\brkga\results_winter_brkga.xlsx'
+
+brkga_autumn = pd.read_excel(path_brkga_autumn, 'Sheet1')
+brkga_spring = pd.read_excel(path_brkga_spring, 'Sheet1')
+brkga_summer = pd.read_excel(path_brkga_summer, 'Sheet1')
+brkga_winter = pd.read_excel(path_brkga_winter, 'Sheet1')
+
+# RNSGA3 ---------------------------------------------------------------------------------------------------------------
+
+path_rnsga3_autumn = r'C:\Users\lorenzo.giannuzzo\PycharmProjects\BESS-Optimization\data\output\xlsx\rnsga3\results_autumn_rnsga3.xlsx'
+path_rnsga3_spring = r'C:\Users\lorenzo.giannuzzo\PycharmProjects\BESS-Optimization\data\output\xlsx\rnsga3\results_spring_rnsga3.xlsx'
+path_rnsga3_summer = r'C:\Users\lorenzo.giannuzzo\PycharmProjects\BESS-Optimization\data\output\xlsx\rnsga3\results_summer_rnsga3.xlsx'
+path_rnsga3_winter = r'C:\Users\lorenzo.giannuzzo\PycharmProjects\BESS-Optimization\data\output\xlsx\rnsga3\results_winter_rnsga3.xlsx'
+
+rnsga3_autumn = pd.read_excel(path_rnsga3_autumn, 'Sheet1')
+rnsga3_spring = pd.read_excel(path_rnsga3_spring, 'Sheet1')
+rnsga3_summer = pd.read_excel(path_rnsga3_summer, 'Sheet1')
+rnsga3_winter = pd.read_excel(path_rnsga3_winter, 'Sheet1')
+
+# COMPARISON -----------------------------------------------------------------------------------------------------------
+
 percentage_distances = euclidean_distance_percentage_exclude_first(benchmark_autumn, nsga3_autumn)
-percentage_distances = pd.DataFrame(percentage_distances)
-
-excel_file_path = r'C:\Users\lorenzo.giannuzzo\PycharmProjects\BESS-Optimization\data\output\xlsx\nsga3\comparison.xlsx'  # Define your output path for the Excel file
-percentage_distances.to_excel(excel_file_path, index=False)
-
 plot_comparison(percentage_distances)
+
+percentage_distances = euclidean_distance_percentage_exclude_first(benchmark_spring, nsga3_spring)
+plot_comparison(percentage_distances)
+
+percentage_distances = euclidean_distance_percentage_exclude_first(benchmark_summer, nsga3_summer)
+plot_comparison(percentage_distances)
+
+percentage_distances = euclidean_distance_percentage_exclude_first(benchmark_winter, nsga3_winter)
+plot_comparison(percentage_distances)
+
+#percentage_distances = pd.DataFrame(percentage_distances)
+#excel_file_path = r'C:\Users\lorenzo.giannuzzo\PycharmProjects\BESS-Optimization\data\output\xlsx\nsga3\comparison.xlsx'  # Define your output path for the Excel file
+#percentage_distances.to_excel(excel_file_path, index=False)
+
 
 

@@ -94,16 +94,16 @@ soc_0 = soc
 pop_size = 100
 
 # 4) DEFINE NUMBER OF ELEMENTS INIZIALIZED BY THE ALGORITHM
-n_var = time_window * 2 + 1
+n_var = time_window * 2
 
 # 5) DEFINE NUMBER OF OBJECTIVES
 n_obj = 2
 
 # 6) DEFINE LOWER BOUNDARIES
-xl = [-max_discharge] * time_window + [0.0] * time_window + [0.0]
+xl = [-max_discharge] * time_window + [0.0] * time_window
 
 # 7) DEFINE UPPER BOUNDARIES
-xu = [max_charge] * time_window + [+1.0] * time_window + [100.0]
+xu = [max_charge] * time_window + [+1.0] * time_window
 
 # 8) DEFINE NUMBER OF GENERATIONS
 n_gen = 200

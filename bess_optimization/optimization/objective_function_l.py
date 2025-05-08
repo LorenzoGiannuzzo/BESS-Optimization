@@ -71,8 +71,6 @@ class Revenues(ElementwiseProblem):
         self.c_d_timeseries = np.array(x[:self.time_window]).reshape(configuration_l.time_window)
         self.load_decision = np.array(x[self.time_window:2*self.time_window]).reshape(configuration_l.time_window)
 
-        size = np.array(x[-1])
-
         # EVALUATE THE CHARGED AND DISCHARGED ENERGY AND UPDATE THE SoC FOR EACH TIMESTEP t
         # Create an instance of BESS_model
         #bess_model = BESS_model(self.time_window, self.PUN_timeseries_sell, self.soc, self.size, self.c_func,

@@ -2399,3 +2399,46 @@
 2025-05-08 10:54:47,389 - DEBUG - 284 3 1 b'\x01\x00\x00\x00' b''
 2025-05-08 10:54:47,389 - DEBUG - 296 3 1 b'\x02\x00\x00\x00' b''
 2025-05-08 10:54:47,389 - DEBUG - 338 3 1 b'\x02\x00\x00\x00' b''
+2025-05-08 10:54:47,667 - DEBUG - Tiffinfo Keys: []
+2025-05-08 10:54:47,668 - DEBUG - Tag 256, Type: 4, Value: 5000
+2025-05-08 10:54:47,668 - DEBUG - save: ImageWidth (256) - type: long (4) - value: (5000,)
+2025-05-08 10:54:47,668 - DEBUG - Tag 257, Type: 4, Value: 3000
+2025-05-08 10:54:47,668 - DEBUG - save: ImageLength (257) - type: long (4) - value: (3000,)
+2025-05-08 10:54:47,668 - DEBUG - Tag 258, Type: 3, Value: (8, 8, 8, 8)
+2025-05-08 10:54:47,668 - DEBUG - save: BitsPerSample (258) - type: short (3) - value: (8, 8, 8, 8)
+2025-05-08 10:54:47,668 - DEBUG - Tag 259, Type: 3, Value: 1
+2025-05-08 10:54:47,668 - DEBUG - save: Compression (259) - type: short (3) - value: (1,)
+2025-05-08 10:54:47,668 - DEBUG - Tag 262, Type: 3, Value: 2
+2025-05-08 10:54:47,668 - DEBUG - save: PhotometricInterpretation (262) - type: short (3) - value: (2,)
+2025-05-08 10:54:47,668 - DEBUG - Tag 273, Type: 4, Value: (0,)
+2025-05-08 10:54:47,668 - DEBUG - save: StripOffsets (273) - type: long (4) - value: (0,)
+2025-05-08 10:54:47,668 - DEBUG - Tag 277, Type: 3, Value: 4
+2025-05-08 10:54:47,668 - DEBUG - save: SamplesPerPixel (277) - type: short (3) - value: (4,)
+2025-05-08 10:54:47,668 - DEBUG - Tag 278, Type: 4, Value: 3000
+2025-05-08 10:54:47,668 - DEBUG - save: RowsPerStrip (278) - type: long (4) - value: (3000,)
+2025-05-08 10:54:47,669 - DEBUG - Tag 279, Type: 4, Value: (60000000,)
+2025-05-08 10:54:47,669 - DEBUG - save: StripByteCounts (279) - type: long (4) - value: (60000000,)
+2025-05-08 10:54:47,669 - DEBUG - Tag 282, Type: 5, Value: 500.0
+2025-05-08 10:54:47,669 - DEBUG - save: XResolution (282) - type: rational (5) - value: (500.0,)
+2025-05-08 10:54:47,669 - DEBUG - Tag 283, Type: 5, Value: 500.0
+2025-05-08 10:54:47,669 - DEBUG - save: YResolution (283) - type: rational (5) - value: (500.0,)
+2025-05-08 10:54:47,669 - DEBUG - Tag 284, Type: 3, Value: 1
+2025-05-08 10:54:47,669 - DEBUG - save: PlanarConfiguration (284) - type: short (3) - value: (1,)
+2025-05-08 10:54:47,669 - DEBUG - Tag 296, Type: 3, Value: 2
+2025-05-08 10:54:47,669 - DEBUG - save: ResolutionUnit (296) - type: short (3) - value: (2,)
+2025-05-08 10:54:47,669 - DEBUG - Tag 338, Type: 3, Value: (2,)
+2025-05-08 10:54:47,669 - DEBUG - save: ExtraSamples (338) - type: short (3) - value: (2,)
+2025-05-08 10:54:47,669 - DEBUG - 256 4 1 b'\x88\x13\x00\x00' b''
+2025-05-08 10:54:47,669 - DEBUG - 257 4 1 b'\xb8\x0b\x00\x00' b''
+2025-05-08 10:54:47,669 - DEBUG - 258 3 4 b'\xb6\x00\x00\x00' b'\x08\x00\x08\x00\x08\x00\x08\x00'
+2025-05-08 10:54:47,669 - DEBUG - 259 3 1 b'\x01\x00\x00\x00' b''
+2025-05-08 10:54:47,669 - DEBUG - 262 3 1 b'\x02\x00\x00\x00' b''
+2025-05-08 10:54:47,669 - DEBUG - 273 4 1 b'\xce\x00\x00\x00' b''
+2025-05-08 10:54:47,669 - DEBUG - 277 3 1 b'\x04\x00\x00\x00' b''
+2025-05-08 10:54:47,669 - DEBUG - 278 4 1 b'\xb8\x0b\x00\x00' b''
+2025-05-08 10:54:47,669 - DEBUG - 279 4 1 b'\x00\x87\x93\x03' b''
+2025-05-08 10:54:47,669 - DEBUG - 282 5 1 b'\xbe\x00\x00\x00' b'\xf4\x01\x00\x00\x01\x00\x00\x00'
+2025-05-08 10:54:47,669 - DEBUG - 283 5 1 b'\xc6\x00\x00\x00' b'\xf4\x01\x00\x00\x01\x00\x00\x00'
+2025-05-08 10:54:47,669 - DEBUG - 284 3 1 b'\x01\x00\x00\x00' b''
+2025-05-08 10:54:47,669 - DEBUG - 296 3 1 b'\x02\x00\x00\x00' b''
+2025-05-08 10:54:47,669 - DEBUG - 338 3 1 b'\x02\x00\x00\x00' b''

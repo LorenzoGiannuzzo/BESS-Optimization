@@ -28,8 +28,12 @@ from logger import setup_logger
 
 setup_logger()
 
+
+
 # CREATION OF CLASS MAIN
 class Main:
+
+
 
     # CLASS ATTRIBUTES DEFINITION
     def __init__(self, multiprocessing=True):
@@ -80,10 +84,12 @@ class Main:
         # Extract charge/discharge time series from solution
         load_decision = solution.X[index_maxrev,time_window:time_window*2]
 
+        size = solution.X[index_maxrev, -1]
+
         # APPLY PHYSICAL CONSTRAINTS
         (soc, charged_energy, discharged_energy, c_d_timeseries, taken_from_grid, discharged_from_pv,
          taken_from_pv, n_cycler,load_self_consumption,from_pv_to_load, from_BESS_to_load) =\
-            self.apply_physical_constraints(c_d_timeseries, load_decision)  # Apply constraints to the solution
+            self.apply_physical_constraints(c_d_timeseries, load_decision,size)  # Apply constraints to the solution
 
         # DEFINE CLASS ATTRIBUTES AS CONSTRAINED SOLUTION OBTAINED FORM OPTIMIZATION
         self.c_d_timeseries_final = c_d_timeseries  # Final charge/discharge time series
@@ -105,7 +111,7 @@ class Main:
 
         # CALCULATE AND PRINT REVENUES
         self.calculate_and_print_revenues(self.charged_energy, self.discharged_energy, self.taken_from_grid,
-                                          self.discharged_from_pv, self.from_pv_to_load, self.from_BESS_to_load, data)
+                                          self.discharged_from_pv, self.from_pv_to_load, self.from_BESS_to_load, data, size)
 
         self.load = data
         self.pv_production = pv_production['P']
@@ -120,13 +126,14 @@ class Main:
 
     # CONSTRAINTS FUNCTION DEFINITION
     @staticmethod
-    def apply_physical_constraints(c_d_timeseries, load_decision):
+    def apply_physical_constraints(c_d_timeseries, load_decision, size):
 
         from Load_l import data
         from argparser_l import n_cycles  # Import number of cycles
         from BESS_model_l import degradation
         from argparser_l import n_cycles
         from argparser_l import soc_max, soc_min
+
 
         # GET CHARGE/DISCHARGE INTERPOLATED FUNCTIONS
         c_func = charge_rate_interpolated_func
@@ -144,6 +151,8 @@ class Main:
         # GET VARIABLES
         production = pv_production['P']
         load = data
+
+        size = size
 
         # INITIALIZE VARIABLES
         n_cycler = [0] * time_window
@@ -521,7 +530,9 @@ class Main:
                 discharged_from_pv, taken_from_pv, n_cycler, load_self_consumption, from_pv_to_load, from_BESS_to_load)
 
     def calculate_and_print_revenues(self, charged_energy, discharged_energy, taken_from_grid, discharged_from_pv,
-                                     from_pv_to_load, from_BESS_to_load, load):
+                                     from_pv_to_load, from_BESS_to_load, load, size):
+
+        size = size
 
         from Economic_parameters_l import PUN_timeseries_sell, PUN_timeseries_buy
 
@@ -541,6 +552,8 @@ class Main:
 
         # DISPLAY TOTAL REVENUES
         print("\nRevenues for optimized time window [EUROs]:\n\n", revv)
+
+        print("\n Optimal BESS size: \n\n", size)
 
     # DEFINE PLOT RESULTS FUNCTION
     def plot_results(self, soc, charged_energy, discharged_energy, c_d_energy, PUN_Timeseries, taken_from_grid,

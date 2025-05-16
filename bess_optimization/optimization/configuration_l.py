@@ -106,7 +106,7 @@ xl = [-max_discharge] * time_window + [0.0] * time_window
 xu = [max_charge] * time_window + [+1.0] * time_window
 
 # 8) DEFINE NUMBER OF GENERATIONS
-n_gen = 200
+n_gen = 1000
 
 # 8-bis) DEFINE TOLERANCE
 tolerance = 0.05

@@ -82,7 +82,7 @@ class Main:
 
         # APPLY PHYSICAL CONSTRAINTS
         (soc, charged_energy, discharged_energy, c_d_timeseries, taken_from_grid, discharged_from_pv,
-         taken_from_pv, n_cycler,load_self_consumption,from_pv_to_load, from_BESS_to_load) =\
+         taken_from_pv, n_cycler,load_self_consumption,from_pv_to_load, from_BESS_to_load, shared_eenergy) =\
             self.apply_physical_constraints(c_d_timeseries, load_decision)  # Apply constraints to the solution
 
         # DEFINE CLASS ATTRIBUTES AS CONSTRAINED SOLUTION OBTAINED FORM OPTIMIZATION
@@ -105,7 +105,7 @@ class Main:
 
         # CALCULATE AND PRINT REVENUES
         self.calculate_and_print_revenues(self.charged_energy, self.discharged_energy, self.taken_from_grid,
-                                          self.discharged_from_pv, self.from_pv_to_load, self.from_BESS_to_load, data)
+                                          self.discharged_from_pv, self.from_pv_to_load, self.from_BESS_to_load, data, shared_energy= shared_eenergy)
 
         self.load = data
         self.pv_production = pv_production['P']
@@ -504,6 +504,8 @@ class Main:
             actual_capacity = size * degradation(n_cycles_prev) / 100
             n_cycles = n_cycles_prev + total_energy / actual_capacity
 
+        shared_energy = charged_energy_from_grid_to_BESS
+
         # EVALUATE THE NUMBER OF CYCLES DONE BY BESS
         total_charged = np.sum(charged_energy_from_BESS)
         total_discharged = np.sum(-np.array(discharged_energy_from_BESS))
@@ -518,10 +520,10 @@ class Main:
         n_cycles = total_energy / actual_capacity
 
         return (soc, charged_energy_from_BESS, discharged_energy_from_BESS, c_d_timeseries, charged_energy_from_grid_to_BESS,
-                discharged_from_pv, taken_from_pv, n_cycler, load_self_consumption, from_pv_to_load, from_BESS_to_load)
+                discharged_from_pv, taken_from_pv, n_cycler, load_self_consumption, from_pv_to_load, from_BESS_to_load, shared_energy)
 
     def calculate_and_print_revenues(self, charged_energy, discharged_energy, taken_from_grid, discharged_from_pv,
-                                     from_pv_to_load, from_BESS_to_load, load):
+                                     from_pv_to_load, from_BESS_to_load, load, shared_energy):
 
         from Economic_parameters_l import PUN_timeseries_sell, PUN_timeseries_buy
 
@@ -530,7 +532,10 @@ class Main:
                                       + np.abs(discharged_from_pv) * PUN_timeseries_sell[:,1] / 1000
                                       + np.abs(from_pv_to_load) * PUN_timeseries_buy[:,1] * 1.2 / 1000
                                       + np.abs(from_BESS_to_load) * PUN_timeseries_buy[:,1] * 1.2 / 1000)
-                          - ( np.abs(load) - np.abs(from_pv_to_load) - np.abs(from_BESS_to_load) ) * PUN_timeseries_sell[:,1] * 1.2 / 1000)
+                          - ( np.abs(load) - np.abs(from_pv_to_load) - np.abs(from_BESS_to_load) ) * PUN_timeseries_sell[:,1] * 1.2 / 1000
+                          + np.abs(shared_energy) * 50.0 / 1000
+
+                          )
 
 
         revenues_finali = revenue_column

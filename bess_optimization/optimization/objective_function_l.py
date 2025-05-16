@@ -422,6 +422,13 @@ class Revenues(ElementwiseProblem):
             actual_capacity = size * degradation(n_cycles_prev) / 100
             n_cycles = n_cycles_prev + total_energy / actual_capacity
 
+            # EVALUATE ADDITIONAL SHARED ENERGY
+
+        self.rec_production = self.production * 100
+
+        self.shared_energy = self.charged_energy_from_grid_to_BESS
+
+
         # EVALUATE THE NUMBER OF CYCLES DONE BY BESS
         total_charged = np.sum(np.abs(self.charged_energy_from_BESS))
         total_discharged = np.sum(np.abs(self.discharged_energy_from_BESS))
@@ -436,7 +443,11 @@ class Revenues(ElementwiseProblem):
                                       + np.abs(self.discharged_from_pv) * self.PUN_timeseries_sell / 1000
                                       + np.abs(self.from_pv_to_load) * self.PUN_timeseries_buy * 1.2 / 1000
                                       + np.abs(self.from_BESS_to_load) * self.PUN_timeseries_buy * 1.2/ 1000)
-                          - ( np.abs(self.load) - np.abs(self.from_pv_to_load) - np.abs(self.from_BESS_to_load) ) * self.PUN_timeseries_sell * 1.2 / 1000)
+                          - ( np.abs(self.load) - np.abs(self.from_pv_to_load) - np.abs(self.from_BESS_to_load) ) * self.PUN_timeseries_sell * 1.2 / 1000
+                          + np.abs(self.shared_energy) * 50 / 1000
+
+                          )
+
 
         # EVALUATE THE REVENUES OBTAINED DURING THE OPTIMIZATION TIME WINDOW
         total_revenue = np.sum(revenue_column)

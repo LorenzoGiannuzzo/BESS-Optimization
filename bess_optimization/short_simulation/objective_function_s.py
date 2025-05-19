@@ -459,7 +459,6 @@ class Revenues(ElementwiseProblem):
         revenue_column = np.array(np.abs(self.discharged_energy_from_BESS) * self.PUN_timeseries / 1000 -
                                       np.abs(self.charged_energy_from_grid_to_BESS) * self.PUN_timeseries * 1.2 / 1000
                                       # + self.discharged_from_pv * self.PUN_timeseries / 1000
-                                      + np.abs(self.discharged_from_pv) * self.PUN_timeseries / 1000
                                       + np.abs(self.shared_energy_BESS) * 120 / 1000
                                       + np.abs(self.from_pv_to_load) * self.PUN_timeseries * 1.2 / 1000
                                       + np.abs(self.from_BESS_to_load) * self.PUN_timeseries * 1.2 / 1000

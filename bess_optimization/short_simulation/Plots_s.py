@@ -469,7 +469,7 @@ class EnergyPlots:
                      fontsize=15, horizontalalignment='center')
 
         for i in range(len(time_steps)):
-            ax0.bar(time_steps[i], soc[i] * 100, color=cmap(norm(soc[i])))
+            ax0.bar(time_steps[i], soc[i] * 100, color=cmap(norm(soc[i] * 100)))
         ax0.set_title('State of Charge (SoC)')
         ax0.set_ylabel('SoC [%]')
         plt.ylim(0, max(soc) * 100 + max(soc) * 100 * 0.08)
@@ -510,7 +510,11 @@ class EnergyPlots:
 
         ax1.bar(time_steps, -discharged_from_pv, width=width, bottom = from_pv_to_load, label='From PV to Grid')
 
+        ax1.bar(time_steps, from_pv_to_load, width=width, color = "grey", label='From PV to Load')
+
         ax1.bar(time_steps, discharged_energy, width=width, color='darkred', bottom=np.array(taken_from_grid), label='From BESS to Grid')
+
+        ax1.bar(time_steps, taken_from_pv, width=width, color='orange', bottom=np.array(from_pv_to_load), label='From PV to BESS')
 
         ax1.bar(time_steps, shared_energy_bess, color='cyan', width=width, label='Shared_energy BESS', bottom=load)
 

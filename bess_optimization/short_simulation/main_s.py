@@ -543,7 +543,6 @@ class Main:
         revenue_column = np.array(np.abs(discharged_energy_from_BESS) * PUN_ts / 1000 -
                                   np.abs(charged_energy_from_grid_to_BESS) * PUN_ts * 1.2 / 1000
                                   # + self.discharged_from_pv * self.PUN_timeseries / 1000
-                                  + np.abs(discharged_from_pv) * PUN_ts / 1000
                                   + np.abs(shared_energy_BESS) * 120 / 1000
                                   + np.abs(from_pv_to_load) * PUN_ts * 1.2 / 1000
                                   + np.abs(from_BESS_to_load) * PUN_ts * 1.2 / 1000
@@ -657,7 +656,7 @@ if __name__ == "__main__":
             "technology": technology,  # Technology used
             "size": size,  # Size of the BESS
             "dod": range_str,  # Depth of discharge
-            "n_cycles": main.n_cycler[i],  # Number of cycles
+            "n_cycles": float(main.n_cycler),  # Number of cycles
             "energy_charged_from_PV_to_BESS": main.taken_from_pv[i],  # Energy charged from PV
             "energy_taken_from_grid_to_BESS": main.taken_from_grid[i],  # Energy taken from the grid
             "energy_sold_from_PV": main.discharged_from_pv[i],  # Energy sold from PV

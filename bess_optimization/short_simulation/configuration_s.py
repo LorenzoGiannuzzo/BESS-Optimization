@@ -117,7 +117,7 @@ xl = [-max_discharge] * time_window + [0.0] * time_window
 xu = [max_charge] * time_window + [+1.0] * time_window
 
 # 8) DEFINE NUMBER OF GENERATIONS USED TO INTERRUPT THE ALGORITHM EXECUTION
-n_gen = 100
+n_gen = 1000
 
 if n_gen < 100:
     logging.info("A low number of generations is used. Convergence is not assured.")
@@ -147,7 +147,7 @@ indicates the number of gaps between two consecutive points along an objective a
 eta_crossover = 1
 eta_mutation = 3
 prob_crossover = 1.0
-prob_mutation = 0.8
+prob_mutation = 0.9
 
 
 ref_dirs = get_reference_directions("das-dennis", n_obj, n_partitions=pop_size)

@@ -77,7 +77,7 @@ class Main:
 
         # GET CHARGED/DISCHARGED ENERGY FROM SOLUTION
         c_d_timeseries = solution.X[:time_window]  # Extract charge/discharge time series from solution
-        load_decision = [0.0] * time_window
+        load_decision = solution.X[time_window:time_window*2]
 
         # APPLY PHYSICAL CONSTRAINTS
         (soc, charged_energy, discharged_energy, c_d_timeseries, taken_from_grid, discharged_from_pv,
@@ -102,7 +102,7 @@ class Main:
         from Load import data
 
         # CALCULATE AND PRINT REVENUES
-        self.calculate_and_print_revenues(self.charged_energy, self.discharged_energy, self.taken_from_grid,
+        self.calculate_and_print_revenues(self.taken_from_grid, self.discharged_energy, self.taken_from_grid,
                                           self.discharged_from_pv, self.from_pv_to_load, self.from_BESS_to_load,
                                           shared_energy_bess,data)
         # Calculate and display revenues
@@ -122,42 +122,50 @@ class Main:
         from BESS_model_s import degradation
         from argparser_s import n_cycles
         from argparser_s import soc_max, soc_min
+        import Economic_parameters_s
+        import configuration_s
 
         # INITIALIZE VARIABLES
-        n_cycler = [0] * time_window
-        n_cycler[0] = n_cycles
-        total_available_energy = [0.0] * time_window
-        self_consumption = [0.0] * time_window
-        from_pv_to_load = [0.0] * time_window
-        from_BESS_to_load = [0.0] * time_window
-        load_self_consumption = [0.0] * time_window
-        taken_from_pv = [0.0] * time_window
-        charged_energy_from_grid_to_BESS = [0.0] * time_window
-        discharged_from_pv = [0.0] * time_window
-        remaining_production = [0.0] * time_window
-        shared_energy_REC = [0.0] * time_window
-        shared_energy_BESS = [0.0] * time_window
-        charged_energy_from_BESS = [0.0] * time_window
-        discharged_energy_from_BESS = [0.0] * time_window
-        remaining_pv = [0.0] * time_window
-        remaining_load = [0.0] * time_window
+        PUN_timeseries = Economic_parameters_s.PUN_timeseries[:, 1]
+        c_func, d_func = charge_rate_interpolated_func, discharge_rate_interpolated_func
+
+        # DEFINE OBJECTIVE FUNCTION PARAMETERS - SoC, Charged/Discharged Energy (from BESS)
+        soc = np.array([configuration_s.soc_0] * (len(PUN_timeseries)))
+        discharged_energy_from_BESS = np.zeros((len(PUN_timeseries)))   # OK
+        load_self_consumption = np.zeros((len(PUN_timeseries)))
+        from_pv_to_load = np.zeros((len(PUN_timeseries)))
+        from_BESS_to_load = np.zeros((len(PUN_timeseries)))
+        load_decision = load_decision
+
+        shared_energy_REC = np.zeros((len(PUN_timeseries)))
+        remaining_production = np.zeros((len(PUN_timeseries)))
+        shared_energy_BESS = np.zeros((len(PUN_timeseries)))
+
+        charged_energy_from_BESS = np.zeros((len(PUN_timeseries)))  # OK
+        total_available_energy =  np.zeros((len(PUN_timeseries)))   # OK
+        remaining_pv =  np.zeros((len(PUN_timeseries)))
+        remaining_load =  np.zeros((len(PUN_timeseries)))
+        taken_from_pv =  np.zeros((len(PUN_timeseries)))
+        charged_energy_from_grid_to_BESS =  np.zeros((len(PUN_timeseries)))
+        discharged_from_pv = np.zeros((len(PUN_timeseries)))
+        n_cycler = n_cycles
 
         # GET CHARGE/DISCHARGE INTERPOLATED FUNCTIONS
         c_func = charge_rate_interpolated_func
         d_func = discharge_rate_interpolated_func
 
         # INITIALIZE FIRST PARAMETERS
-        soc = [0.0] * time_window
         soc[0] = soc_0
-        bess_model = BESS_model(time_window, PUN_timeseries, soc, size, c_func, d_func)  # Create BESS model instance
 
-        charged_energy, discharged_energy = bess_model.run_simulation(c_d_timeseries)
+        #bess_model = BESS_model(time_window, PUN_timeseries, soc, size, c_func, d_func)  # Create BESS model instance
+
+        #charged_energy, discharged_energy = bess_model.run_simulation(c_d_timeseries)
         # Run simulation to get energy values
 
         # GET VARIABLES
-        production = pv_production['P']
+        production = pv_production['P'] # OK
         rec_load = data_rec
-        load = data
+        load = data # OK
 
         # Loop through time window to calculate state of charge and cycles
         for i in range(time_window - 1):
@@ -175,13 +183,15 @@ class Main:
 
             if c_d_timeseries[i] > 0:
 
-                charged_energy_from_BESS[i] = np.minimum(c_d_timeseries[i] * size,
-                                                              c_func(soc[i]) * size)
+                charged_energy_from_BESS[i] = np.minimum(c_d_timeseries[i] *
+                                                              size, c_func(soc[i]) * size)
+
                 charged_energy_from_BESS[i] = np.minimum(charged_energy_from_BESS[i],
                                                               np.maximum((soc_max - soc[i]) * size, 0.0))
 
                 assert charged_energy_from_BESS[
-                           i] >= 0, f"Charged energy into BESS is negative. {c_d_timeseries[i]}\n\n {c_func(soc[i])}\n\n {soc_max - soc[i]}"
+                           i] >= 0, (f"Charged energy into BESS is negative. {c_d_timeseries[i]}\n\n {c_func(soc[i])}\n\n "
+                                     f"{soc_max - soc[i]}")
 
                 discharged_energy_from_BESS[i] = 0
 
@@ -189,6 +199,7 @@ class Main:
 
                 discharged_energy_from_BESS[i] = np.maximum(c_d_timeseries[i] * size,
                                                                  -d_func(soc[i]) * size)
+
                 discharged_energy_from_BESS[i] = np.maximum(discharged_energy_from_BESS[i],
                                                                  np.minimum((soc_min - soc[i]) * size, 0.0))
 
@@ -197,12 +208,13 @@ class Main:
             else:
 
                 charged_energy_from_BESS[i] = 0
+
                 discharged_energy_from_BESS[i] = 0
 
             # LOAD ESTIMATION ------------------------------------------------------------------------------------------
 
-            total_available_energy[i] = np.minimum(np.maximum((soc[i] - soc_min), 0.0) * size,
-                                                   size * d_func(soc[i])) + production[i]
+            total_available_energy[i] = np.minimum(np.maximum((soc[i] - soc_min), 0.0) *
+                                                   size, size * d_func(soc[i])) + production[i]
 
             assert total_available_energy[i] >= 0, "Total Available Energy is negative (1).\n\n"
 
@@ -217,8 +229,7 @@ class Main:
 
             else:
 
-                load_self_consumption[i] = load_decision[i] * np.minimum(load[i],
-                                                                                   total_available_energy[i])
+                load_self_consumption[i] = load_decision[i] * np.minimum(load[i],  total_available_energy[i])
 
                 assert load_self_consumption[i] >= 0, "Total self consumption is negative (A-2).\n\n"
 
@@ -290,7 +301,9 @@ class Main:
             if from_BESS_to_load[i] > 0:
                 charged_energy_from_grid_to_BESS[i] = 0
 
-            # (J) UPDATE THE ENERGY THAT THE BESS WANT TO CHARGE AS SUM OF THE ONE CHARGED FROM GRID TO BESS AND THE ENERGY
+            # (J) UPDATE THE ENERGY THAT THE BESS WANT TO CHARGE AS SUM OF THE ONE CHARGED FROM GRID TO BESS AND THE
+            # ENERGY
+
             # TAKEN FROM PV TO THE BESS
             charged_energy_from_BESS[i] = charged_energy_from_grid_to_BESS[i] + taken_from_pv[i]
 
@@ -515,7 +528,7 @@ class Main:
         actual_capacity = size * degradation(n_cycles_prev) / 100
         n_cycles = total_energy / actual_capacity
 
-        return (soc, charged_energy_from_BESS, discharged_energy, c_d_timeseries, charged_energy_from_grid_to_BESS,
+        return (soc, charged_energy_from_BESS, discharged_energy_from_BESS, c_d_timeseries, charged_energy_from_grid_to_BESS,
                 discharged_from_pv, taken_from_pv, n_cycler, load_self_consumption, from_pv_to_load, from_BESS_to_load,
                 shared_energy_BESS)
 
@@ -530,12 +543,12 @@ class Main:
         revenue_column = np.array(np.abs(discharged_energy_from_BESS) * PUN_ts / 1000 -
                                   np.abs(charged_energy_from_grid_to_BESS) * PUN_ts * 1.2 / 1000
                                   # + self.discharged_from_pv * self.PUN_timeseries / 1000
+                                  + np.abs(discharged_from_pv) * PUN_ts / 1000
                                   + np.abs(shared_energy_BESS) * 120 / 1000
                                   + np.abs(from_pv_to_load) * PUN_ts * 1.2 / 1000
                                   + np.abs(from_BESS_to_load) * PUN_ts * 1.2 / 1000
                                   - (np.abs(load) - np.abs(from_pv_to_load) - np.abs(
-            from_BESS_to_load)) * PUN_ts * 1.2 / 1000
-                                  )
+                                  from_BESS_to_load)) * PUN_ts * 1.2 / 1000 )
 
         # EVALUATES TYPICAL DAYS REVENUES
         num_settimane = 12  # Number of weeks to evaluate
@@ -548,11 +561,12 @@ class Main:
             fine = inizio + ore_per_settimana  # End index for the week
             revenues_settimanali[i] = np.sum(revenue_column[inizio:fine]) * 30  # Calculate weekly revenues
 
-        revenues_finali = revenues_settimanali
+        revenues_finali = np.sum(revenues_settimanali)
+
         self.rev = revenue_column
 
         # EVALUATE TOTAL REVENUES
-        revv = np.sum(revenues_finali)
+        revv = revenues_finali
 
         # DISPLAY TOTAL REVENUES
         print("\nRevenues for optimized time window [EUROs]:\n\n", revv)

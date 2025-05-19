@@ -117,7 +117,9 @@ class Revenues(ElementwiseProblem):
 
             if self.c_d_timeseries[i] > 0:
 
-                self.charged_energy_from_BESS[i] = np.minimum(self.c_d_timeseries[i] * size, self.c_func(self.soc[i])*size)
+                self.charged_energy_from_BESS[i] = np.minimum(self.c_d_timeseries[i] *
+                                                              size, self.c_func(self.soc[i])*size)
+
                 self.charged_energy_from_BESS[i] = np.minimum(self.charged_energy_from_BESS[i],
                                                               np.maximum((soc_max - self.soc[i]) * size, 0.0))
 
@@ -129,6 +131,7 @@ class Revenues(ElementwiseProblem):
 
                 self.discharged_energy_from_BESS[i] = np.maximum(self.c_d_timeseries[i] * size,
                                                                  -self.d_func(self.soc[i]) * size)
+
                 self.discharged_energy_from_BESS[i] = np.maximum(self.discharged_energy_from_BESS[i],
                                                                  np.minimum((soc_min - self.soc[i]) * size, 0.0))
 
@@ -137,11 +140,13 @@ class Revenues(ElementwiseProblem):
             else:
 
                 self.charged_energy_from_BESS[i] = 0
+
                 self.discharged_energy_from_BESS[i] = 0
 
             # LOAD ESTIMATION ------------------------------------------------------------------------------------------
 
-            total_available_energy[i] = np.minimum(np.maximum((self.soc[i] - soc_min), 0.0) * size, size * self.d_func(self.soc[i])) + self.production[i]
+            total_available_energy[i] = np.minimum(np.maximum((self.soc[i] - soc_min), 0.0) *
+                                                   size, size * self.d_func(self.soc[i])) + self.production[i]
 
             assert total_available_energy[i] >= 0, "Total Available Energy is negative (1).\n\n"
 
@@ -225,7 +230,9 @@ class Revenues(ElementwiseProblem):
             if self.from_BESS_to_load[i] > 0:
                 self.charged_energy_from_grid_to_BESS[i] = 0
 
-            # (J) UPDATE THE ENERGY THAT THE BESS WANT TO CHARGE AS SUM OF THE ONE CHARGED FROM GRID TO BESS AND THE ENERGY
+            # (J) UPDATE THE ENERGY THAT THE BESS WANT TO CHARGE AS SUM OF THE ONE CHARGED FROM GRID TO BESS AND THE
+            # ENERGY
+
             # TAKEN FROM PV TO THE BESS
             self.charged_energy_from_BESS[i] = self.charged_energy_from_grid_to_BESS[i] + self.taken_from_pv[i]
 
@@ -452,6 +459,7 @@ class Revenues(ElementwiseProblem):
         revenue_column = np.array(np.abs(self.discharged_energy_from_BESS) * self.PUN_timeseries / 1000 -
                                       np.abs(self.charged_energy_from_grid_to_BESS) * self.PUN_timeseries * 1.2 / 1000
                                       # + self.discharged_from_pv * self.PUN_timeseries / 1000
+                                      + np.abs(self.discharged_from_pv) * self.PUN_timeseries / 1000
                                       + np.abs(self.shared_energy_BESS) * 120 / 1000
                                       + np.abs(self.from_pv_to_load) * self.PUN_timeseries * 1.2 / 1000
                                       + np.abs(self.from_BESS_to_load) * self.PUN_timeseries * 1.2 / 1000
@@ -468,11 +476,7 @@ class Revenues(ElementwiseProblem):
             fine = inizio + ore_per_settimana
             revenues_settimanali[i] = np.sum(revenue_column[inizio:fine]) * 30
 
-        revenues_settimanali = np.sum(revenue_column)
-
-        revenues_finali = revenues_settimanali
-
-        somma_revenues_finali = np.sum(revenues_finali)
+        somma_revenues_finali = np.sum(revenues_settimanali)
 
         # EVALUATE THE REVENUES OBTAINED DURING THE OPTIMIZATION TIME WINDOW
         total_revenue = somma_revenues_finali

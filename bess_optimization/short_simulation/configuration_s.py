@@ -95,7 +95,7 @@ soc_0 = soc
 assert (soc_0 >= 0) & (soc_0 <= 100), logging.error("Inital SoC is lower than 0% or higher tan 100%.\n\n")
 
 # 3) DEFINE POPULATION SITE USED TO EXPLORE THE OPTIMIZATION DOMAIN
-pop_size = 100
+pop_size = 20
 
 if pop_size < 20:
     logging.info("Population size is lower than 20, it's highly suggested to increase it above 20.\n\n")
@@ -117,7 +117,7 @@ xl = [-max_discharge] * time_window + [0.0] * time_window
 xu = [max_charge] * time_window + [+1.0] * time_window
 
 # 8) DEFINE NUMBER OF GENERATIONS USED TO INTERRUPT THE ALGORITHM EXECUTION
-n_gen = 100
+n_gen = 1500
 
 if n_gen < 100:
     logging.info("A low number of generations is used. Convergence is not assured.")

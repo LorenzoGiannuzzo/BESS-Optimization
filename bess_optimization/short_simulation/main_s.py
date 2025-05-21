@@ -22,7 +22,8 @@ from Economic_parameters_s import PUN_timeseries  # Economic parameters for pric
 from Optimizer_s import Optimizer  # Optimization class
 from argparser_s import output_json_path, range_str, soc_min, power_energy, POD_power  # Argument parser parameters
 from Plots_s import EnergyPlots  # Plotting utilities
-from PV_s import pv_production  # Photovoltaic production data
+from PV_s import pv_production, rec_pv # Photovoltaic production data
+from Load import rec_load
 import subprocess
 
 
@@ -119,11 +120,15 @@ class Main:
     def apply_physical_constraints(c_d_timeseries, load_decision):
 
         from Load import data, data_rec
+        from PV_s import rec_pv
         from BESS_model_s import degradation
         from argparser_s import n_cycles
         from argparser_s import soc_max, soc_min
         import Economic_parameters_s
         import configuration_s
+
+        rec_pv = rec_pv[:,1]
+
 
         # INITIALIZE VARIABLES
         PUN_timeseries = Economic_parameters_s.PUN_timeseries[:, 1]
@@ -271,23 +276,23 @@ class Main:
             # BESS ESTIMATION ------------------------------------------------------------------------------------------
 
             # (G) EVALUATE THE ENERGY TAKEN BY THE BESS FROM PV
-            taken_from_pv[i] = np.minimum(remaining_pv[i], charged_energy_from_BESS[i])
+            taken_from_pv[i] = np.minimum(np.abs(remaining_pv[i]), charged_energy_from_BESS[i])
 
             assert taken_from_pv[i] >= 0, "Energy taken from PV to the BESS is negative (G).\n\n"
 
             # (H) APPLY BESS CONSTRAINTS ON ENERGY TAKEN FROM PV
 
-            # (H-1) HOW MUCH ENERGY BESS CAN TAKE IN THE TIME-STAMP
-            taken_from_pv[i] = np.minimum(taken_from_pv[i], size * c_func(soc[i]))
-
-            assert taken_from_pv[i] >= 0, "Energy taken from PV to the BESS is negative (H-1).\n\n"
-
             # (H-2) HOW MUCH ENERGY THE BESS CAN CHARGE BASED ON THE CAP OF SOC_MAX
-            taken_from_pv[i] = np.minimum(taken_from_pv[i],
+            taken_from_pv[i] = np.minimum(np.abs(taken_from_pv[i]),
                                                np.maximum((soc_max - soc[i]) * size + from_BESS_to_load[i],
                                                           0.0))
 
             assert taken_from_pv[i] >= 0, "Energy taken from PV to the BESS is negative (H-2).\n\n"
+
+            # (H-1) HOW MUCH ENERGY BESS CAN TAKE IN THE TIME-STAMP
+            taken_from_pv[i] = np.minimum(np.abs(taken_from_pv[i]), np.abs(size * c_func(soc[i])))
+
+            assert taken_from_pv[i] >= 0, "Energy taken from PV to the BESS is negative (H-1).\n\n"
 
             # (I) EVALUATE THE ENERGY USED TO CHARGE THE BESS TAKEN FROM THE GRID (IF CHARGED_ENERGY_FROM_BESS IS NEGATIVE,
             # MEANING THAT THE BESS IS DISCHARGING, THIS VALUE IS = 0
@@ -422,22 +427,22 @@ class Main:
             # BESS ESTIMATION ------------------------------------------------------------------------------------------
 
             # (T) EVALUATE THE ENERGY TAKEN BY THE BESS FROM PV
-            taken_from_pv[i] = np.minimum(remaining_pv[i], charged_energy_from_BESS[i])
+            taken_from_pv[i] = np.minimum(np.abs(remaining_pv[i]), charged_energy_from_BESS[i])
 
             assert taken_from_pv[i] >= 0, "Energy taken from PV to the BESS is negative (T).\n\n"
 
             # (U) APPLY BESS CONSTRAINTS ON ENERGY TAKEN FROM PV
 
-            # (U-1) HOW MUCH ENERGY BESS CAN TAKE IN THE TIME-STAMP
-            taken_from_pv[i] = np.minimum(taken_from_pv[i], size * c_func(soc[i]))
-
-            assert taken_from_pv[i] >= 0, "Energy taken from PV to the BESS is negative (U-1).\n\n"
-
             # (U-2) HOW MUCH ENERGY THE BESS CAN CHARGE BASED ON THE CAP OF SOC_MAX
-            taken_from_pv[i] = np.minimum(taken_from_pv[i], np.maximum(
+            taken_from_pv[i] = np.minimum(np.abs(taken_from_pv[i]), np.maximum(
                 (soc_max - soc[i]) * size + from_BESS_to_load[i], 0.0))
 
             assert taken_from_pv[i] >= 0, "Energy taken from PV to the BESS is negative (U-2).\n\n"
+
+            # (U-1) HOW MUCH ENERGY BESS CAN TAKE IN THE TIME-STAMP
+            taken_from_pv[i] = np.minimum(np.abs(taken_from_pv[i]), np.abs(size * c_func(soc[i])))
+
+            assert taken_from_pv[i] >= 0, "Energy taken from PV to the BESS is negative (U-1).\n\n"
 
             # (V) EVALUATE THE ENERGY USED TO CHARGE THE BESS TAKEN FROM THE GRID (IF CHARGED_ENERGY_FROM_BESS IS NEGATIVE,
             # MEANING THAT THE BESS IS DISCHARGING, THIS VALUE IS = 0
@@ -509,7 +514,7 @@ class Main:
 
             # EVALUATING SHARED ENERGY
             shared_energy_REC[i] = np.minimum(rec_load[i], np.abs(
-                production[i] * 10))  # TODO: questo è da cambiare, dovrei prendere un file a parte in realtà
+                rec_pv[i]))  # TODO: questo è da cambiare, dovrei prendere un file a parte in realtà
             remaining_production[i] = np.maximum(np.abs(discharged_from_pv[i]) - shared_energy_REC[i],
                                                       0.0)
             shared_energy_BESS[i] = np.minimum(remaining_production[i], charged_energy_from_BESS[i])

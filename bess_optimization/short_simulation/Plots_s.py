@@ -506,19 +506,22 @@ class EnergyPlots:
         load = pd.to_numeric(self.load, errors='coerce')
         ax1.fill_between(time_steps, load, color='orange', alpha=0.3, label='REC Load')
 
-        ax1.fill_between(time_steps, 0, produced_from_pv, color='lightblue', alpha=0.3, label='Produced from PV')
+        ax1.fill_between(time_steps, 0, produced_from_pv, color='lightblue', alpha=0.3, label="User's PV Production")
 
-        ax1.bar(time_steps, -discharged_from_pv, width=width, bottom = from_pv_to_load, label='From PV to Grid')
+        ax1.bar(time_steps, -discharged_from_pv, width=width, bottom=from_pv_to_load + taken_from_pv,
+                label="User's PV to Grid")
 
-        ax1.bar(time_steps, from_pv_to_load, width=width, color = "grey", label='From PV to Load')
+        ax1.bar(time_steps, from_pv_to_load, width=width, color="grey", label='User PV to Load')
 
-        ax1.bar(time_steps, discharged_energy, width=width, color='darkred', bottom=np.array(taken_from_grid), label='From BESS to Grid')
+        ax1.bar(time_steps, discharged_energy, width=width, color='darkred', bottom=np.array(taken_from_grid),
+                label="User's BESS to Grid")
 
-        ax1.bar(time_steps, taken_from_pv, width=width, color='orange', bottom=np.array(from_pv_to_load), label='From PV to BESS')
+        ax1.bar(time_steps, taken_from_pv, width=width, color='orange', bottom=np.array(from_pv_to_load),
+                label="User's PV to BESS")
 
-        ax1.bar(time_steps, shared_energy_bess, color='cyan', width=width, label='Shared_energy BESS', bottom=load)
+        ax1.bar(time_steps, shared_energy_bess, color='cyan', width=width, bottom=from_pv_to_load+taken_from_pv+np.abs(discharged_from_pv), label='User BESS Add SE')
 
-        ax1.bar(time_steps, [1] * np.array(taken_from_grid), width=width, color='darkgreen', label='From Grid to BESS')
+        ax1.bar(time_steps, [1] * np.array(taken_from_grid), width=width, color='darkgreen', label='Grid to User BESS')
 
         ax1.set_ylabel('Energy [kWh]')
         ax1.set_title('System Energy Flows')

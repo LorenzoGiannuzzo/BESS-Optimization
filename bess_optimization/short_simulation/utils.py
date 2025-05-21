@@ -63,3 +63,15 @@ class BESS:
         return charge_rate_interpolated_func, discharge_rate_interpolated_func
 
 
+import pandas as pd
+
+# Define the path to your CSV file
+file_path = r'C:\Users\lorenzo.giannuzzo\PycharmProjects\BESS-Optimization\data\Input\pv\year_PV.csv'
+
+# Load the CSV file into a DataFrame
+df = pd.read_csv(file_path, sep=";")
+
+df['P'] = df['P'] * 10
+
+# Save the updated DataFrame back to the CSV file (overwrite)
+df.to_csv(r'C:\Users\lorenzo.giannuzzo\PycharmProjects\BESS-Optimization\data\Input\pv\REC_PV.csv', index=False, sep=";")

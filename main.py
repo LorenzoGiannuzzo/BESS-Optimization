@@ -48,6 +48,12 @@ if __name__ == "__main__":
     parser.add_argument('--input_load', type=str, required=False, default=input_load_default,
                         help='Absolute path of the output file .xlsx')
 
+    parser.add_argument('--rec_load', type=str, required=False, default=input_load_default,
+                        help='Absolute path of the output file .xlsx')
+
+    parser.add_argument('--rec_production', type=str, required=False, default=input_load_default,
+                        help='Absolute path of the output file .xlsx')
+
     parser.add_argument('--output_json', type=str, required=False, default=output_json_default,
                         help='Absolute path of the output file .json')
 

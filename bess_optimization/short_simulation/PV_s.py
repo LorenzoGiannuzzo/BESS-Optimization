@@ -10,7 +10,7 @@
 Last Update of current code: 21/02/2025 """
 
 import pandas as pd
-from argparser_s import input_PV_path, PV_power
+from argparser_s import input_PV_path, PV_power, rec_production
 from logger import setup_logger
 
 # File path
@@ -52,5 +52,49 @@ final_pv_result.reset_index(drop=True, inplace=True)
 # Convert to numpy array
 PV_timeseries_reduced = final_pv_result
 pv_production = PV_timeseries_reduced
+
+# REC PRODUCTION -------------------------------------------------------------------------------------------------------
+
+# File path
+file_path_rec = rec_production
+
+# Read the PV production data
+rec_production = pd.read_csv(file_path_rec, sep=';', usecols=['time', 'P'])
+
+rec_production['P'] = pd.to_numeric(rec_production['P'], errors='coerce')
+
+# Scale the power values
+rec_production['P'] = rec_production['P'] * PV_power / 1000
+
+# Convert 'time' to pandas datetime object
+# The format is 'YYYYMMDD:HHMM', so we need to replace ':' with a space and parse it
+rec_production['time'] = pd.to_datetime(rec_production['time'].str.replace(':', ' '), format='%Y%m%d %H%M', utc=True)
+
+# Set 'time' as the index
+rec_production.set_index('time', inplace=True)
+
+# Create new columns for month and hour
+rec_production['month'] = rec_production.index.month
+rec_production['hour'] = rec_production.index.hour
+
+# Group by month and hour, then calculate the mean
+mean_hourly_pv = rec_production.groupby(['month', 'hour'])['P'].mean().reset_index()
+
+# Create a new DataFrame to hold the final result
+final_pv_result_rec = pd.DataFrame()
+
+# Iterate over each month to create the final structure
+for month in range(1, 13):  # Months from 1 to 12
+    month_data = mean_hourly_pv[mean_hourly_pv['month'] == month]
+
+    # Append the month data to the final result
+    final_pv_result_rec = pd.concat([final_pv_result_rec, month_data[['hour', 'P']]], ignore_index=True)
+
+# Reset index to get hours as a column
+final_pv_result_rec.reset_index(drop=True, inplace=True)
+
+# Convert to numpy array
+PV_timeseries_reduced = final_pv_result_rec
+rec_pv = PV_timeseries_reduced.to_numpy()
 
 

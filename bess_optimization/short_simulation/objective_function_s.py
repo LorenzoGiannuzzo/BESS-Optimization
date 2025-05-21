@@ -16,7 +16,7 @@ import configuration_s
 import Economic_parameters_s
 from pymoo.core.problem import ElementwiseProblem
 from BESS_model_s import BESS_model, charge_rate_interpolated_func, discharge_rate_interpolated_func, size
-from PV_s import pv_production
+from PV_s import pv_production, rec_pv
 from Load import data, data_rec
 from argparser_s import POD_power
 from BESS_model_s import power_energy
@@ -69,7 +69,7 @@ class Revenues(ElementwiseProblem):
         self.load = data
 
         self.rec_load = data_rec
-
+        self.rec_production = rec_pv[:,1]
     # OBJECTIVE FUNCTION DEFINITION
     def _evaluate(self, x, out, *args, **kwargs):
 
@@ -97,6 +97,7 @@ class Revenues(ElementwiseProblem):
         self.discharged_from_pv = np.zeros((len(self.PUN_timeseries)))
         self.remaining_pv = np.zeros((len(self.PUN_timeseries)))
         self.remaining_load = np.zeros((len(self.PUN_timeseries)))
+        self.rec_pv = rec_pv[:,1]
 
         # EXECUTE THE UPDATE FOR EACH i-th TIMESTEP OF ALL THE ENERGY VECTORS. EVALUATING ENERGY BALANCES
         from argparser_s import n_cycles
@@ -171,7 +172,7 @@ class Revenues(ElementwiseProblem):
             assert self.from_pv_to_load[i] >= 0, "Energy from PV to the load is negative (B).\n\n"
 
             # (C) EVALUATE THE ENERGY THAT'S LEFT TO THE PV
-            self.remaining_pv[i] = self.production[i] - self.from_pv_to_load[i] # TODO: eccolo l'inghippo, no è solo quella che rimane tra la produzione ed il cazzo di carico della REC)
+            self.remaining_pv[i] = self.production[i] - self.from_pv_to_load[i]
 
             assert self.remaining_pv[i] >= 0, "Energy remaining to PV is negative (C).\n\n"
 
@@ -202,21 +203,21 @@ class Revenues(ElementwiseProblem):
             # BESS ESTIMATION ------------------------------------------------------------------------------------------
 
             # (G) EVALUATE THE ENERGY TAKEN BY THE BESS FROM PV
-            self.taken_from_pv[i] = np.minimum(self.remaining_pv[i], self.charged_energy_from_BESS[i])
+            self.taken_from_pv[i] = np.minimum(np.abs(self.remaining_pv[i]), np.abs(self.charged_energy_from_BESS[i]))
 
             assert self.taken_from_pv[i] >= 0, "Energy taken from PV to the BESS is negative (G).\n\n"
 
             # (H) APPLY BESS CONSTRAINTS ON ENERGY TAKEN FROM PV
 
-            # (H-1) HOW MUCH ENERGY BESS CAN TAKE IN THE TIME-STAMP
-            self.taken_from_pv[i] = np.minimum(self.taken_from_pv[i], size * self.c_func(self.soc[i]))
-
             assert self.taken_from_pv[i] >= 0, "Energy taken from PV to the BESS is negative (H-1).\n\n"
 
             # (H-2) HOW MUCH ENERGY THE BESS CAN CHARGE BASED ON THE CAP OF SOC_MAX
-            self.taken_from_pv[i] = np.minimum(self.taken_from_pv[i], np.maximum((soc_max - self.soc[i]) * size + self.from_BESS_to_load[i], 0.0))
+            self.taken_from_pv[i] = np.minimum(np.abs(self.taken_from_pv[i]), np.maximum((soc_max - self.soc[i]) * size + self.from_BESS_to_load[i], 0.0))
 
             assert self.taken_from_pv[i] >= 0, "Energy taken from PV to the BESS is negative (H-2).\n\n"
+
+            # (H-1) HOW MUCH ENERGY BESS CAN TAKE IN THE TIME-STAMP
+            self.taken_from_pv[i] = np.minimum(np.abs(self.taken_from_pv[i]), np.abs(size * self.c_func(self.soc[i])))
 
             # (I) EVALUATE THE ENERGY USED TO CHARGE THE BESS TAKEN FROM THE GRID (IF CHARGED_ENERGY_FROM_BESS IS NEGATIVE,
             # MEANING THAT THE BESS IS DISCHARGING, THIS VALUE IS = 0
@@ -349,22 +350,22 @@ class Revenues(ElementwiseProblem):
             # BESS ESTIMATION ------------------------------------------------------------------------------------------
 
             # (T) EVALUATE THE ENERGY TAKEN BY THE BESS FROM PV
-            self.taken_from_pv[i] = np.minimum(self.remaining_pv[i], self.charged_energy_from_BESS[i])
+            self.taken_from_pv[i] = np.minimum(np.abs(self.remaining_pv[i]), self.charged_energy_from_BESS[i])
 
             assert self.taken_from_pv[i] >= 0, "Energy taken from PV to the BESS is negative (T).\n\n"
 
             # (U) APPLY BESS CONSTRAINTS ON ENERGY TAKEN FROM PV
 
-            # (U-1) HOW MUCH ENERGY BESS CAN TAKE IN THE TIME-STAMP
-            self.taken_from_pv[i] = np.minimum(self.taken_from_pv[i], size * self.c_func(self.soc[i]))
-
-            assert self.taken_from_pv[i] >= 0, "Energy taken from PV to the BESS is negative (U-1).\n\n"
-
             # (U-2) HOW MUCH ENERGY THE BESS CAN CHARGE BASED ON THE CAP OF SOC_MAX
-            self.taken_from_pv[i] = np.minimum(self.taken_from_pv[i], np.maximum(
+            self.taken_from_pv[i] = np.minimum(np.abs(self.taken_from_pv[i]), np.maximum(
                     (soc_max - self.soc[i]) * size + self.from_BESS_to_load[i], 0.0))
 
             assert self.taken_from_pv[i] >= 0, "Energy taken from PV to the BESS is negative (U-2).\n\n"
+
+            # (U-1) HOW MUCH ENERGY BESS CAN TAKE IN THE TIME-STAMP
+            self.taken_from_pv[i] = np.minimum(np.abs(self.taken_from_pv[i]), np.abs(size * self.c_func(self.soc[i])))
+
+            assert self.taken_from_pv[i] >= 0, "Energy taken from PV to the BESS is negative (U-1).\n\n"
 
             # (V) EVALUATE THE ENERGY USED TO CHARGE THE BESS TAKEN FROM THE GRID (IF CHARGED_ENERGY_FROM_BESS IS NEGATIVE,
             # MEANING THAT THE BESS IS DISCHARGING, THIS VALUE IS = 0
@@ -433,10 +434,8 @@ class Revenues(ElementwiseProblem):
 
                 self.soc[i+1] = self.soc[i] + (0.0 - np.abs(self.from_BESS_to_load[i]))/size
 
-
-
             # EVALUATING SHARED ENERGY
-            self.shared_energy_REC[i] = np.minimum(self.rec_load[i], np.abs(self.production[i] * 10)) # TODO: questo è da cambiare, dovrei prendere un file a parte in realtà
+            self.shared_energy_REC[i] = np.minimum(np.abs(self.rec_load[i]), np.abs(self.rec_pv[i]))
             self.remaining_production[i] = np.maximum(np.abs(self.discharged_from_pv[i]) - self.shared_energy_REC[i], 0.0)
             self.shared_energy_BESS[i] = np.minimum(self.remaining_production[i], self.charged_energy_from_BESS[i])
 

@@ -45,10 +45,13 @@ parser.add_argument('--input_json', type=str, required=False, default=input_json
 parser.add_argument('--input_PV', type=str, required=False, default=input_PV_default,
                     help='Absolute path of the output file .json')
 
-parser.add_argument('--input_rec', type=str, required=False, default=input_load_default,
+parser.add_argument('--input_load', type=str, required=False, default=input_load_default,
                     help='Absolute path of the output file .xlsx')
 
-parser.add_argument('--input_load', type=str, required=False, default=input_load_default,
+parser.add_argument('--rec_load', type=str, required=False, default=input_load_default,
+                    help='Absolute path of the output file .xlsx')
+
+parser.add_argument('--rec_production', type=str, required=False, default=input_load_default,
                     help='Absolute path of the output file .xlsx')
 
 parser.add_argument('--output_json', type=str, required=False, default=output_json_default,
@@ -96,7 +99,11 @@ input_PV_path = args.input_PV
 assert os.path.exists(input_PV_path), logging.error("PV production path file does not exists.\n\n")
 
 # LOAD TIME SERIES
-input_rec = args.input_rec
+rec_load = args.rec_load
+assert os.path.exists(input_json_path), logging.error("PV production path file does not exists.\n\n")
+
+# REC PRODUCTION
+rec_production = args.rec_production
 assert os.path.exists(input_json_path), logging.error("PV production path file does not exists.\n\n")
 
 # LOAD TIME SERIES

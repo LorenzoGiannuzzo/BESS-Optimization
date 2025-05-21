@@ -171,7 +171,7 @@ class Revenues(ElementwiseProblem):
             assert self.from_pv_to_load[i] >= 0, "Energy from PV to the load is negative (B).\n\n"
 
             # (C) EVALUATE THE ENERGY THAT'S LEFT TO THE PV
-            self.remaining_pv[i] = self.production[i] - self.from_pv_to_load[i]
+            self.remaining_pv[i] = self.production[i] - self.from_pv_to_load[i] # TODO: eccolo l'inghippo, no è solo quella che rimane tra la produzione ed il cazzo di carico della REC)
 
             assert self.remaining_pv[i] >= 0, "Energy remaining to PV is negative (C).\n\n"
 
@@ -411,7 +411,7 @@ class Revenues(ElementwiseProblem):
             # IF BESS IS CHARGING
             if self.c_d_timeseries[i] > 0:
 
-                self.soc[i + 1] = min(soc_max, self.soc[i] + (self.charged_energy_from_BESS[i] -
+                self.soc[i + 1] = min(soc_max, self.soc[i] + (np.abs(self.charged_energy_from_BESS[i]) -
                                                               np.abs(self.from_BESS_to_load[i])) / size)
                 self.discharged_energy_from_BESS[i] = 0
 
@@ -431,7 +431,7 @@ class Revenues(ElementwiseProblem):
                 self.discharged_energy_from_BESS[i] = 0
                 self.charged_energy_from_BESS[i] = 0
 
-                self.soc[i+1] = self.soc[i] + (self.taken_from_pv[i] - np.abs(self.from_BESS_to_load[i]))/size
+                self.soc[i+1] = self.soc[i] + (0.0 - np.abs(self.from_BESS_to_load[i]))/size
 
 
 

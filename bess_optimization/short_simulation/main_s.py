@@ -485,7 +485,7 @@ class Main:
             # IF BESS IS CHARGING
             if c_d_timeseries[i] > 0:
 
-                soc[i + 1] = min(soc_max, soc[i] + (charged_energy_from_BESS[i] -
+                soc[i + 1] = min(soc_max, soc[i] + (np.abs(charged_energy_from_BESS[i]) -
                                                               np.abs(from_BESS_to_load[i])) / size)
                 discharged_energy_from_BESS[i] = 0
 
@@ -505,7 +505,7 @@ class Main:
                 discharged_energy_from_BESS[i] = 0
                 charged_energy_from_BESS[i] = 0
 
-                soc[i + 1] = soc[i] + (taken_from_pv[i] - np.abs(from_BESS_to_load[i])) / size
+                soc[i + 1] = soc[i] + (0.0 - np.abs(from_BESS_to_load[i])) / size
 
             # EVALUATING SHARED ENERGY
             shared_energy_REC[i] = np.minimum(rec_load[i], np.abs(

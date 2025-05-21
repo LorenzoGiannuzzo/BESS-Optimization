@@ -191,7 +191,7 @@ algorithm = NSGA3(
 
     eliminate_duplicates=True,
 
-    # n_offsprings=round(pop_size/2)
+    #n_offsprings=round(pop_size/2)
 
 )
 

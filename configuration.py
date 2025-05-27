@@ -136,14 +136,14 @@ algorithm = NSGA3(
     # prob=1.0: The probability of crossover being applied. A probability of 1.0 means crossover is always
     # applied.
 
-    crossover=SBX(eta=30, prob=0.3),
+    crossover=SBX(eta=30, prob=0.9),
 
     # mutation: This parameter specifies the mutation operator used for generating variation in offspring.
     # PM: Polynomial Mutation (PM) is a common mutation method for real-valued variables.
     # eta=20: The distribution index for PM. Similar to SBX, a higher value of eta results in smaller mutations,
     # while a lower value results in larger mutations.
 
-    mutation=PM(eta=20),
+    mutation=PM(eta=20, prob=1.0),
 
     eliminate_duplicates=True
 

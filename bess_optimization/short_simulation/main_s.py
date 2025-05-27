@@ -513,10 +513,10 @@ class Main:
                 soc[i + 1] = soc[i] + (0.0 - np.abs(from_BESS_to_load[i])) / size
 
             # EVALUATING SHARED ENERGY
-            shared_energy_REC[i] = np.minimum(rec_load[i], np.abs(
-                rec_pv[i]))  # TODO: questo è da cambiare, dovrei prendere un file a parte in realtà
-            remaining_production[i] = np.maximum(np.abs(discharged_from_pv[i]) - shared_energy_REC[i],
-                                                      0.0)
+            shared_energy_REC[i] = np.minimum(rec_load[i], np.abs(rec_pv[i]))
+
+            remaining_production[i] = np.maximum(np.abs(discharged_from_pv[i]) - shared_energy_REC[i],0.0)
+
             shared_energy_BESS[i] = np.minimum(remaining_production[i], charged_energy_from_BESS[i])
 
             total_energy = charged_energy_from_BESS[i] + np.abs(discharged_energy_from_BESS[i])

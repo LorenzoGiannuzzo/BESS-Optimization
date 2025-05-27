@@ -7,7 +7,7 @@
     __version__ = "v0.2.1"
     __license__ = "MIT"
 
-Last Update of current code: 13/03/2025  """
+Last Update of current code: 23/05/2025  """
 
 # IMPORT LIBRARIES AND MODULES -----------------------------------------------------------------------------------------
 
@@ -95,7 +95,7 @@ soc_0 = soc
 assert (soc_0 >= 0) & (soc_0 <= 100), logging.error("Inital SoC is lower than 0% or higher tan 100%.\n\n")
 
 # 3) DEFINE POPULATION SITE USED TO EXPLORE THE OPTIMIZATION DOMAIN
-pop_size = 50
+pop_size = 70
 
 if pop_size < 20:
     logging.info("Population size is lower than 20, it's highly suggested to increase it above 20.\n\n")
@@ -117,7 +117,7 @@ xl = [-max_discharge] * time_window + [0.0] * time_window
 xu = [max_charge] * time_window + [+1.0] * time_window
 
 # 8) DEFINE NUMBER OF GENERATIONS USED TO INTERRUPT THE ALGORITHM EXECUTION
-n_gen = 2000
+n_gen = 1500
 
 if n_gen < 100:
     logging.info("A low number of generations is used. Convergence is not assured.")
@@ -161,7 +161,7 @@ algorithm = NSGA3(
     # sampling: This parameter specifies the method used to initialize the population. FloatRandomSampling
     # generates random floating-point values for the initial solutions, providing a diverse starting point.
 
-    sampling=LatinHypercubeSampling(), # this seems to be slightly better than other sampling methods
+    sampling=LatinHypercubeSampling(),  # this seems to be slightly better than other sampling methods
 
     # selection: This defines the selection mechanism used to choose parents for reproduction.
     # TournamentSelection selects individuals based on a comparison function.

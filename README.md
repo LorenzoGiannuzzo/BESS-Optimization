@@ -26,7 +26,6 @@ Run the main script to start the optimization process:
 - `--technology <BESS_technology>`: Defines the technology type of the Battery Energy Storage System (e.g., "Li-ion" for Lithium-ion).
 - `--size <BESS_size_in_kWh>`: Specifies the size of the Battery Energy Storage System in kilowatt-hours (kWh).
 - `--power <BESS_nominal_power_in_kW>`: Specifies the nominal power of the Battery Energy Storage System in kW.
-- 
 - `--soc <SoC_at_step_0>`: Specifies the initial state of charge of the Battery Energy Storage System in %.
 - `--dod <Depth_of_Discharge>`: Specifies the range of SoC in %.
 - `--PV_power <Peak_power_in_kW>`: Define the peak power of the PV plants connected to the BESS. Default values is 0 kW. 

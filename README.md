@@ -21,11 +21,13 @@ Run the main script to start the optimization process:
 ### Input:
 
 - `python main.py`: Executes the main Python script that performs the BESS optimization.
+- `--type <Short/Long>`: Specifies if an yearly simulation using 12 typical days (1 for each month) is performed (Short), or a yearly optimization for 8760 hours is performed (Long). (Long) can be used also to simulate shorter time windows (i.e. 1 month, 1 week, etc.).
 - `--input_json <absolute_path_to_input_json>`: Specifies the absolute path to the input JSON file containing the PUN timeseries data.
+- `--input_pv <absolute_path_to_pv_production_json>`: Specifies the absolute path to the input JSON file containing the production of the PV plant.
 - `--output_json <absolute_path_to_output_json>`: Specifies the absolute path where the output JSON file will be saved.
 - `--technology <BESS_technology>`: Defines the technology type of the Battery Energy Storage System (e.g., "Li-ion" for Lithium-ion).
 - `--size <BESS_size_in_kWh>`: Specifies the size of the Battery Energy Storage System in kilowatt-hours (kWh).
-- `--power <BESS_nominal_power_in_kW>`: Specifies the nominal power of the Battery Energy Storage System in kW.
+- `--power_energy <BESS_nominal_power_energy_ratio>`: Specifies the nominal power_energy (size) ratio of the Battery Energy Storage System.
 - `--soc <SoC_at_step_0>`: Specifies the initial state of charge of the Battery Energy Storage System in %.
 - `--dod <Depth_of_Discharge>`: Specifies the range of SoC in %.
 - `--PV_power <Peak_power_in_kW>`: Define the peak power of the PV plants connected to the BESS. Default values is 0 kW. 
@@ -55,8 +57,7 @@ The output consists in a .json file structured for each timestep of the consider
 }
 ### How to call main execution - Example:
 
-`python main.py --type Short --input_json C:\Users\lorenzo.giannuzzo\PycharmProjects\BESS-Optimization\Input
-\year_pun.json --input_PV C:\Users\lorenzo.giannuzzo\PycharmProjects\BESS-Optimization\Input\year_PV.csv --output_json C:\Users\lorenzo.giannuzzo\PycharmProjects\BESS-Optimization\Output\Short_Simulation\output_weekdays.json --technology Li-ion --size 2500 --power_energy 0.125 --soc 60 --dod 0-100  --PV_power 1000 --POD_power 1300 --n_cycles 1000
+`python main.py --type Short --input_json C:\Users\lorenzo.giannuzzo\PycharmProjects\BESS-Optimization\Input\year_pun.json --input_PV C:\Users\lorenzo.giannuzzo\PycharmProjects\BESS-Optimization\Input\year_PV.csv --output_json C:\Users\lorenzo.giannuzzo\PycharmProjects\BESS-Optimization\Output\Short_Simulation\output_weekdays.json --technology Li-ion --size 2500 --power_energy 0.125 --soc 60 --dod 0-100  --PV_power 1000 --POD_power 1300 --n_cycles 1000
 `
 
 ## Project Structure

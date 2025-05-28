@@ -82,7 +82,7 @@ time_window = time_window
 soc_0 = soc
 
 # 3) DEFINE POPULATION SITE USED TO EXPLORE THE OPTIMIZATION DOMAIN
-pop_size = 50
+pop_size = 100
 
 # 4) DEFINE NUMBER OF ELEMENTS INIZIALIZED BY THE NSGA-III (Elements of the chromosome, namely the genes,
 # which are the charged/discharged % of energy at each timestep t, for a lenght of time_window
@@ -98,11 +98,11 @@ xl = [-max_discharge]*time_window
 xu = [max_charge] * time_window
 
 # 8) DEFINE NUMBER OF GENERATIONS USED TO INTERRUPT THE ALGORITHM EXECUTION
-n_gen = 300
+n_gen = 1000
 
 # 8-bis) DEFINE TOLERANCE AS THE ALGORITHM INTERRUPTION CRITERIA
 tolerance = 1
-period = 7
+period = 20
 
 # number of iteration in which tolerance is evaluated
 
@@ -154,14 +154,14 @@ algorithm = NSGA3(
     # The probability of crossover being applied. A probability of 1.0 means crossover is always
     # applied.
 
-    crossover=SBX(eta=1, prob=1),
+    crossover=SBX(eta=1, prob=1.0),
 
     # mutation: This parameter specifies the mutation operator used for generating variation in offspring.
     # PM: Polynomial Mutation (PM) is a common mutation method for real-valued variables.
     # The distribution index for PM. Similar to SBX, a higher value of eta results in smaller mutations,
     # while a lower value results in larger mutations.
 
-    mutation=PM(eta=5,prob=1),
+    mutation=PM(eta=3,prob=0.9),
 
     eliminate_duplicates=True
 

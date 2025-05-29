@@ -9,7 +9,7 @@ BESS Optimization using NSGA-III Algorithm
     __version__ = "v0.2.1"
     __license__ = "MIT"
 
-Last Update of current code: 09/01/2025 - 17:00
+Last Update of current code: 28/5/2025 - 17:00
 
 """
 
@@ -96,10 +96,10 @@ xl = [-max_discharge]*time_window
 xu = [max_charge] * time_window
 
 # 8) DEFINE NUMBER OF GENERATIONS USED TO INTERRUPT THE ALGORITHM EXECUTION
-n_gen = 5000
+n_gen = 3000
 
 # 8-bis) DEFINE TOLERANCE AS THE ALGORITHM INTERRUPTION CRITERIA
-tolerance = 1
+tolerance = 2
 period = 15
 
 # number of iteration in which tolerance is evaluated
@@ -153,21 +153,21 @@ algorithm = NSGA3(
     # The probability of crossover being applied. A probability of 1.0 means crossover is always
     # applied.
 
-    crossover=SBX(eta=1, prob=1),
+    crossover=SBX(eta=1, prob=1.0),
 
     # mutation: This parameter specifies the mutation operator used for generating variation in offspring.
     # PM: Polynomial Mutation (PM) is a common mutation method for real-valued variables.
     # The distribution index for PM. Similar to SBX, a higher value of eta results in smaller mutations,
     # while a lower value results in larger mutations.
 
-    mutation=PM(eta=5,prob=1),
+    mutation=PM(eta=3,prob=0.9),
 
     eliminate_duplicates=True
 
 )
 
 # 12 DEFINE BOOLEAN VALUE TO ENABLE/DISABLE PLOTS
-plot = True
+plot = False
 plot_monthly = False
 
 

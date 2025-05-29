@@ -82,7 +82,7 @@ time_window = time_window
 soc_0 = soc
 
 # 3) DEFINE POPULATION SITE USED TO EXPLORE THE OPTIMIZATION DOMAIN
-pop_size = 100
+pop_size = 50
 
 # 4) DEFINE NUMBER OF ELEMENTS INIZIALIZED BY THE NSGA-III (Elements of the chromosome, namely the genes,
 # which are the charged/discharged % of energy at each timestep t, for a lenght of time_window
@@ -170,7 +170,7 @@ algorithm = NSGA3(
 # 12 DEFINE BOOLEAN VALUE TO ENABLE/DISABLE PLOTS
 # Activate plots
 
-plot = True
+plot = False
 plot_monthly = False
 
 i = 0

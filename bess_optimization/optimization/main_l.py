@@ -7,7 +7,7 @@
     __version__ = "v0.2.1"
     __license__ = "MIT"
 
-Last Update of current code: 02/04/2025 """
+Last Update of current code: 29/05/2025 """
 
 # IMPORTING LIBRARIES AND MODULES FROM PROJECT
 import numpy as np  # Numerical operations

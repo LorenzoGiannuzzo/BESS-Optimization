@@ -7,7 +7,7 @@
     __version__ = "v0.2.1"
     __license__ = "MIT"
 
-Last Update of current code: 31/03/2025 """
+Last Update of current code: 29/05/2025 """
 
 # IMPORT LIBRARIES
 import pandas as pd
@@ -25,8 +25,8 @@ def load_and_filter_json(file_path, season):
         df['value'] = df['value'] / 1000000  # Convert value to millions
 
         # Filter the DataFrame based on the 'datetime' field
-        filtered_df = df[df['datetime'].str.contains(season)]
-        return filtered_df
+        #filtered_df = df[df['datetime'].str.contains(season)]
+        return df
     except FileNotFoundError:
         print(f"Error: The file '{file_path}' was not found.")
         return None

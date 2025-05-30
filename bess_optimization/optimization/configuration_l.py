@@ -106,11 +106,11 @@ xl = [-max_discharge] * time_window + [0.0] * time_window
 xu = [max_charge] * time_window + [+1.0] * time_window
 
 # 8) DEFINE NUMBER OF GENERATIONS
-n_gen = 200
+n_gen = 500
 
 # 8-bis) DEFINE TOLERANCE
-tolerance = 0.05
-period = 200
+tolerance = 0.5
+period = 20
 seed = 42
 
 # 9) DEFINITION OF THE TERMINATION CRITERIA
@@ -123,8 +123,8 @@ ref_dirs = get_reference_directions("das-dennis", n_obj, n_partitions=12)
 ref_dire = UniformReferenceDirectionFactory(n_obj, n_points=pop_size).do()
 
 # DEFINE ETA FOR CROSSOVER
-eta_crossover = 20
-eta_mutation = 30
+eta_crossover = 1
+eta_mutation = 3
 
 # DEFINE ETA FOR MUTATION
 prob_crossover = 0.9

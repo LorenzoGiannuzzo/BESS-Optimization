@@ -602,9 +602,9 @@ if __name__ == "__main__":
     # OUTPUT CREATION AS .JSON FILE
     for i in range(len(PUN_timeseries_sell[:, 1])):
         entry = {
-            # DATETIME KEY
-            "datetime": PUN_timeseries_sell[i, 0],  # Timestamp for the entry
 
+            # DATETIME KEY
+            "datetime": PUN_timeseries_sell[i, 0].isoformat(),  # Timestamp for the entry
             # PUN VALUES KEY
             "PUN": PUN_timeseries_sell[i, 1],   # PUN value in kWh
             "soc": SoC[i] * 100,  # State of charge

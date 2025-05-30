@@ -224,7 +224,7 @@ else:
     raise ValueError(f"Algorithm '{algorithm_type}' is not recognized.")
 
 # 12 DEFINE BOOLEAN VALUE TO ENABLE/DISABLE PLOTS
-plot = True
+plot = False
 plot_monthly = False
 
 

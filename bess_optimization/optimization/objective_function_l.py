@@ -7,7 +7,7 @@
     __version__ = "v0.2.1"
     __license__ = "MIT"
 
-Last Update of current code: 10/04/2025 """
+Last Update of current code: 04/06/2025 """
 
 # IMPORT LIBRARIES
 import numpy as np
@@ -362,6 +362,7 @@ class Revenues(ElementwiseProblem):
             # (EXTRA)
 
             if self.from_BESS_to_load[i] > 0:
+
                 self.charged_energy_from_grid_to_BESS[i] = 0
 
             # (Z) UPDATE THE ENERGY THAT THE BESS WANT TO CHARGE AS SUM OF THE ONE CHARGED FROM GRID TO BESS AND THE ENERGY
@@ -436,7 +437,7 @@ class Revenues(ElementwiseProblem):
                                       + np.abs(self.discharged_from_pv) * self.PUN_timeseries_sell / 1000
                                       + np.abs(self.from_pv_to_load) * self.PUN_timeseries_buy * 1.2 / 1000
                                       + np.abs(self.from_BESS_to_load) * self.PUN_timeseries_buy * 1.2/ 1000)
-                          - ( np.abs(self.load) - np.abs(self.from_pv_to_load) - np.abs(self.from_BESS_to_load) ) * self.PUN_timeseries_sell * 1.2 / 1000)
+                          - ( np.abs(self.load) - np.abs(self.from_pv_to_load) - np.abs(self.from_BESS_to_load) ) * self.PUN_timeseries_buy * 1.2 / 1000)
 
         # EVALUATE THE REVENUES OBTAINED DURING THE OPTIMIZATION TIME WINDOW
         total_revenue = np.sum(revenue_column)

@@ -7,7 +7,7 @@
     __version__ = "v0.2.1"
     __license__ = "MIT"
 
-Last Update of current code: 29/05/2025 """
+Last Update of current code: 04/06/2025 """
 
 # IMPORTING LIBRARIES AND MODULES FROM PROJECT
 import numpy as np  # Numerical operations
@@ -44,10 +44,15 @@ class Main:
 
         # INITIALIZE MULTIPROCESSING
         if self.multiprocessing:
+
             n_processes = cpu_count() - 1  # Number of processes to use
+
             self.pool = Pool(processes=n_processes)  # Create a pool of worker processes
+
             runner = StarmapParallelization(self.pool.starmap)  # Set up parallelization runner
+
             self.objective_function = Revenues(elementwise_runner=runner, elementwise=True)  # Initialize objective function for revenues
+
         else:
             self.objective_function = Revenues()  # Initialize without parallelization
 
@@ -64,21 +69,21 @@ class Main:
 
         # CLOSE POOL IF MULTIPROCESSING IS TRUE
         if self.multiprocessing:
+
             self.pool.close()  # Close the pool of processes
 
         # SAVE OPTIMIZATION HISTORY
         if plot:
+
             self.history = solution.history  # Store optimization history for plotting
 
         index_maxrev = np.argmin(solution.F[:, 0])
-
-        #print(solution.F[:,0])
 
         # GET CHARGED/DISCHARGED ENERGY FROM SOLUTION
         c_d_timeseries = solution.X[index_maxrev,:time_window]
 
         # Extract charge/discharge time series from solution
-        load_decision = solution.X[index_maxrev,time_window:time_window*2]
+        load_decision = solution.X[index_maxrev,time_window:]
 
         # APPLY PHYSICAL CONSTRAINTS
         (soc, charged_energy, discharged_energy, c_d_timeseries, taken_from_grid, discharged_from_pv,
@@ -97,8 +102,6 @@ class Main:
         self.load_self_consumption = load_self_consumption
         self.from_pv_to_load = from_pv_to_load
         self.from_BESS_to_load = from_BESS_to_load
-
-
 
         # GET LOAD DATA
         from Load_l import data
@@ -192,10 +195,10 @@ class Main:
 
             elif c_d_timeseries[i] < 0:
 
-                discharged_energy_from_BESS[i] = np.maximum(c_d_timeseries[i] * size,
-                                                                 -d_func(soc[i]) * size)
-                discharged_energy_from_BESS[i] = np.maximum(discharged_energy_from_BESS[i],
-                                                                 np.minimum((soc_min - soc[i]) * size, 0.0))
+                discharged_energy_from_BESS[i] = np.maximum(c_d_timeseries[i] * size,-d_func(soc[i]) * size)
+
+                discharged_energy_from_BESS[i] = np.maximum(discharged_energy_from_BESS[i], np.minimum((soc_min -
+                                                                                                soc[i]) * size, 0.0))
 
                 charged_energy_from_BESS[i] = 0
 
@@ -222,8 +225,7 @@ class Main:
 
             else:
 
-                load_self_consumption[i] = load_decision[i] * np.minimum(load[i],
-                                                                                   total_available_energy[i])
+                load_self_consumption[i] = load_decision[i] * np.minimum(load[i], total_available_energy[i])
 
                 assert load_self_consumption[i] >= 0, "Total self consumption is negative (A-2).\n\n"
 
@@ -257,8 +259,7 @@ class Main:
             # (F-2) HOW MUCH ENERGY THE BESS CAN GIVE BASED ON THE CAP OF SOC_MIN
             from_BESS_to_load[i] = np.minimum(from_BESS_to_load[i], (soc[i] - soc_min) * size)
 
-            assert from_BESS_to_load[
-                       i] >= 0, f"Energy from BESS to load is negative (F-2).\n\n {soc[i]}\n\n {soc_min}"
+            assert from_BESS_to_load[i] >= 0, f"Energy from BESS to load is negative (F-2).\n\n {soc[i]}\n\n {soc_min}"
 
             # ----------------------------------------------------------------------------------------------------------
 
@@ -277,16 +278,14 @@ class Main:
             assert taken_from_pv[i] >= 0, "Energy taken from PV to the BESS is negative (H-1).\n\n"
 
             # (H-2) HOW MUCH ENERGY THE BESS CAN CHARGE BASED ON THE CAP OF SOC_MAX
-            taken_from_pv[i] = np.minimum(taken_from_pv[i],
-                                               np.maximum((soc_max - soc[i]) * size + from_BESS_to_load[i],
+            taken_from_pv[i] = np.minimum(taken_from_pv[i], np.maximum((soc_max - soc[i]) * size + from_BESS_to_load[i],
                                                           0.0))
 
             assert taken_from_pv[i] >= 0, "Energy taken from PV to the BESS is negative (H-2).\n\n"
 
             # (I) EVALUATE THE ENERGY USED TO CHARGE THE BESS TAKEN FROM THE GRID (IF CHARGED_ENERGY_FROM_BESS IS NEGATIVE,
             # MEANING THAT THE BESS IS DISCHARGING, THIS VALUE IS = 0
-            charged_energy_from_grid_to_BESS[i] = np.maximum(charged_energy_from_BESS[i] -
-                                                                  taken_from_pv[i], 0.0)
+            charged_energy_from_grid_to_BESS[i] = np.maximum(charged_energy_from_BESS[i] - taken_from_pv[i], 0.0)
 
             assert charged_energy_from_grid_to_BESS[i] >= 0, "Energy taken from Grid to BESS is negative (I).\n\n"
 
@@ -499,8 +498,9 @@ class Main:
 
                 soc[i + 1] = soc[i] + (taken_from_pv[i] - np.abs(from_BESS_to_load[i])) / size
 
-            total_energy = charged_energy_from_grid_to_BESS[i] + np.abs(
-                discharged_energy_from_BESS[i]) + np.abs(from_BESS_to_load[i])
+            total_energy = (charged_energy_from_grid_to_BESS[i] + np.abs(discharged_energy_from_BESS[i]) +
+                            np.abs(from_BESS_to_load[i]))
+
             actual_capacity = size * degradation(n_cycles_prev) / 100
             n_cycles = n_cycles_prev + total_energy / actual_capacity
 
@@ -525,12 +525,13 @@ class Main:
 
         from Economic_parameters_l import PUN_timeseries_sell, PUN_timeseries_buy
 
+
         revenue_column = (np.array(np.abs(discharged_energy) * PUN_timeseries_sell[:,1] / 1000
                                    - np.abs(taken_from_grid) * PUN_timeseries_buy[:,1] * 1.2 / 1000
                                       + np.abs(discharged_from_pv) * PUN_timeseries_sell[:,1] / 1000
                                       + np.abs(from_pv_to_load) * PUN_timeseries_buy[:,1] * 1.2 / 1000
                                       + np.abs(from_BESS_to_load) * PUN_timeseries_buy[:,1] * 1.2 / 1000)
-                          - ( np.abs(load) - np.abs(from_pv_to_load) - np.abs(from_BESS_to_load) ) * PUN_timeseries_sell[:,1] * 1.2 / 1000)
+                          - ( np.abs(load) - np.abs(from_pv_to_load) - np.abs(from_BESS_to_load) ) * PUN_timeseries_buy[:,1] * 1.2 / 1000)
 
 
         revenues_finali = revenue_column
@@ -645,8 +646,8 @@ if __name__ == "__main__":
     excel_file_path = r'C:\Users\lorenzo.giannuzzo\PycharmProjects\BESS-Optimization\data\output\xlsx\results.xlsx' # Define your output path for the Excel file
     df.to_excel(excel_file_path, index=False)
 
-    from argparser_l import weekends, args2
+    # from argparser_l import weekends, args2
 
     # OLD FLAG NOT INFLUENCING IN THE CURRENT STATE OF THE CODE
-    if weekends == 'True':
-        subprocess.run(args2)
+    # if weekends == 'True':
+    #    subprocess.run(args2)

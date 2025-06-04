@@ -109,7 +109,7 @@ xu = [max_charge] * time_window + [+1.0] * time_window
 n_gen = 500
 
 # 8-bis) DEFINE TOLERANCE
-tolerance = 0.5
+tolerance = 0.01
 period = 20
 seed = 42
 
@@ -224,7 +224,7 @@ else:
     raise ValueError(f"Algorithm '{algorithm_type}' is not recognized.")
 
 # 12 DEFINE BOOLEAN VALUE TO ENABLE/DISABLE PLOTS
-plot = False
+plot = True
 plot_monthly = False
 
 

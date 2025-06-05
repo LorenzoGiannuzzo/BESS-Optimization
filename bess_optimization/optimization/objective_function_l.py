@@ -433,12 +433,12 @@ class Revenues(ElementwiseProblem):
 
         # EVALUATE THE REVENUES OBTAINED FOR EACH TIMESTEP t
         revenue_column = (np.array(np.abs(self.discharged_energy_from_BESS) * self.PUN_timeseries_sell / 1000
-                                   - np.abs(self.charged_energy_from_grid_to_BESS) * self.PUN_timeseries_buy * 1.2 / 1000
+                                   - np.abs(self.charged_energy_from_grid_to_BESS) * self.PUN_timeseries_buy / 1000
                                       + np.abs(self.discharged_from_pv) * self.PUN_timeseries_sell / 1000
-                                      + np.abs(self.from_pv_to_load) * self.PUN_timeseries_buy * 1.2 / 1000
-                                      + np.abs(self.from_BESS_to_load) * self.PUN_timeseries_buy * 1.2/ 1000)
+                                      + np.abs(self.from_pv_to_load) * self.PUN_timeseries_buy / 1000
+                                      + np.abs(self.from_BESS_to_load) * self.PUN_timeseries_buy / 1000)
                                       - ( np.abs(self.load) - np.abs(self.from_pv_to_load)
-                                      - np.abs(self.from_BESS_to_load)) * self.PUN_timeseries_buy * 1.2 / 1000)
+                                      - np.abs(self.from_BESS_to_load)) * self.PUN_timeseries_buy / 1000)
 
         # EVALUATE THE REVENUES OBTAINED DURING THE OPTIMIZATION TIME WINDOW
         total_revenue = np.sum(revenue_column)
@@ -454,5 +454,4 @@ class Revenues(ElementwiseProblem):
         capacity_loss = (actual_capacity - actual_capacity*degradation(n_cycles_new) / 100) #* np.mean(self.PUN_timeseries_sell/1000)
 
         # DEFINE THE OUTPUT OF THE OPTIMIZATION PROBLEM
-        out["F"] = [final_revenues,
-                    capacity_loss]
+        out["F"] = [final_revenues, capacity_loss]

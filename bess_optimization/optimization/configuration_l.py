@@ -12,7 +12,7 @@ Last Update of current code: 10/04/2025 """
 # IMPORT LIBRARIES AND MODULES FROM PROJECT FILES
 import numpy as np
 from argparser_l import soc
-from Economic_parameters_l import time_window, season
+from Economic_parameters_l import time_window
 from pymoo.termination.robust import RobustTermination
 from pymoo.termination.xtol import DesignSpaceTermination
 from pymoo.util.reference_direction import UniformReferenceDirectionFactory, MultiLayerReferenceDirectionFactory
@@ -131,7 +131,7 @@ prob_crossover = 0.9
 prob_mutation = 1.0
 n_offsprings = 50
 
-season = season
+# season = season
 
 # 11) ALGORITHM SELECTION
 algorithm_type = "NSGA3"

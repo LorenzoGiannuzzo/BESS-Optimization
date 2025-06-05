@@ -12,13 +12,12 @@ Last Update of current code: 29/05/2025 """
 # IMPORT LIBRARIES
 import pandas as pd
 from argparser_l import  input_sellprice_path, input_buyprice_path
-from Load_l import season
 import pandas as pd
 from argparser_l import input_sellprice_path, input_buyprice_path
-from Load_l import season  # Assuming 'season' is a string representing the season to filter by
+# from Load_l import season  # Assuming 'season' is a string representing the season to filter by
 
 # FUNCTION TO LOAD AND FILTER JSON DATA
-def load_and_filter_json(file_path, season):
+def load_and_filter_json(file_path):
     """Load a JSON file and filter it by the specified season."""
     try:
         df = pd.read_json(file_path)
@@ -39,7 +38,7 @@ def load_and_filter_json(file_path, season):
 
 # SET PATH FILE FOR SELL PRICE
 json_file_path_sell = input_sellprice_path
-PUN_timeseries_sell = load_and_filter_json(json_file_path_sell, season)
+PUN_timeseries_sell = load_and_filter_json(json_file_path_sell)
 
 # Check if the DataFrame is not None before converting to numpy
 if PUN_timeseries_sell is not None:
@@ -51,7 +50,7 @@ if PUN_timeseries_sell is not None:
 
 # SET PATH FILE FOR BUY PRICE
 json_file_path_buy = input_buyprice_path
-PUN_timeseries_buy = load_and_filter_json(json_file_path_buy, season)
+PUN_timeseries_buy = load_and_filter_json(json_file_path_buy)
 
 # Check if the DataFrame is not None before converting to numpy
 if PUN_timeseries_buy is not None:

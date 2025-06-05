@@ -525,11 +525,11 @@ class Main:
         from Economic_parameters_l import PUN_timeseries_sell, PUN_timeseries_buy
 
         revenue_column = (np.array(np.abs(discharged_energy) * PUN_timeseries_sell[:,1] / 1000
-                                   - np.abs(taken_from_grid) * PUN_timeseries_buy[:,1] * 1.2 / 1000
+                                   - np.abs(taken_from_grid) * PUN_timeseries_buy[:,1] / 1000
                                       + np.abs(discharged_from_pv) * PUN_timeseries_sell[:,1] / 1000
-                                      + np.abs(from_pv_to_load) * PUN_timeseries_buy[:,1] * 1.2 / 1000
-                                      + np.abs(from_BESS_to_load) * PUN_timeseries_buy[:,1] * 1.2 / 1000)
-                          - ( np.abs(load) - np.abs(from_pv_to_load) - np.abs(from_BESS_to_load) ) * PUN_timeseries_buy[:,1] * 1.2 / 1000)
+                                      + np.abs(from_pv_to_load) * PUN_timeseries_buy[:,1] / 1000
+                                      + np.abs(from_BESS_to_load) * PUN_timeseries_buy[:,1] / 1000)
+                          - ( np.abs(load) - np.abs(from_pv_to_load) - np.abs(from_BESS_to_load) ) * PUN_timeseries_buy[:,1] / 1000)
 
 
         revenues_finali = revenue_column

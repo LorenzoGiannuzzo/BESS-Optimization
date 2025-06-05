@@ -19,7 +19,7 @@ parser = argparse.ArgumentParser(description='Script for BESS Optimization.')
 # SET DEFAULT VALUES
 input_json_default = r"C:\Users\lorenzo.giannuzzo\PycharmProjects\BESS-Optimization\data\Input\pun2.json"
 input_PV_default = 0.0
-input_load_default = r"C:\Users\lorenzo.giannuzzo\PycharmProjects\BESS-Optimization\data\Loads\BTA6_5.xlsx"
+input_load_default = 0.0
 output_json_default = r"C:\Users\lorenzo.giannuzzo\PycharmProjects\BESS-Optimization\data\Output\output.json"
 technology_default = "Li-ion"
 size_default = 2500

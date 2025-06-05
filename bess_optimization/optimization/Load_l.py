@@ -1,20 +1,28 @@
 from argparser_l import input_load  # Importing input load parameter
 import ExcelOpener_l  # Module for opening Excel files
+import numpy as np
+from Economic_parameters_l import time_window
 import pandas as pd  # Data manipulation and analysis
 
 # LOAD EXCEL FILE AND SPECIFIC SHEET
 
-season = "Autumn"
+# season = "Autumn"
 
-df = ExcelOpener_l.import_file.load_excel(input_load, 'Sheet 1')
+if input_load == 0.0:
 
-# CONVERT DATAFRAME TO NUMPY ARRAY AND EXTRACT SPECIFIC COLUMN
+    data = np.zeros(time_window)
 
-#df = df[df['Season'] == season]
+else:
 
-data = df.to_numpy()
+    df = ExcelOpener_l.import_file.load_excel(input_load, 'Sheet 1')
 
-data = data[:, 4]  # Extract the 5th column (index 4) from the array
+    # CONVERT DATAFRAME TO NUMPY ARRAY AND EXTRACT SPECIFIC COLUMN
 
-# IN CASE YOU WANT TO SIMULATE ONLY PURE TRADING
-#data = np.zeros(len(data))
+    # df = df[df['Season'] == season]
+
+    data = df.to_numpy()
+
+    data = data[:, 4]  # Extract the 5th column (index 4) from the array
+
+    # IN CASE YOU WANT TO SIMULATE ONLY PURE TRADING
+    #data = np.zeros(len(data))

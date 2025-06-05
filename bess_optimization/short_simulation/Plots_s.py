@@ -7,7 +7,7 @@
     __version__ = "v0.2.1"
     __license__ = "MIT"
 
-Last Update of current code: 04/06/2025 """
+Last Update of current code: 05/06/2025 """
 
 # IMPORT LIBRARIES
 import os

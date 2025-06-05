@@ -581,20 +581,21 @@ class Main:
                      shared_energy_bess, load):
 
         # IMPORT LOAD DATA
-        from Load import data
+        from Load import data, data_rec
 
         # EXECUTE PLOTS
         if plot:
             plots = EnergyPlots(time_window, soc, charged_energy, discharged_energy, PUN_timeseries[:, 1],
                                 taken_from_grid, taken_from_pv, pv_production['P'], discharged_from_pv,
                                 self_consumption, from_pv_to_load, from_BESS_to_load, shared_energy_bess,
-                                np.array(data))
+                                np.array(data), np.array(data_rec), np.array(rec_pv))
 
             # EXECUTE PLOT FUNCTIONS
             plots.Total_View(num_values=time_window)
+            plots.USER_View(num_values=time_window)
+            plots.REC_View(num_values=time_window)
             plots.plot_daily_energy_flows(num_values=time_window)
             plots.plot_degradation()
-
 
 # ----------------------------------------------------------------------------------------------------------------------
 

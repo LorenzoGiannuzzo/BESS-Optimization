@@ -9,7 +9,7 @@ BESS Optimization using NSGA-III Algorithm
     __version__ = "v0.2.1"
     __license__ = "MIT"
 
-Last Update of current code: 09/01/2025 - 17:18
+Last Update of current code: 05/06/2025 - 17:18
 
 """
 
@@ -325,7 +325,7 @@ class Main:
         if plot:
             plots = EnergyPlots(time_window, soc, charged_energy, discharged_energy, PUN_timeseries[:, 1],
                                 taken_from_grid, taken_from_pv, pv_production['P'], discharged_from_pv,
-                                self_consumption, from_pv_to_load, from_BESS_to_load, np.array(data))
+                                self_consumption, from_pv_to_load, from_BESS_to_load, shared_energy_bess, np.array(data), rec_load, rec_production)
             plots.Total_View(num_values=time_window)
             plots.plot_daily_energy_flows(num_values=time_window)
             plots.plot_degradation()

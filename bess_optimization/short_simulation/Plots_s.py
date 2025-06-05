@@ -7,7 +7,7 @@
     __version__ = "v0.2.1"
     __license__ = "MIT"
 
-Last Update of current code: 21/02/2025 """
+Last Update of current code: 04/06/2025 """
 
 # IMPORT LIBRARIES
 import os
@@ -28,7 +28,7 @@ class EnergyPlots:
 
     def __init__(self, time_window, soc, charged_energy, discharged_energy, PUN_timeseries, taken_from_grid,
                  taken_from_pv, produced_from_pv,discharged_from_pv,self_consumption,from_pv_to_load,
-                 from_BESS_to_laod,shared_energy_bess,load):
+                 from_BESS_to_laod, shared_energy_bess, load, rec_load, rec_production):
 
         self.time_window = time_window
 
@@ -47,6 +47,8 @@ class EnergyPlots:
         self.from_BESS_to_load = np.array(from_BESS_to_laod)
         self.load = load
         self.shared_energy_bess = shared_energy_bess
+        self.rec_load = rec_load
+        self.rec_production = rec_production
 
         if not os.path.exists(self.plots_dir):
             os.makedirs(self.plots_dir)
@@ -583,7 +585,211 @@ class EnergyPlots:
 
         ax0.set_title('State of Charge (SoC) - Weekends')  # TODO: SHOULD BE WEEKENDS
         fig.tight_layout()
-        plt.savefig(os.path.join(self.plots_dir, "Total_View_2.png"))
+        plt.savefig(os.path.join(self.plots_dir, "Total_View.png"))
+
+    def USER_View(self, num_values):
+
+        # GET VARIABLES FROM SELF
+        time_steps = self.time_steps[:num_values]
+        charged_energy = self.charged_energy[:num_values]
+        discharged_energy = self.discharged_energy[:num_values]
+        pun_values = self.PUN_timeseries[:num_values]
+        soc = self.soc[:num_values]
+        produced_from_pv = self.produced_from_pv[:num_values]
+        taken_from_pv = self.taken_from_pv[:num_values]
+        taken_from_grid = self.taken_from_grid[:num_values]
+        discharged_from_pv = self.discharged_from_pv
+        self_consumption = self.load
+        from_pv_to_load = self.from_pv_to_load
+        from_BESS_to_load = self.from_BESS_to_load
+        shared_energy_bess = self.shared_energy_bess
+
+        # SET MONTH NAMES
+        month_names = ["January", "February", "March", "April", "May", "June",
+            "July", "August", "September", "October", "November", "December"]
+
+        # Creating the layout with 3 boxes using gridspec
+        fig = plt.figure(figsize=(28, 10))  # Increased height for the new graph
+        gs = gridspec.GridSpec(2, 1, height_ratios=[1, 1])  # Set equal height for all rows
+
+        # Axis for SoC top
+        ax0 = fig.add_subplot(gs[0, 0])
+
+        # Plot SoC
+        norm = Normalize(vmin=min(soc * 100), vmax=max(soc * 100))
+        cmap = plt.cm.get_cmap("Blues")
+        for i in range(12):
+            start = i * 24 - 1
+            end = (i + 1) * 24 - 1
+            plt.axvline(x=i * 24 - 1, ls='--', color="black")
+            ax0.text(11.5 + 23.92 * i, max(soc) * 100 + max(soc) * 100 * 0.04, f'{month_names[i]}', color="black",
+                     fontsize=15, horizontalalignment='center')
+
+        for i in range(len(time_steps)):
+            ax0.bar(time_steps[i], soc[i] * 100, color=cmap(norm(soc[i] * 100)))
+        ax0.set_title('State of Charge (SoC)')
+        ax0.set_ylabel('SoC [%]')
+        plt.ylim(0, max(soc) * 100 + max(soc) * 100 * 0.08)
+
+        # Axis for charged and discharged energy (second graph)
+        ax1 = fig.add_subplot(gs[1, 0])
+
+        total_d = []
+        total_dis = np.abs(discharged_energy) + np.abs(discharged_from_pv)
+
+        for i in range(0, len(discharged_energy), 24):
+            somma = sum(total_dis[i:i + 24])
+            total_d.append(somma)
+
+        total_d = np.array(total_d)
+        total_d = total_d * 30 / 1000
+        total_d = np.round(total_d, 2)
+
+        norm = (total_d - np.min(total_d)) / (np.max(total_d) - np.min(total_d))
+        colors = [(1, 1 - n, 0) for n in norm]
+
+        for i in range(12):
+            start = i * 24 - 1
+            end = (i + 1) * 24 - 1
+            plt.axvspan(start, end, facecolor=colors[i], alpha=0.2)
+            plt.axvline(x=i * 24 - 1, ls='--', color="black")
+            ax1.text(11.5 + 23.92 * i, max(size * 0.53,0.98*max(produced_from_pv)), f'{month_names[i]}', color="black", fontsize=15,
+                     horizontalalignment='center')
+            ax1.text(11.5 + 23.92 * i, max(size * 0.46,0.91*max(produced_from_pv)), f'{total_d[i]} MWh', color="black", fontsize=15,
+                     horizontalalignment='center')
+
+        width = 0.4
+
+        load = pd.to_numeric(self.load, errors='coerce')
+        ax1.fill_between(time_steps, load, color='orange', alpha=0.3, label='USER Load')
+
+        ax1.fill_between(time_steps, 0, produced_from_pv, color='lightblue', alpha=0.3, label="PV Production")
+
+        ax1.bar(time_steps, -discharged_from_pv, width=width, bottom=from_pv_to_load + taken_from_pv,
+                label="PV to Grid")
+
+        ax1.bar(time_steps, from_pv_to_load, width=width, color="grey", label='User PV to Load')
+
+        ax1.bar(time_steps, from_BESS_to_load, width=width, color='darkorange', bottom=np.array(from_pv_to_load),
+                label="BESS to Load")
+
+        ax1.bar(time_steps, discharged_energy, width=width, color='darkred', bottom=np.array(taken_from_grid),
+                label="BESS to Grid")
+
+        ax1.bar(time_steps, taken_from_pv, width=width, color='orange', bottom=np.array(from_pv_to_load + from_BESS_to_load),
+                label="PV to BESS")
+
+        ax1.bar(time_steps, shared_energy_bess, color='cyan', width=width, bottom=from_pv_to_load+taken_from_pv+np.abs(discharged_from_pv), label="Shared Energy")
+
+        ax1.bar(time_steps, [1] * np.array(taken_from_grid), width=width, color='darkgreen', label='Grid to BESS')
+
+        ax1.set_ylabel('Energy [kWh]')
+        ax1.set_title('System Energy Flows')
+        ax1.legend(loc='upper left')
+        plt.ylim(min(-size * 0.6,-max(produced_from_pv)), max(size * 0.6,max(produced_from_pv)))
+
+        # Plot PUN values on the secondary axis
+        ax3 = ax1.twinx()
+        ax3.plot(time_steps, pun_values, color='black', label='PUN', alpha=0.5)
+        ax3.set_ylabel('PUN [Euro/MWh]')
+        ax3.legend(loc='upper right')
+        plt.ylim(min(pun_values) - 0.12 * min(pun_values), max(pun_values) + max(pun_values) * 0.12)
+        ax1.set_xlabel('Time Window [h]')
+
+        from argparser_s import weekends
+
+        if weekends == 'True':
+            ax1.set_title('System Energy Flows - Weekdays')
+            ax0.set_title('State of Charge (SoC) - Weekdays')
+            fig.tight_layout()
+            plt.savefig(os.path.join(self.plots_dir, "Total_View.png"))
+        else:
+            ax1.set_title('System Energy Flows')
+
+        ax0.set_title('State of Charge (SoC)')
+        fig.tight_layout()
+        plt.savefig(os.path.join(self.plots_dir, "User_View.png"))
+
+    def REC_View(self, num_values):
+
+        # GET VARIABLES FROM SELF
+        time_steps = self.time_steps[:num_values]
+        charged_energy = self.charged_energy[:num_values]
+        discharged_energy = self.discharged_energy[:num_values]
+        pun_values = self.PUN_timeseries[:num_values]
+        soc = self.soc[:num_values]
+        produced_from_pv = self.produced_from_pv[:num_values]
+        taken_from_pv = self.taken_from_pv[:num_values]
+        taken_from_grid = self.taken_from_grid[:num_values]
+        discharged_from_pv = self.discharged_from_pv
+        self_consumption = self.load
+        from_pv_to_load = self.from_pv_to_load
+        from_BESS_to_load = self.from_BESS_to_load
+        shared_energy_bess = self.shared_energy_bess
+        rec_production = self.rec_production
+        rec_load = self.rec_load
+
+        # SET MONTH NAMES
+        month_names = ["January", "February", "March", "April", "May", "June",
+            "July", "August", "September", "October", "November", "December"]
+
+        # Creating the layout with 3 boxes using gridspec
+        fig = plt.figure(figsize=(28, 10))  # Increased height for the new graph
+        gs = gridspec.GridSpec(2, 1, height_ratios=[1, 1])  # Set equal height for all rows
+
+        # Axis for SoC top
+        ax0 = fig.add_subplot(gs[0, 0])
+
+        # Plot SoC
+        norm = Normalize(vmin=min(soc * 100), vmax=max(soc * 100))
+        cmap = plt.cm.get_cmap("Blues")
+        for i in range(12):
+            start = i * 24 - 1
+            end = (i + 1) * 24 - 1
+            plt.axvline(x=i * 24 - 1, ls='--', color="black")
+            ax0.text(11.5 + 23.92 * i, max(soc) * 100 + max(soc) * 100 * 0.04, f'{month_names[i]}', color="black",
+                     fontsize=15, horizontalalignment='center')
+
+        for i in range(len(time_steps)):
+            ax0.bar(time_steps[i], soc[i] * 100, color=cmap(norm(soc[i] * 100)))
+        ax0.set_title('State of Charge (SoC)')
+        ax0.set_ylabel('SoC [%]')
+        plt.ylim(0, max(soc) * 100 + max(soc) * 100 * 0.08)
+
+        # Axis for charged and discharged energy (second graph)
+        ax1 = fig.add_subplot(gs[1, 0])
+
+        width = 0.4
+
+        ax1.fill_between(time_steps, np.array(rec_load), color='lightgreen', alpha=0.3, label='REC Load')
+
+        ax1.fill_between(time_steps,  np.array(rec_production[:,1]), color='lightblue', alpha=0.3, label="REC Production")
+
+        shared_energy = np.minimum(np.array(rec_load), np.array(rec_production[:,1]))
+
+        #ax1.fill_between(time_steps, shared_energy_bess + shared_energy, color='indigo', alpha=0.3, label="Additional SE")
+
+        ax1.fill_between(time_steps, shared_energy, color='plum', alpha=0.3, label="Shared Energy")
+
+        ax1.set_ylabel('Energy [kWh]')
+        ax1.set_title('System Energy Flows')
+        ax1.legend(loc='upper left')
+        plt.ylim(0, max(rec_production[:,1]))
+
+        from argparser_s import weekends
+
+        if weekends == 'True':
+            ax1.set_title('System Energy Flows - Weekdays')
+            ax0.set_title('State of Charge (SoC) - Weekdays')
+            fig.tight_layout()
+            plt.savefig(os.path.join(self.plots_dir, "Total_View.png"))
+        else:
+            ax1.set_title('System Energy Flows')
+
+        ax0.set_title('State of Charge (SoC)')
+        fig.tight_layout()
+        plt.savefig(os.path.join(self.plots_dir, "REC_View.png"))
+
 
     def Total_View_cycles(self, num_values, n_cycles):
 

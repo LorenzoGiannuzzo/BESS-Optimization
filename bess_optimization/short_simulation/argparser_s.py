@@ -39,7 +39,7 @@ pod_power_default = 100
 n_cycles_default = 0
 
 # GET PARSER ARGUMENTS FROM COMMAND LINE
-parser.add_argument('--input_json', type=str, required=False, default=input_json_default,
+parser.add_argument('--input_pun', type=str, required=False, default=input_json_default,
                     help='Absolute path of the file .json for PUN values as input')
 
 parser.add_argument('--input_PV', type=str, required=False, default=input_PV_default,
@@ -91,7 +91,7 @@ args = parser.parse_args()
 # GET PARAMETERS FROM ARGPARSER
 
 # ZONAL ELECTRICITY PRICES
-input_json_path = args.input_json
+input_json_path = args.input_pun
 assert os.path.exists(input_json_path), logging.error("Electrical Price path file does not exists.\n\n")
 
 # PV PRODUCTION TIME SERIES

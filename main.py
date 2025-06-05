@@ -36,7 +36,7 @@ if __name__ == "__main__":
     parser.add_argument('--type', choices=['Short', 'Long'], required=True,
                         help="Specify 'Yes' to run main_s or 'No' to run main_p")
 
-    parser.add_argument('--input_json', type=str, required=False, default=input_json_default,
+    parser.add_argument('--input_pun', type=str, required=False, default=input_json_default,
                         help='Absolute path of the file .json for PUN values as input')
 
     parser.add_argument('--input_PV', type=str, required=False, default=input_PV_default,

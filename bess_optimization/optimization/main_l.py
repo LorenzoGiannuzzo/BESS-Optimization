@@ -22,8 +22,6 @@ from Optimizer_l import Optimizer  # Optimization class
 from argparser_l import output_json_path, range_str, soc_min, power_energy, POD_power  # Argument parser parameters
 from Plots_l import EnergyPlots  # Plotting utilities
 from PV_l import pv_production  # Photovoltaic production data
-import subprocess
-import logging
 from logger import setup_logger
 
 setup_logger()
@@ -183,8 +181,8 @@ class Main:
 
             if c_d_timeseries[i] > 0:
 
-                charged_energy_from_BESS[i] = np.minimum(c_d_timeseries[i] * size,
-                                                              c_func(soc[i]) * size)
+                charged_energy_from_BESS[i] = np.minimum(c_d_timeseries[i] * size,c_func(soc[i]) * size)
+
                 charged_energy_from_BESS[i] = np.minimum(charged_energy_from_BESS[i],
                                                               np.maximum((soc_max - soc[i]) * size, 0.0))
 
@@ -205,6 +203,7 @@ class Main:
             else:
 
                 charged_energy_from_BESS[i] = 0
+
                 discharged_energy_from_BESS[i] = 0
 
             # LOAD ESTIMATION ------------------------------------------------------------------------------------------
@@ -524,7 +523,6 @@ class Main:
                                      from_pv_to_load, from_BESS_to_load, load):
 
         from Economic_parameters_l import PUN_timeseries_sell, PUN_timeseries_buy
-
 
         revenue_column = (np.array(np.abs(discharged_energy) * PUN_timeseries_sell[:,1] / 1000
                                    - np.abs(taken_from_grid) * PUN_timeseries_buy[:,1] * 1.2 / 1000

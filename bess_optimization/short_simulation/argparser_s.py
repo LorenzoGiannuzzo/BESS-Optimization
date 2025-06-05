@@ -96,7 +96,7 @@ assert os.path.exists(input_json_path), logging.error("Electrical Price path fil
 
 # PV PRODUCTION TIME SERIES
 input_PV_path = args.input_PV
-assert os.path.exists(input_PV_path), logging.error("PV production path file does not exists.\n\n")
+# assert os.path.exists(input_PV_path), logging.error("PV production path file does not exists.\n\n")
 
 # LOAD TIME SERIES
 rec_load = args.rec_load

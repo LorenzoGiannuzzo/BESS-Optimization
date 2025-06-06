@@ -587,6 +587,163 @@ class EnergyPlots:
         fig.tight_layout()
         plt.savefig(os.path.join(self.plots_dir, "Total_View.png"))
 
+    import numpy as np
+    import matplotlib.pyplot as plt
+    import os
+
+    def Dashboard(self, num_values):
+
+        from argparser_s import size, POD_power, technology, n_cycles, soc_max, soc_min, PV_power
+        import matplotlib.gridspec as gridspec
+
+        time_steps = self.time_steps[:num_values]
+        charged_energy = self.charged_energy[:num_values]
+        discharged_energy = self.discharged_energy[:num_values]
+        pun_values = self.PUN_timeseries[:num_values]
+        soc = self.soc[:num_values]
+        produced_from_pv = self.produced_from_pv[:num_values]
+        taken_from_pv = self.taken_from_pv[:num_values]
+        taken_from_grid = self.taken_from_grid[:num_values]
+        discharged_from_pv = self.discharged_from_pv
+        self_consumption = self.load
+        from_pv_to_load = self.from_pv_to_load
+        from_BESS_to_load = self.from_BESS_to_load
+        shared_energy_bess = self.shared_energy_bess
+        rec_production = self.rec_production
+        rec_load = self.rec_load
+
+        rev = np.array(np.abs(discharged_energy) * pun_values / 1000
+                       - np.abs(taken_from_grid * pun_values / 1000)
+                       + np.abs(shared_energy_bess) * 120 / 1000)
+        rev = np.array(rev, dtype=float)
+
+        shared_energy = np.minimum(rec_load, rec_production[:, 1])
+        uncovered_rec_load = rec_load - shared_energy
+
+        total_rec_uncovered_load = np.sum(uncovered_rec_load)
+        total_shared_energy = np.sum(shared_energy)
+        total_shared_energy_bess = np.sum(shared_energy_bess)
+
+        uncovered_load = self.load - from_pv_to_load - from_BESS_to_load
+        total_uncovered_load = np.sum(uncovered_load)
+
+        total_discharged_energy = np.abs(np.sum(discharged_energy))
+        total_charged_energy = np.sum(taken_from_grid)
+        total_taken_from_pv = np.sum(taken_from_pv)
+        total_from_bess_to_load = np.sum(from_BESS_to_load)
+
+        hist_data = {
+            'Discharged Energy': total_discharged_energy,
+            'Charged Energy': total_charged_energy,
+            'Withdrawn from PV': total_taken_from_pv,
+            'BESS to Load': total_from_bess_to_load,
+            'Additional SE BESS': total_shared_energy_bess
+        }
+
+        # Ordino i dati per l'istogramma
+        sorted_hist = dict(sorted(hist_data.items(), key=lambda item: item[1], reverse=True))
+        labels_sorted = list(sorted_hist.keys())
+        values_sorted = list(sorted_hist.values())
+
+        fig = plt.figure(figsize=(14, 24))  # Slightly reduced height
+
+        # Adjust height ratios and reduce vertical space (hspace)
+        gs = gridspec.GridSpec(5, 2, height_ratios=[0.5, 8, 8, 0.5, 12], hspace=0.2, wspace=0.3)
+
+        # Table on top spanning both columns
+        ax_table = fig.add_subplot(gs[0, :])
+        ax_table.axis('off')
+
+        table_data = [
+            ['User Battery Size (kWh)', f'{size:.1f}'],
+            ['User POD (kW)', f'{POD_power:.1f}'],
+            ['BESS Technology', technology],
+            ['DoD', f'{soc_min*100}% - {soc_max*100}%'],
+            ['User PV Size (kW)', f'{PV_power:.1f}']
+        ]
+
+        table = ax_table.table(cellText=table_data,
+                               colLabels=['Parameter', 'Value'],
+                               cellLoc='center',
+                               colLoc='center',
+                               loc='center')
+
+        table.auto_set_font_size(False)
+        table.set_fontsize(14)
+        table.scale(1, 2)
+
+        for key, cell in table.get_celld().items():
+            row, col = key
+            if row == 0:
+                cell.get_text().set_fontweight('bold')
+
+        table.auto_set_font_size(False)
+        table.set_fontsize(16)
+        table.scale(1, 2)
+
+        # Pie charts slightly smaller now, rows 1-2
+        ax_pie1 = fig.add_subplot(gs[1:3, 0])
+        colors1 = ['gainsboro', 'yellowgreen', 'cyan']
+        sizes1 = [total_rec_uncovered_load, total_shared_energy, total_shared_energy_bess]
+        labels1 = ['REC Uncovered Load', 'Shared Energy', 'Additional SE BESS']
+        wedges1, texts1, autotexts1 = ax_pie1.pie(sizes1, labels=labels1, autopct='%1.1f%%', startangle=140,
+                                                  colors=colors1,
+                                                  textprops={'fontsize': 15},
+                                                  wedgeprops={'alpha': 0.85})
+        ax_pie1.set_title('REC Dashboard', fontsize=20, weight='bold')
+        for autotext in autotexts1:
+            autotext.set_color('black')
+
+        ax_pie2 = fig.add_subplot(gs[1:3, 1])
+        colors2 = ['steelblue', 'orange', 'gainsboro']
+        sizes2 = [np.sum(from_pv_to_load), np.sum(from_BESS_to_load), total_uncovered_load]
+        labels2 = ['PV to Load', 'BESS to Load', 'Uncovered Load']
+        wedges2, texts2, autotexts2 = ax_pie2.pie(sizes2, labels=labels2, autopct='%1.1f%%', startangle=140,
+                                                  colors=colors2,
+                                                  textprops={'fontsize': 15},
+                                                  wedgeprops={'alpha': 0.85})
+        ax_pie2.set_title('User Dashboard', fontsize=20, weight='bold')
+        for autotext in autotexts2:
+            autotext.set_color('black')
+
+        # Histogram closer now (rows 3-4)
+        ax_hist = fig.add_subplot(gs[3:, :])
+        bars = ax_hist.bar(labels_sorted, values_sorted,
+                           color=[{
+                                      'Discharged Energy': 'darkorchid',
+                                      'Charged Energy': 'thistle',
+                                      'Withdrawn from PV': 'indigo',
+                                      'BESS to Load': 'orange',
+                                      'Additional SE BESS': 'cyan'
+                                  }[label] for label in labels_sorted])
+        max_height = max(values_sorted)
+        ax_hist.set_ylim(0, max_height * 1.25)
+
+        for bar in bars:
+            height = bar.get_height()
+            ax_hist.annotate(f'{height:,.0f} kWh',
+                             xy=(bar.get_x() + bar.get_width() / 2, height),
+                             xytext=(0, 6),
+                             textcoords='offset points',
+                             ha='center', va='bottom',
+                             fontsize=13, color='black')
+
+        ax_hist.set_ylabel('Energy [kWh]', fontsize=13)
+        ax_hist.set_title('BESS Energy Flows', fontsize=16, pad=15, weight="bold")
+        ax_hist.tick_params(axis='x', labelsize=12)
+        ax_hist.tick_params(axis='y', labelsize=12)
+        ax_hist.grid(False)
+        ax_hist.axhline(0, color='black', linewidth=1)
+        ax_hist.legend(bars, labels_sorted, loc='upper right', fontsize=15, frameon=True)
+
+        ax_hist.margins(x=0.15)
+
+        plt.tight_layout()
+
+        plt.savefig(os.path.join(self.plots_dir, "Dashboard.png"), dpi=150, bbox_inches='tight')
+        plt.close(fig)
+
+
     def USER_View(self, num_values):
 
         # GET VARIABLES FROM SELF

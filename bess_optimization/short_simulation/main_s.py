@@ -596,6 +596,7 @@ class Main:
             plots.REC_View(num_values=time_window)
             plots.plot_daily_energy_flows(num_values=time_window)
             plots.plot_degradation()
+            plots.Dashboard(num_values=time_window)
 
 # ----------------------------------------------------------------------------------------------------------------------
 

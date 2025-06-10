@@ -476,6 +476,7 @@ class Revenues(ElementwiseProblem):
 
         somma_revenues_finali = np.sum(revenues_settimanali)
 
+
         # EVALUATE THE REVENUES OBTAINED DURING THE OPTIMIZATION TIME WINDOW
         total_revenue = somma_revenues_finali
 

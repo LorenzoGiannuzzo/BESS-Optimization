@@ -465,6 +465,7 @@ class Revenues(ElementwiseProblem):
                                   )
 
         # EVALUATE REVENUES CONSIDERING TYPICAL DAYS FOR EACH MONTH
+
         num_settimane = 12
         ore_per_settimana = 24
         revenues_settimanali = np.zeros(num_settimane)

@@ -9,7 +9,7 @@ BESS Optimization using NSGA-III Algorithm
     __version__ = "v0.2.1"
     __license__ = "MIT"
 
-Last Update of current code: 09/01/2025 - 17:00
+Last Update of current code: 1/06/2025 - 17:00
 
 """
 
@@ -101,8 +101,8 @@ xu = [max_charge] * time_window + [+1.0] * time_window
 n_gen = 3500
 
 # 8-bis) DEFINE TOLERANCE AS THE ALGORITHM INTERRUPTION CRITERIA
-tolerance = 10
-period = 5
+tolerance = 1
+period = 15
 
 # number of iteration in which tolerance is evaluated
 

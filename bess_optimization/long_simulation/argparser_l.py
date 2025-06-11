@@ -1,6 +1,4 @@
-"""
-
-BESS Optimization using NSGA-III Algorithm
+""" BESS Optimization using NSGA-III Algorithm
 
     __author__ = "Lorenzo Giannuzzo"
     __maintainer__ = "Lorenzo Giannuzzo"
@@ -9,9 +7,9 @@ BESS Optimization using NSGA-III Algorithm
     __version__ = "v0.2.1"
     __license__ = "MIT"
 
-Last Update of current code: 03/06/2025 - 17:06
+Last Update of current code: 21/05/2025 """
 
-"""
+# IMPORTING LIBRARIES --------------------------------------------------------------------------------------------------
 
 import argparse
 import logging
@@ -27,12 +25,12 @@ setup_logger()
 parser = argparse.ArgumentParser(description='Script for BESS Optimization.')
 
 # SET DEFAULT VALUES
-input_json_default = r"C:\Users\lorenzo.giannuzzo\PycharmProjects\BESS-Optimization\data\Input\pun2.json"
-input_PV_default = r"C:\Users\lorenzo.giannuzzo\PycharmProjects\BESS-Optimization\data\Input\PV_power.csv"
-input_load_default = r"C:\Users\lorenzo.giannuzzo\PycharmProjects\BESS-Optimization\data\Loads\BTA6_5.xlsx"
+input_json_default = 0.0
+input_PV_default = 0.0
+input_load_default = 0.0
 output_json_default = r"C:\Users\lorenzo.giannuzzo\PycharmProjects\BESS-Optimization\data\Output\output.json"
 technology_default = "Li-ion"
-size_default = 2500
+size_default = 0.0
 power_energy_default = 0
 soc_default = 0.2
 dod_default = "10-90"
@@ -98,7 +96,7 @@ assert os.path.exists(input_json_path), logging.error("Electrical Price path fil
 
 # PV PRODUCTION TIME SERIES
 input_PV_path = args.input_PV
-assert os.path.exists(input_PV_path), logging.error("PV production path file does not exists.\n\n")
+# assert os.path.exists(input_PV_path), logging.error("PV production path file does not exists.\n\n")
 
 # LOAD TIME SERIES
 rec_load = args.rec_load
@@ -192,4 +190,3 @@ args2 = [
     '--n_cycles', str(n_cycles),
     '--weekends', 'False'
 ]
-

@@ -1,30 +1,42 @@
-from argparser_l import input_load  # Importing input load parameter
+# IMPORTING REQUIRED LIBRARIES
+from argparser_l import input_load, rec_load  # Importing input load parameter
+from Economic_parameters_l import time_window
 import ExcelOpener_l  # Module for opening Excel files
 import pandas as pd  # Data manipulation and analysis
+import numpy as np
 
-# LOAD EXCEL FILE AND SPECIFIC SHEET
-df = ExcelOpener_l.import_file.load_excel(input_load, 'Sheet 1')
+if input_load != 0.0:
 
-# CONVERT 'Data' COLUMN TO DATETIME FORMAT
-df['Data'] = pd.to_datetime(df['Data'])
+    # LOAD EXCEL FILE AND SPECIFIC SHEET
+    df = ExcelOpener_l.import_file.load_excel(input_load, 'Sheet 1')
 
-# CONVERT 'time' COLUMN TO TIMEDATA FORMAT
-df['Time'] = pd.to_timedelta(df['time'])  # Assuming 'time' is in HH:MM:SS format
+    # CONVERT 'Data' COLUMN TO DATETIME FORMAT
+    df['Data'] = pd.to_datetime(df['Data'])
 
-# COMBINE 'Data' AND 'Time' INTO A SINGLE DATETIME COLUMN
-df['DateTime'] = df['Data'] + df['Time']
+    # CONVERT DATAFRAME TO NUMPY ARRAY AND EXTRACT SPECIFIC COLUMN
+    data = df.to_numpy()  # Convert DataFrame to NumPy array
+    data = data[:, 4]  # Extract the 5th column (index 4) from the array
 
-# Check the length of the DataFrame to determine if it's a leap year dataset
-if len(df) == 8784:  # Assuming 8784 rows indicates a leap year
-    # Filter out February 29th
-    df = df[~((df['Data'].dt.month == 2) & (df['Data'].dt.day == 29))]
+    # IN CASE YOU WANT TO SIMULATE ONLY PURE TRADING
+    #data = np.zeros(len(data))
 
-# Remove duplicate DateTime entries
-df = df.drop_duplicates(subset='DateTime', keep='first')  # Keep the first occurrence of each DateTime
+else:
 
-# CONVERT DATAFRAME TO NUMPY ARRAY AND EXTRACT SPECIFIC COLUMN
-data = df.to_numpy()  # Convert DataFrame to NumPy array
-data = data[:, 4]  # Extract the 5th column (index 4) from the array
+    data = np.zeros(time_window)
 
-# IN CASE YOU WANT TO SIMULATE ONLY PURE TRADING
-#data = np.zeros(len(data))
+
+if rec_load != 0.0:
+    df_rec = ExcelOpener_l.import_file.load_excel(rec_load, 'Sheet 1')
+
+    # CONVERT 'Data' COLUMN TO DATETIME FORMAT
+    df_rec['Data'] = pd.to_datetime(df_rec['Data'])
+
+    # CONVERT DATAFRAME TO NUMPY ARRAY AND EXTRACT SPECIFIC COLUMN
+    data_rec = df_rec.to_numpy()  # Convert DataFrame to NumPy array
+    data_rec = data_rec[:, 4]  # Extract the 5th column (index 4) from the array
+    data_rec = pd.to_numeric(data_rec)
+    data_rec = np.array(data_rec)
+
+else:
+
+    data_rec = np.zeros(time_window)

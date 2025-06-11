@@ -647,7 +647,7 @@ class EnergyPlots:
         labels_sorted = list(sorted_hist.keys())
         values_sorted = list(sorted_hist.values())
 
-        fig = plt.figure(figsize=(14, 16))  # Adjusted height to fit 3 rows
+        fig = plt.figure(figsize=(14, 18))  # Adjusted height to fit 3 rows
 
         # New 3-row GridSpec: 3 rows, 2 columns
         # height_ratios set to roughly fit table, pies, and histogram
@@ -692,7 +692,8 @@ class EnergyPlots:
         wedges1, texts1, autotexts1 = ax_pie1.pie(sizes1, labels=labels1, autopct='%1.1f%%', startangle=140,
                                                       colors=colors1,
                                                       textprops={'fontsize': 15},
-                                                      wedgeprops={'alpha': 0.85})
+                                                      wedgeprops={'alpha': 0.85},
+                                                  labeldistance=1.15, pctdistance=0.85)
         ax_pie1.set_title('REC Dashboard', fontsize=20, weight='bold')
         for autotext in autotexts1:
             autotext.set_color('black')
@@ -710,7 +711,8 @@ class EnergyPlots:
         wedges2, texts2, autotexts2 = ax_pie2.pie(sizes2, labels=labels2, autopct='%1.1f%%', startangle=140,
                                                       colors=colors2,
                                                       textprops={'fontsize': 15},
-                                                      wedgeprops={'alpha': 0.85})
+                                                      wedgeprops={'alpha': 0.85},
+                                                  labeldistance=1.15, pctdistance=0.85)
         ax_pie2.set_title('User Dashboard', fontsize=20, weight='bold')
         for autotext in autotexts2:
             autotext.set_color('black')
@@ -723,8 +725,8 @@ class EnergyPlots:
         # Histogram spanning both columns in row 2
         # Add 'Produced from PV' and 'User Shared Energy' to histogram data
         hist_data.update({
-            'User PV': np.abs(np.sum(produced_from_pv)),
-            'User SE': np.abs(np.sum(user_shared_energy))
+            'User PV': np.abs(np.sum(produced_from_pv)) * 30,
+            'User SE': np.abs(np.sum(user_shared_energy) * 30)
         })
 
         sorted_hist = dict(sorted(hist_data.items(), key=lambda item: item[1], reverse=True))
@@ -735,7 +737,7 @@ class EnergyPlots:
         bars = ax_hist.bar(labels_sorted, values_sorted,
                            color=[{
                                       'Disch Energy': 'darkorchid',
-                                      'Charg Energy': 'thistle',
+                                      'Charg Energy': 'darkgreen',
                                       'Withdrawn PV': 'indigo',
                                       'BESS to Load': 'orange',
                                       'SE BESS': 'cyan',

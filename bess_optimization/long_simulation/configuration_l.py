@@ -117,13 +117,21 @@ xl = [-max_discharge] * time_window + [0.0] * time_window
 xu = [max_charge] * time_window + [+1.0] * time_window
 
 # 8) DEFINE NUMBER OF GENERATIONS USED TO INTERRUPT THE ALGORITHM EXECUTION
-n_gen = 1500
+n_gen = 3500
 
 if n_gen < 100:
     logging.info("A low number of generations is used. Convergence is not assured.")
 
 # 8-bis) DEFINE TOLERANCE AS THE ALGORITHM INTERRUPTION CRITERIA
-tolerance = 10
+
+if time_window > 100:
+
+    tolerance = 5
+
+else:
+
+    tolerance = 0.5
+
 period = 20
 
 # number of iteration in which tolerance is evaluated

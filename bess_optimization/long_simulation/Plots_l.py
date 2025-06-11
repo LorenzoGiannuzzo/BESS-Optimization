@@ -1313,7 +1313,7 @@ class EnergyPlots:
                 color='white')  # Dashed grid lines with 0.5 linewidth and gray color
 
         # Save the figure
-        plt.savefig('Plots/Results/Short Simulation/total_convergence.png')
+        plt.savefig('Plots/Results/Long Simulation/total_convergence.png')
 
     @staticmethod
     def PUN_plot(PUN_timeseries):

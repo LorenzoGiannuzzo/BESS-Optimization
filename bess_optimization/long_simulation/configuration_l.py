@@ -98,7 +98,7 @@ xl = [-max_discharge]*time_window + [0.0]*time_window
 xu = [max_charge] * time_window + [+1.0] * time_window
 
 # 8) DEFINE NUMBER OF GENERATIONS USED TO INTERRUPT THE ALGORITHM EXECUTION
-n_gen = 3500
+n_gen = 10 # 3500
 
 # 8-bis) DEFINE TOLERANCE AS THE ALGORITHM INTERRUPTION CRITERIA
 tolerance = 1

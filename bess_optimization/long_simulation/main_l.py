@@ -528,7 +528,7 @@ class Main:
         total_discharged = np.sum(-np.array(discharged_energy_from_BESS))
         total_energy = total_charged + total_discharged
 
-        from argparser_s import n_cycles
+        from argparser_l import n_cycles
         n_cycles_prev = n_cycles
         actual_capacity = size * degradation(n_cycles_prev) / 100
         n_cycles = total_energy / actual_capacity

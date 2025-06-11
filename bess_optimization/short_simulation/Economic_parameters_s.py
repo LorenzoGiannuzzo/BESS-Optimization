@@ -7,7 +7,7 @@
     __version__ = "v0.2.1"
     __license__ = "MIT"
 
-Last Update of current code: 2/02/2025 """
+Last Update of current code: 2/06/2025 """
 
 # IMPORT LIBRARIES AND MODULES -----------------------------------------------------------------------------------------
 

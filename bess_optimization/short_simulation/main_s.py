@@ -7,7 +7,7 @@
     __version__ = "v0.2.1"
     __license__ = "MIT"
 
-Last Update of current code: 13/03/2025 """
+Last Update of current code: 13/06/2025 """
 
 
 # IMPORTING LIBRARIES AND MODULES FROM PROJECT
@@ -545,14 +545,14 @@ class Main:
         PUN_ts = PUN_timeseries[:, 1]
 
         # EVALUATE THE REVENUES OBTAINED FOR EACH TIMESTEP t
-        revenue_column = np.array(np.abs(discharged_energy_from_BESS) * PUN_ts / 1000 -
-                                  np.abs(charged_energy_from_grid_to_BESS) * PUN_ts * 1.2 / 1000
+        revenue_column = np.array(np.abs(discharged_energy_from_BESS) / 1000 -
+                                  np.abs(charged_energy_from_grid_to_BESS) * PUN_ts / 1000
                                   # + self.discharged_from_pv * self.PUN_timeseries / 1000
                                   + np.abs(shared_energy_BESS) * 120 / 1000
-                                  + np.abs(from_pv_to_load) * PUN_ts * 1.2 / 1000
-                                  + np.abs(from_BESS_to_load) * PUN_ts * 1.2 / 1000
+                                  + np.abs(from_pv_to_load) * PUN_ts / 1000
+                                  + np.abs(from_BESS_to_load) * PUN_ts  / 1000
                                   - (np.abs(load) - np.abs(from_pv_to_load) - np.abs(
-                                  from_BESS_to_load)) * PUN_ts * 1.2 / 1000 )
+                                  from_BESS_to_load)) * PUN_ts / 1000 )
 
         # EVALUATES TYPICAL DAYS REVENUES
         num_settimane = 12  # Number of weeks to evaluate

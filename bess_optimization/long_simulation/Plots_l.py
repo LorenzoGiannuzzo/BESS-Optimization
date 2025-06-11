@@ -449,9 +449,6 @@ class EnergyPlots:
 
         rev = np.array(rev, dtype=float)
 
-        # SET MONTH NAMES
-        month_names = ["January", "February", "March", "April", "May", "June",
-            "July", "August", "September", "October", "November", "December"]
 
         # Creating the layout with 3 boxes using gridspec
         fig = plt.figure(figsize=(36, 16))  # Increased height for the new graph
@@ -463,12 +460,6 @@ class EnergyPlots:
         # Plot SoC
         norm = Normalize(vmin=min(soc * 100), vmax=max(soc * 100))
         cmap = plt.cm.get_cmap("Blues")
-        for i in range(12):
-            start = i * 24 - 1
-            end = (i + 1) * 24 - 1
-            plt.axvline(x=i * 24 - 1, ls='--', color="black")
-            ax0.text(11.5 + 23.92 * i, max(soc) * 100 + max(soc) * 100 * 0.04, f'{month_names[i]}', color="black",
-                     fontsize=15, horizontalalignment='center')
 
         for i in range(len(time_steps)):
             ax0.bar(time_steps[i], soc[i] * 100, color=cmap(norm(soc[i] * 100)))
@@ -492,16 +483,6 @@ class EnergyPlots:
 
         norm = (total_d - np.min(total_d)) / (np.max(total_d) - np.min(total_d))
         colors = [(1, 1 - n, 0) for n in norm]
-
-        for i in range(12):
-            start = i * 24 - 1
-            end = (i + 1) * 24 - 1
-            plt.axvspan(start, end, facecolor=colors[i], alpha=0.2)
-            plt.axvline(x=i * 24 - 1, ls='--', color="black")
-            ax1.text(11.5 + 23.92 * i, max(size * 0.53,0.98*max(produced_from_pv)), f'{month_names[i]}', color="black", fontsize=15,
-                     horizontalalignment='center')
-            ax1.text(11.5 + 23.92 * i, max(size * 0.46,0.91*max(produced_from_pv)), f'{total_d[i]} MWh', color="black", fontsize=15,
-                     horizontalalignment='center')
 
         width = 0.4
 
@@ -563,15 +544,6 @@ class EnergyPlots:
         norm = (rev_sums - np.min(rev_sums)) / (np.max(rev_sums) - np.min(rev_sums))
         colors_rev = [(0.8 * (1 - n), 0.8 + 0.2 * n, 0.8 * (1 - n)) for n in norm]
 
-        for i in range(12):
-            start = i * 24 - 1
-            end = (i + 1) * 24 - 1
-            plt.axvspan(start, end, facecolor=colors_rev[i], alpha=0.2)
-            plt.axvline(x=i * 24 - 1, ls='-', color="black")
-            ax2.text(11.5 + 23.92 * i, max(rev) + max(rev)*0.15, f'{month_names[i]}', color="black", fontsize=15,
-                     horizontalalignment='center')
-            ax2.text(11.5 + 23.92 * i, max(rev) + max(rev)*0.05, f'{rev_sums[i]} €', color="black", fontsize=15,
-                     horizontalalignment='center')
 
         from argparser_l import weekends
 
@@ -832,16 +804,6 @@ class EnergyPlots:
 
         norm = (total_d - np.min(total_d)) / (np.max(total_d) - np.min(total_d))
         colors = [(1, 1 - n, 0) for n in norm]
-
-        for i in range(12):
-            start = i * 24 - 1
-            end = (i + 1) * 24 - 1
-            plt.axvspan(start, end, facecolor=colors[i], alpha=0.2)
-            plt.axvline(x=i * 24 - 1, ls='--', color="black")
-            ax1.text(11.5 + 23.92 * i, max(size * 0.53,0.98*max(produced_from_pv)), f'{month_names[i]}', color="black", fontsize=15,
-                     horizontalalignment='center')
-            ax1.text(11.5 + 23.92 * i, max(size * 0.46,0.91*max(produced_from_pv)), f'{total_d[i]} MWh', color="black", fontsize=15,
-                     horizontalalignment='center')
 
         width = 0.4
 

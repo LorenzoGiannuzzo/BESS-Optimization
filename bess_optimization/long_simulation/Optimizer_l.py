@@ -23,7 +23,6 @@ from pymoo.operators.crossover.sbx import SBX
 from pymoo.operators.mutation.pm import PM
 
 
-
 class CustomCallback:
     def __init__(self, update_interval):
 
@@ -121,9 +120,6 @@ class Optimizer:
             print('Execution Time:', res.exec_time)
 
         return res
-
-
-
 
 
 

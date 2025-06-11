@@ -1,6 +1,4 @@
-"""
-
-BESS Optimization using NSGA-III Algorithm
+""" BESS Optimization using NSGA-III Algorithm
 
     __author__ = "Lorenzo Giannuzzo"
     __maintainer__ = "Lorenzo Giannuzzo"
@@ -9,9 +7,7 @@ BESS Optimization using NSGA-III Algorithm
     __version__ = "v0.2.1"
     __license__ = "MIT"
 
-Last Update of current code: 05/06/2025 - 17:49
-
-"""
+Last Update of current code: 05/06/2025 """
 
 # IMPORT LIBRARIES
 import os
@@ -31,7 +27,7 @@ matplotlib.use('Agg')
 class EnergyPlots:
 
     def __init__(self, time_window, soc, charged_energy, discharged_energy, PUN_timeseries, taken_from_grid,
-                 taken_from_pv, produced_from_pv, discharged_from_pv, self_consumption, from_pv_to_load,
+                 taken_from_pv, produced_from_pv,discharged_from_pv,self_consumption,from_pv_to_load,
                  from_BESS_to_laod, shared_energy_bess, load, rec_load, rec_production):
 
         self.time_window = time_window
@@ -45,7 +41,7 @@ class EnergyPlots:
         self.taken_from_pv = np.array(taken_from_pv)
         self.produced_from_pv = np.array(produced_from_pv)
         self.discharged_from_pv = np.array(discharged_from_pv)
-        self.plots_dir = "Plots/Results/Long Simulation"
+        self.plots_dir = "Plots/Results/Short Simulation"
         self.self_consumption = self_consumption
         self.from_pv_to_load = np.array(from_pv_to_load)
         self.from_BESS_to_load = np.array(from_BESS_to_laod)
@@ -442,12 +438,15 @@ class EnergyPlots:
         self_consumption = self.load
         from_pv_to_load = self.from_pv_to_load
         from_BESS_to_load = self.from_BESS_to_load
+        shared_energy_bess = self.shared_energy_bess
 
         # EVALUATE REVENUES
-        rev = (- (np.array(discharged_energy) * pun_values / 1000) - (
-                taken_from_grid * pun_values / 1000) + (
-                  -np.array(discharged_from_pv)) * pun_values / 1000 + from_pv_to_load * pun_values * 1.3 / 1000 +
-               from_BESS_to_load * pun_values / 1000)
+        rev = np.array( np.abs(discharged_energy) * pun_values / 1000
+               - np.abs(taken_from_grid * pun_values  / 1000)
+               # + np.abs(discharged_from_pv) * pun_values / 1000
+               + np.abs(shared_energy_bess) * 120 / 1000
+                )
+
         rev = np.array(rev, dtype=float)
 
         # SET MONTH NAMES
@@ -472,7 +471,7 @@ class EnergyPlots:
                      fontsize=15, horizontalalignment='center')
 
         for i in range(len(time_steps)):
-            ax0.bar(time_steps[i], soc[i] * 100, color=cmap(norm(soc[i])))
+            ax0.bar(time_steps[i], soc[i] * 100, color=cmap(norm(soc[i] * 100)))
         ax0.set_title('State of Charge (SoC)')
         ax0.set_ylabel('SoC [%]')
         plt.ylim(0, max(soc) * 100 + max(soc) * 100 * 0.08)
@@ -504,21 +503,27 @@ class EnergyPlots:
             ax1.text(11.5 + 23.92 * i, max(size * 0.46,0.91*max(produced_from_pv)), f'{total_d[i]} MWh', color="black", fontsize=15,
                      horizontalalignment='center')
 
-        self_consumption = pd.to_numeric(self_consumption, errors='coerce')
-        ax1.fill_between(time_steps, self_consumption, color='orange', alpha=0.3,
-                 label='Electrical Load')
-        ax1.fill_between(time_steps, 0, produced_from_pv, color='lightblue', alpha=0.3, label='Produced from PV')
         width = 0.4
-        ax1.bar(time_steps, [1] * np.array(taken_from_grid), width=width, color='darkgreen', label='From Grid to BESS')
-        ax1.bar(time_steps, taken_from_pv, color='darkblue', bottom=-discharged_from_pv + np.array(from_pv_to_load),
-                width=width, label='From PV to BESS')
-        ax1.bar(time_steps, from_pv_to_load, color='cyan',
-                width=width, label='From PV to Load')
-        ax1.bar(time_steps, from_BESS_to_load, color='lime',
-                width=width, label='From BESS to Load', bottom = -discharged_from_pv + np.array(from_pv_to_load) + np.array(taken_from_pv))
+
+        load = pd.to_numeric(self.load, errors='coerce')
+        ax1.fill_between(time_steps, load, color='orange', alpha=0.3, label='REC Load')
+
+        ax1.fill_between(time_steps, 0, produced_from_pv, color='lightblue', alpha=0.3, label="User's PV Production")
+
+        ax1.bar(time_steps, -discharged_from_pv, width=width, bottom=from_pv_to_load + taken_from_pv,
+                label="User's PV to Grid")
+
+        ax1.bar(time_steps, from_pv_to_load, width=width, color="grey", label='User PV to Load')
+
         ax1.bar(time_steps, discharged_energy, width=width, color='darkred', bottom=np.array(taken_from_grid),
-                label='From BESS to Grid')
-        ax1.bar(time_steps, -discharged_from_pv, width=width, label='From PV to Grid', bottom = from_pv_to_load)
+                label="User's BESS to Grid")
+
+        ax1.bar(time_steps, taken_from_pv, width=width, color='orange', bottom=np.array(from_pv_to_load),
+                label="User's PV to BESS")
+
+        ax1.bar(time_steps, shared_energy_bess, color='cyan', width=width, bottom=from_pv_to_load+taken_from_pv+np.abs(discharged_from_pv), label='User BESS Add SE')
+
+        ax1.bar(time_steps, [1] * np.array(taken_from_grid), width=width, color='darkgreen', label='Grid to User BESS')
 
         ax1.set_ylabel('Energy [kWh]')
         ax1.set_title('System Energy Flows')
@@ -580,7 +585,192 @@ class EnergyPlots:
 
         ax0.set_title('State of Charge (SoC) - Weekends')  # TODO: SHOULD BE WEEKENDS
         fig.tight_layout()
-        plt.savefig(os.path.join(self.plots_dir, "Total_View_2.png"))
+        plt.savefig(os.path.join(self.plots_dir, "Total_View.png"))
+
+    import numpy as np
+    import matplotlib.pyplot as plt
+    import os
+
+    def Dashboard(self, num_values):
+
+        from argparser_l import size, POD_power, technology, n_cycles, soc_max, soc_min, PV_power
+        import matplotlib.gridspec as gridspec
+
+        time_steps = self.time_steps[:num_values]
+        charged_energy = self.charged_energy[:num_values]
+        discharged_energy = self.discharged_energy[:num_values]
+        pun_values = self.PUN_timeseries[:num_values]
+        soc = self.soc[:num_values]
+        produced_from_pv = self.produced_from_pv[:num_values]
+        taken_from_pv = self.taken_from_pv[:num_values]
+        taken_from_grid = self.taken_from_grid[:num_values]
+        discharged_from_pv = self.discharged_from_pv
+        self_consumption = self.load
+        from_pv_to_load = self.from_pv_to_load
+        from_BESS_to_load = self.from_BESS_to_load
+        shared_energy_bess = self.shared_energy_bess
+        rec_production = self.rec_production
+        rec_load = self.rec_load
+
+        rev = np.array(np.abs(discharged_energy) * pun_values / 1000
+                       - np.abs(taken_from_grid * pun_values / 1000)
+                       + np.abs(shared_energy_bess) * 120 / 1000)
+        rev = np.array(rev, dtype=float)
+
+        shared_energy = np.minimum(rec_load + self.load - from_pv_to_load - from_BESS_to_load, rec_production[:, 1])
+        uncovered_rec_load = (rec_load - shared_energy)
+
+        total_rec_uncovered_load = np.sum(uncovered_rec_load) * 30
+        total_shared_energy = np.sum(shared_energy) * 30
+        total_shared_energy_bess = np.sum(shared_energy_bess) * 30
+
+        uncovered_load = self.load - from_pv_to_load - from_BESS_to_load
+        total_uncovered_load = np.sum(uncovered_load) * 30
+
+        total_discharged_energy = np.abs(np.sum(discharged_energy)) * 30
+        total_charged_energy = np.sum(taken_from_grid) * 30
+        total_taken_from_pv = np.sum(taken_from_pv) * 30
+        total_from_bess_to_load = np.sum(from_BESS_to_load) * 30
+
+        user_shared_energy = total_shared_energy - np.sum(np.minimum(rec_load, rec_production[:, 1])) * 30
+
+        hist_data = {
+            'Disch Energy': total_discharged_energy,
+            'Charg Energy': total_charged_energy,
+            'Withdrawn PV': total_taken_from_pv,
+            'BESS to Load': total_from_bess_to_load,
+            'SE BESS': total_shared_energy_bess
+        }
+
+        # Ordino i dati per l'istogramma
+        sorted_hist = dict(sorted(hist_data.items(), key=lambda item: item[1], reverse=True))
+        labels_sorted = list(sorted_hist.keys())
+        values_sorted = list(sorted_hist.values())
+
+        fig = plt.figure(figsize=(14, 18))  # Adjusted height to fit 3 rows
+
+        # New 3-row GridSpec: 3 rows, 2 columns
+        # height_ratios set to roughly fit table, pies, and histogram
+        gs = gridspec.GridSpec(3, 2, height_ratios=[3, 5, 7], hspace=0.3, wspace=0.3)
+
+        # Table on top spanning both columns (row 0, both columns)
+        ax_table = fig.add_subplot(gs[0, :])
+        ax_table.axis('off')
+
+        table_data = [
+            ['User Battery Size (kWh)', f'{size:.1f}'],
+            ['User POD (kW)', f'{POD_power:.1f}'],
+            ['BESS Technology', technology],
+            ['DoD', f'{soc_min * 100}% - {soc_max * 100}%'],
+            ['User PV Size (kW)', f'{PV_power:.1f}']
+        ]
+
+        table = ax_table.table(cellText=table_data,
+                               colLabels=['Parameter', 'Value'],
+                               cellLoc='center',
+                               colLoc='center',
+                               loc='center')
+
+        table.auto_set_font_size(False)
+        table.set_fontsize(14)
+        table.scale(1, 2)
+
+        for key, cell in table.get_celld().items():
+            row, col = key
+            if row == 0:
+                cell.get_text().set_fontweight('bold')
+
+        adjusted_uncovered_load = total_uncovered_load - np.sum(user_shared_energy)
+        if adjusted_uncovered_load < 0:
+            adjusted_uncovered_load = 0  # avoid negative values for pie chart slice
+
+        # Pie charts side-by-side in row 1
+        ax_pie1 = fig.add_subplot(gs[1, 0])
+        colors1 = ['gainsboro', 'yellowgreen', 'cyan']
+        sizes1 = [total_rec_uncovered_load, total_shared_energy, total_shared_energy_bess]
+        labels1 = ['REC Uncovered Load', 'Shared Energy', 'Additional SE BESS']
+        wedges1, texts1, autotexts1 = ax_pie1.pie(sizes1, labels=labels1, autopct='%1.1f%%', startangle=140,
+                                                      colors=colors1,
+                                                      textprops={'fontsize': 15},
+                                                      wedgeprops={'alpha': 0.85},
+                                                  labeldistance=1.15, pctdistance=0.85)
+        ax_pie1.set_title('REC Dashboard', fontsize=20, weight='bold')
+        for autotext in autotexts1:
+            autotext.set_color('black')
+
+        # Add numerical values below each label in pie1
+        for text, value in zip(autotexts1, sizes1):
+            x, y = text.get_position()
+            ax_pie1.text(x, y - 0.1, f'{value:,.0f} kWh', ha='center', va='top', fontsize=10, color='black')
+
+        ax_pie2 = fig.add_subplot(gs[1, 1])
+        colors2 = ['steelblue', 'orange', 'yellowgreen', 'gainsboro', 'cyan']
+        sizes2 = [np.sum(from_pv_to_load) * 30, np.sum(from_BESS_to_load) * 30, np.sum(user_shared_energy),
+                  adjusted_uncovered_load, total_shared_energy_bess]
+        labels2 = ['PV to Load (SC)', 'BESS to Load (SC)', 'User SE', 'Uncovered Load', 'BESS SE']
+        wedges2, texts2, autotexts2 = ax_pie2.pie(sizes2, labels=labels2, autopct='%1.1f%%', startangle=140,
+                                                      colors=colors2,
+                                                      textprops={'fontsize': 15},
+                                                      wedgeprops={'alpha': 0.85},
+                                                  labeldistance=1.15, pctdistance=0.85)
+        ax_pie2.set_title('User Dashboard', fontsize=20, weight='bold')
+        for autotext in autotexts2:
+            autotext.set_color('black')
+
+        # Add numerical values below each label in pie2
+        for text, value in zip(autotexts2, sizes2):
+            x, y = text.get_position()
+            ax_pie2.text(x, y - 0.1, f'{value:,.0f} kWh', ha='center', va='top', fontsize=10, color='black')
+
+        # Histogram spanning both columns in row 2
+        # Add 'Produced from PV' and 'User Shared Energy' to histogram data
+        hist_data.update({
+            'User PV': np.abs(np.sum(produced_from_pv)) * 30,
+            'User SE': np.abs(np.sum(user_shared_energy) * 30)
+        })
+
+        sorted_hist = dict(sorted(hist_data.items(), key=lambda item: item[1], reverse=True))
+        labels_sorted = list(sorted_hist.keys())
+        values_sorted = list(sorted_hist.values())
+
+        ax_hist = fig.add_subplot(gs[2, :])
+        bars = ax_hist.bar(labels_sorted, values_sorted,
+                           color=[{
+                                      'Disch Energy': 'darkorchid',
+                                      'Charg Energy': 'darkgreen',
+                                      'Withdrawn PV': 'indigo',
+                                      'BESS to Load': 'orange',
+                                      'SE BESS': 'cyan',
+                                      'User PV': 'mediumseagreen',
+                                      'User SE': 'yellowgreen'
+                                  }[label] for label in labels_sorted])
+        max_height = max(values_sorted)
+        ax_hist.set_ylim(0, max_height * 1.25)
+
+        for bar in bars:
+            height = bar.get_height()
+            ax_hist.annotate(f'{height:,.0f} kWh',
+                             xy=(bar.get_x() + bar.get_width() / 2, height),
+                             xytext=(0, 6),
+                             textcoords='offset points',
+                             ha='center', va='bottom',
+                             fontsize=13, color='black')
+
+        ax_hist.set_ylabel('Energy [kWh]', fontsize=13)
+        ax_hist.set_title('Energy Flows', fontsize=16, pad=15, weight="bold")
+        ax_hist.tick_params(axis='x', labelsize=12)
+        ax_hist.tick_params(axis='y', labelsize=12)
+        ax_hist.grid(False)
+        ax_hist.axhline(0, color='black', linewidth=1)
+        ax_hist.legend(bars, labels_sorted, loc='upper right', fontsize=15, frameon=True)
+
+        ax_hist.margins(x=0.15)
+
+        plt.tight_layout()
+
+        plt.savefig(os.path.join(self.plots_dir, "Dashboard.png"), dpi=150, bbox_inches='tight')
+        plt.close(fig)
+
 
     def USER_View(self, num_values):
 
@@ -601,7 +791,7 @@ class EnergyPlots:
 
         # SET MONTH NAMES
         month_names = ["January", "February", "March", "April", "May", "June",
-                       "July", "August", "September", "October", "November", "December"]
+            "July", "August", "September", "October", "November", "December"]
 
         # Creating the layout with 3 boxes using gridspec
         fig = plt.figure(figsize=(28, 10))  # Increased height for the new graph
@@ -648,11 +838,9 @@ class EnergyPlots:
             end = (i + 1) * 24 - 1
             plt.axvspan(start, end, facecolor=colors[i], alpha=0.2)
             plt.axvline(x=i * 24 - 1, ls='--', color="black")
-            ax1.text(11.5 + 23.92 * i, max(size * 0.53, 0.98 * max(produced_from_pv)), f'{month_names[i]}',
-                     color="black", fontsize=15,
+            ax1.text(11.5 + 23.92 * i, max(size * 0.53,0.98*max(produced_from_pv)), f'{month_names[i]}', color="black", fontsize=15,
                      horizontalalignment='center')
-            ax1.text(11.5 + 23.92 * i, max(size * 0.46, 0.91 * max(produced_from_pv)), f'{total_d[i]} MWh',
-                     color="black", fontsize=15,
+            ax1.text(11.5 + 23.92 * i, max(size * 0.46,0.91*max(produced_from_pv)), f'{total_d[i]} MWh', color="black", fontsize=15,
                      horizontalalignment='center')
 
         width = 0.4
@@ -673,19 +861,17 @@ class EnergyPlots:
         ax1.bar(time_steps, discharged_energy, width=width, color='darkred', bottom=np.array(taken_from_grid),
                 label="BESS to Grid")
 
-        ax1.bar(time_steps, taken_from_pv, width=width, color='orange',
-                bottom=np.array(from_pv_to_load + from_BESS_to_load),
+        ax1.bar(time_steps, taken_from_pv, width=width, color='orange', bottom=np.array(from_pv_to_load + from_BESS_to_load),
                 label="PV to BESS")
 
-        ax1.bar(time_steps, shared_energy_bess, color='cyan', width=width,
-                bottom=from_pv_to_load + taken_from_pv + np.abs(discharged_from_pv), label="Shared Energy")
+        ax1.bar(time_steps, shared_energy_bess, color='cyan', width=width, bottom=from_pv_to_load+taken_from_pv+np.abs(discharged_from_pv), label="Shared Energy")
 
         ax1.bar(time_steps, [1] * np.array(taken_from_grid), width=width, color='darkgreen', label='Grid to BESS')
 
         ax1.set_ylabel('Energy [kWh]')
         ax1.set_title('System Energy Flows')
         ax1.legend(loc='upper left')
-        plt.ylim(min(-size * 0.6, -max(produced_from_pv)), max(size * 0.6, max(produced_from_pv)))
+        plt.ylim(min(-size * 0.6,-max(produced_from_pv)), max(size * 0.6,max(produced_from_pv)))
 
         # Plot PUN values on the secondary axis
         ax3 = ax1.twinx()
@@ -730,7 +916,7 @@ class EnergyPlots:
 
         # SET MONTH NAMES
         month_names = ["January", "February", "March", "April", "May", "June",
-                       "July", "August", "September", "October", "November", "December"]
+            "July", "August", "September", "October", "November", "December"]
 
         # Creating the layout with 3 boxes using gridspec
         fig = plt.figure(figsize=(28, 10))  # Increased height for the new graph
@@ -762,19 +948,18 @@ class EnergyPlots:
 
         ax1.fill_between(time_steps, np.array(rec_load), color='lightgreen', alpha=0.3, label='REC Load')
 
-        ax1.fill_between(time_steps, np.array(rec_production[:, 1]), color='lightblue', alpha=0.3,
-                         label="REC Production")
+        ax1.fill_between(time_steps,  np.array(rec_production[:,1]), color='lightblue', alpha=0.3, label="REC Production")
 
-        shared_energy = np.minimum(np.array(rec_load), np.array(rec_production[:, 1]))
+        shared_energy = np.minimum(np.array(rec_load), np.array(rec_production[:,1]))
 
-        # ax1.fill_between(time_steps, shared_energy_bess + shared_energy, color='indigo', alpha=0.3, label="Additional SE")
+        #ax1.fill_between(time_steps, shared_energy_bess + shared_energy, color='indigo', alpha=0.3, label="Additional SE")
 
         ax1.fill_between(time_steps, shared_energy, color='plum', alpha=0.3, label="Shared Energy")
 
         ax1.set_ylabel('Energy [kWh]')
         ax1.set_title('System Energy Flows')
         ax1.legend(loc='upper left')
-        plt.ylim(0, max(rec_production[:, 1]))
+        plt.ylim(0, max(rec_production[:,1]))
 
         from argparser_l import weekends
 
@@ -789,6 +974,7 @@ class EnergyPlots:
         ax0.set_title('State of Charge (SoC)')
         fig.tight_layout()
         plt.savefig(os.path.join(self.plots_dir, "REC_View.png"))
+
 
     def Total_View_cycles(self, num_values, n_cycles):
 
@@ -1165,7 +1351,7 @@ class EnergyPlots:
                 color='white')  # Dashed grid lines with 0.5 linewidth and gray color
 
         # Save the figure
-        plt.savefig('Plots/Results/Long Simulation/total_convergence.png')
+        plt.savefig('Plots/Results/Short Simulation/total_convergence.png')
 
     @staticmethod
     def PUN_plot(PUN_timeseries):
@@ -1237,7 +1423,7 @@ class EnergyPlots:
             plt.tight_layout()
 
             # Check if the "Plots" folder exists, create it if not
-            output_dir = 'Plots/Results/Long Simulation'
+            output_dir = 'Plots/Results/Short Simulation'
 
             if not os.path.exists(output_dir):
                 os.makedirs(output_dir)
@@ -1299,7 +1485,7 @@ class EnergyPlots:
         ax2.legend(loc='upper right')
 
         # Saving the plot to a file
-        output_dir = 'Plots/Results/Long Simulation'
+        output_dir = 'Plots/Results/Short Simulation'
         os.makedirs(output_dir, exist_ok=True)
         output_path = os.path.join(output_dir, 'C_rate.png')
         plt.savefig(output_path)

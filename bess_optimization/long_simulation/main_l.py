@@ -678,10 +678,15 @@ if __name__ == "__main__":
         data.append(entry)
 
     json_file_path = output_json_path  # Path for output JSON file
-    with open(json_file_path, 'w') as json_file:
-        json.dump(data, json_file, indent=4)  # Write data to JSON file with indentation
 
-    from argparser_l import weekends, args2
+    import os
+
+    # Create the JSON file only if it doesn't exist
+    if not os.path.exists(json_file_path):
+        with open(json_file_path, 'w') as json_file:
+            json.dump(data, json_file, indent=4)  # Write data to JSON file with indentation
+
+    from argparser_l import  weekends, args2
 
     # OLD FLAG NOT INFLUENCING IN THE CURRENT STATE OF THE CODE
     if weekends == 'True':

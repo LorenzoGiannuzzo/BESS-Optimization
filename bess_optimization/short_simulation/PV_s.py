@@ -101,7 +101,7 @@ if b == 0:
     rec_production['P'] = pd.to_numeric(rec_production['P'], errors='coerce')
 
     # Scale the power values
-    rec_production['P'] = rec_production['P'] * PV_power / 1000
+    rec_production['P'] = rec_production['P'] * PV_power
 
     # Convert 'time' to pandas datetime object
     # The format is 'YYYYMMDD:HHMM', so we need to replace ':' with a space and parse it

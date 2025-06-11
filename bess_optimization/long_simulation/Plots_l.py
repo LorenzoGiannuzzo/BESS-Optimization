@@ -592,19 +592,19 @@ class EnergyPlots:
         shared_energy = np.minimum(rec_load + self.load - from_pv_to_load - from_BESS_to_load, rec_production[:, 1])
         uncovered_rec_load = (rec_load - shared_energy)
 
-        total_rec_uncovered_load = np.sum(uncovered_rec_load) * 30
-        total_shared_energy = np.sum(shared_energy) * 30
-        total_shared_energy_bess = np.sum(shared_energy_bess) * 30
+        total_rec_uncovered_load = np.sum(uncovered_rec_load)
+        total_shared_energy = np.sum(shared_energy)
+        total_shared_energy_bess = np.sum(shared_energy_bess)
 
         uncovered_load = self.load - from_pv_to_load - from_BESS_to_load
-        total_uncovered_load = np.sum(uncovered_load) * 30
+        total_uncovered_load = np.sum(uncovered_load)
 
-        total_discharged_energy = np.abs(np.sum(discharged_energy)) * 30
-        total_charged_energy = np.sum(taken_from_grid) * 30
-        total_taken_from_pv = np.sum(taken_from_pv) * 30
-        total_from_bess_to_load = np.sum(from_BESS_to_load) * 30
+        total_discharged_energy = np.abs(np.sum(discharged_energy))
+        total_charged_energy = np.sum(taken_from_grid)
+        total_taken_from_pv = np.sum(taken_from_pv)
+        total_from_bess_to_load = np.sum(from_BESS_to_load)
 
-        user_shared_energy = total_shared_energy - np.sum(np.minimum(rec_load, rec_production[:, 1])) * 30
+        user_shared_energy = total_shared_energy - np.sum(np.minimum(rec_load, rec_production[:, 1]))
 
         hist_data = {
             'Disch Energy': total_discharged_energy,
@@ -677,7 +677,7 @@ class EnergyPlots:
 
         ax_pie2 = fig.add_subplot(gs[1, 1])
         colors2 = ['steelblue', 'orange', 'yellowgreen', 'gainsboro', 'cyan']
-        sizes2 = [np.sum(from_pv_to_load) * 30, np.sum(from_BESS_to_load) * 30, np.sum(user_shared_energy),
+        sizes2 = [np.sum(from_pv_to_load) , np.sum(from_BESS_to_load) , np.sum(user_shared_energy),
                   adjusted_uncovered_load, total_shared_energy_bess]
         labels2 = ['PV to Load (SC)', 'BESS to Load (SC)', 'User SE', 'Uncovered Load', 'BESS SE']
         wedges2, texts2, autotexts2 = ax_pie2.pie(sizes2, labels=labels2, autopct='%1.1f%%', startangle=140,
@@ -697,8 +697,8 @@ class EnergyPlots:
         # Histogram spanning both columns in row 2
         # Add 'Produced from PV' and 'User Shared Energy' to histogram data
         hist_data.update({
-            'User PV': np.abs(np.sum(produced_from_pv)) * 30,
-            'User SE': np.abs(np.sum(user_shared_energy) * 30)
+            'User PV': np.abs(np.sum(produced_from_pv)) ,
+            'User SE': np.abs(np.sum(user_shared_energy) )
         })
 
         sorted_hist = dict(sorted(hist_data.items(), key=lambda item: item[1], reverse=True))
@@ -740,7 +740,7 @@ class EnergyPlots:
 
         plt.tight_layout()
 
-        plt.savefig(os.path.join(self.plots_dir, "Dashboard.png"), dpi=150, bbox_inches='tight')
+        plt.savefig(os.path.join(self.plots_dir, "Dashboard.png"), dpi=500, bbox_inches='tight')
         plt.close(fig)
 
 

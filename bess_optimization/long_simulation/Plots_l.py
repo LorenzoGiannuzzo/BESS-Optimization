@@ -41,7 +41,7 @@ class EnergyPlots:
         self.taken_from_pv = np.array(taken_from_pv)
         self.produced_from_pv = np.array(produced_from_pv)
         self.discharged_from_pv = np.array(discharged_from_pv)
-        self.plots_dir = "Plots/Results/Short Simulation"
+        self.plots_dir = "Plots/Results/Long Simulation"
         self.self_consumption = self_consumption
         self.from_pv_to_load = np.array(from_pv_to_load)
         self.from_BESS_to_load = np.array(from_BESS_to_laod)

@@ -26,6 +26,7 @@ parser = argparse.ArgumentParser(description='Script for BESS Optimization.')
 
 # SET DEFAULT VALUES
 input_json_default = 0.0
+input_flexibility_path = 0.0
 input_PV_default = 0.0
 input_load_default = 0.0
 output_json_default = r"C:\Users\lorenzo.giannuzzo\PycharmProjects\BESS-Optimization\data\Output\output.json"
@@ -53,6 +54,9 @@ parser.add_argument('--rec_load', type=str, required=False, default=input_load_d
 
 parser.add_argument('--rec_production', type=str, required=False, default=input_load_default,
                     help='Absolute path of the output file .xlsx')
+
+parser.add_argument('--flexibility_order', type=str, required=False, default=input_flexibility_path,
+                    )
 
 parser.add_argument('--output_json', type=str, required=False, default=output_json_default,
                     help='Absolute path of the output file .json')
@@ -147,6 +151,8 @@ assert BESS_power >= 0, logging.error("Input BESS power is negative.\n\n")
 # NUMBER OF CYCLES
 n_cycles = args.n_cycles
 assert n_cycles >= 0, logging.error("Input Number of cycles is negative.\n\n")
+
+flexibility_path = args.flexibility_order
 
 weekends = args.weekends
 self_consumption = args.self_consumption

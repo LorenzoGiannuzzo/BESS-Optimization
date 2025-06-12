@@ -22,10 +22,11 @@ from argparser_l import POD_power
 from BESS_model_l import power_energy
 from BESS_model_l import degradation
 from logger import setup_logger
+from flexibility import start_period, end_period, power, price
 
 # LOGGER SETUP
-
 setup_logger()
+
 # DEFINE OPTIMIZATION PROBLEM
 class Revenues(ElementwiseProblem):
     def __init__(
@@ -486,6 +487,9 @@ class Revenues(ElementwiseProblem):
 
         # DEFINE THE OUTPUT OF THE OPTIMIZATION PROBLEM
         out["F"] = [final_revenues]
+
+
+
 
 
 

@@ -21,6 +21,7 @@ if __name__ == "__main__":
     input_PV_default = r"C:\Users\lorenzo.giannuzzo\PycharmProjects\BESS-Optimization\data\Input\PV_power.csv"
     output_json_default = r"C:\Users\lorenzo.giannuzzo\PycharmProjects\BESS-Optimization\data\Output\output.json"
     input_load_default = r"C:\Users\lorenzo.giannuzzo\PycharmProjects\BESS-Optimization\data\Loads\BTA6_5.xlsx"
+    input_flexibility_path = 0.0
     technology_default = "Li-ion"
     size_default = 2500
     power_energy_default = 0
@@ -53,6 +54,9 @@ if __name__ == "__main__":
 
     parser.add_argument('--rec_production', type=str, required=False, default=input_load_default,
                         help='Absolute path of the output file .xlsx')
+
+    parser.add_argument('--flexibility_order', type=str, required=False, default=input_flexibility_path,
+                        )
 
     parser.add_argument('--output_json', type=str, required=False, default=output_json_default,
                         help='Absolute path of the output file .json')

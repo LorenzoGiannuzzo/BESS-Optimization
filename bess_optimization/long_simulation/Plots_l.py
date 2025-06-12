@@ -451,7 +451,12 @@ class EnergyPlots:
 
 
         # Creating the layout with 3 boxes using gridspec
-        fig = plt.figure(figsize=(36, 16))  # Increased height for the new graph
+
+        if num_values > 42:
+            fig = plt.figure(figsize=(36, 16))  # Increased height for the new graph
+        else:
+            fig = plt.figure(figsize=(16, 16))  # Increased height for the new graph
+
         gs = gridspec.GridSpec(3, 1, height_ratios=[1, 1, 1])  # Set equal height for all rows
 
         # Axis for SoC top
@@ -462,7 +467,7 @@ class EnergyPlots:
         cmap = plt.cm.get_cmap("Blues")
 
         for i in range(len(time_steps)):
-            ax0.bar(time_steps[i], soc[i] * 100, color=cmap(norm(soc[i] * 100)))
+            ax0.bar(time_steps[i], soc[i] * 100, color=cmap(norm(soc[i] * 100)), width=0.4)
         ax0.set_title('State of Charge (SoC)')
         ax0.set_ylabel('SoC [%]')
         plt.ylim(0, max(soc) * 100 + max(soc) * 100 * 0.08)
@@ -487,24 +492,27 @@ class EnergyPlots:
         width = 0.4
 
         load = pd.to_numeric(self.load, errors='coerce')
-        ax1.fill_between(time_steps, load, color='orange', alpha=0.3, label='REC Load')
+        ax1.fill_between(time_steps, load, color='orange', alpha=0.3, label="Users's Load")
 
         ax1.fill_between(time_steps, 0, produced_from_pv, color='lightblue', alpha=0.3, label="User's PV Production")
 
         ax1.bar(time_steps, -discharged_from_pv, width=width, bottom=from_pv_to_load + taken_from_pv,
                 label="User's PV to Grid")
 
-        ax1.bar(time_steps, from_pv_to_load, width=width, color="grey", label='User PV to Load')
+        ax1.bar(time_steps, from_pv_to_load, width=width, color="grey", label='User PV to Load', bottom=from_BESS_to_load)
 
-        ax1.bar(time_steps, discharged_energy, width=width, color='darkred', bottom=np.array(taken_from_grid),
+        ax1.bar(time_steps, discharged_energy, width=width, color='darkred',
                 label="User's BESS to Grid")
 
-        ax1.bar(time_steps, taken_from_pv, width=width, color='orange', bottom=np.array(from_pv_to_load),
+        ax1.bar(time_steps, taken_from_pv, width=width, color='orange', bottom=np.array(from_pv_to_load + from_BESS_to_load),
                 label="User's PV to BESS")
 
-        ax1.bar(time_steps, shared_energy_bess, color='cyan', width=width, bottom=from_pv_to_load+taken_from_pv+np.abs(discharged_from_pv), label='User BESS Add SE')
+        ax1.bar(time_steps, from_BESS_to_load, width=width, color='indigo',
+                label="User's PV to BESS")
 
-        ax1.bar(time_steps, [1] * np.array(taken_from_grid), width=width, color='darkgreen', label='Grid to User BESS')
+        ax1.bar(time_steps, shared_energy_bess, color='cyan', width=width, bottom=from_pv_to_load+taken_from_pv+np.abs(discharged_from_pv) + from_BESS_to_load, label='User BESS Add SE')
+
+        ax1.bar(time_steps, [1] * np.array(taken_from_grid), width=width, color='darkgreen', label='Grid to User BESS',bottom=from_BESS_to_load)
 
         ax1.set_ylabel('Energy [kWh]')
         ax1.set_title('System Energy Flows')

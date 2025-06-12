@@ -71,6 +71,9 @@ class Revenues(ElementwiseProblem):
 
         self.rec_load = data_rec
         self.rec_production = rec_pv[:,1]
+
+        self.flexibility_energy = np.zeros((len(self.PUN_timeseries)))
+
     # OBJECTIVE FUNCTION DEFINITION
     def _evaluate(self, x, out, *args, **kwargs):
 
@@ -103,6 +106,43 @@ class Revenues(ElementwiseProblem):
         # EXECUTE THE UPDATE FOR EACH i-th TIMESTEP OF ALL THE ENERGY VECTORS. EVALUATING ENERGY BALANCES
         from argparser_l import n_cycles
         from argparser_l import soc_max, soc_min
+
+        from flexibility import start_period, end_period, price, power
+
+        from datetime import datetime
+        def compare_dates_and_duration(start_period, end_period, rec_pv):
+            # Parse start_period and end_period to datetime objects
+            start_date = datetime.strptime(start_period, "%Y/%m/%d %H:%M:%S")
+            end_date = datetime.strptime(end_period, "%Y/%m/%d %H:%M:%S")
+            # Extract the first date from rec_pv and parse it
+            first_rec_date_str = rec_pv[0, 0]  # Assuming rec_pv is a 2D numpy array
+            first_rec_date = datetime.strptime(first_rec_date_str, "%Y%m%d:%H%M")
+            # Create set of available hours in rec_pv (format YYYY/MM/DD HH)
+            available_hours = {
+                datetime.strptime(rec_date, "%Y%m%d:%H%M").strftime("%Y/%m/%d %H")
+                for rec_date in rec_pv[:, 0]
+            }
+            # Format start_period hour for check
+            start_period_hour = start_date.strftime("%Y/%m/%d %H")
+            if start_period_hour not in available_hours:
+                assert False, "The date of required flexibility does not correspond to the optimization time window."
+            # Calculate the hours difference between start_period and first date in rec_pv
+            hours_difference = int((start_date - first_rec_date).total_seconds() // 3600)
+            # Calculate the duration in hours between start_period and end_period
+            duration_hours = int((end_date - start_date).total_seconds() // 3600)
+            return hours_difference, duration_hours
+
+        if (start_period != 0.0) & (end_period != 0.0):
+
+            hours_difference, hours_end = compare_dates_and_duration(start_period, end_period, rec_pv)
+
+        else:
+
+            hours_difference = 0.0
+            hours_end = 0.0
+
+
+        #print(hours_difference, hours_end)
 
         for i in range(self.time_window - 1):
 
@@ -343,8 +383,7 @@ class Revenues(ElementwiseProblem):
             # (S-2) HOW MUCH ENERGY THE BESS CAN GIVE BASED ON THE CAP OF SOC_MIN
             self.from_BESS_to_load[i] = np.minimum(self.from_BESS_to_load[i], (self.soc[i] - soc_min) * size)
 
-            assert self.from_BESS_to_load[
-                           i] >= 0, f"Energy from BESS to load is negative (S-2).\n\n {self.soc[i]}\n\n {soc_min}"
+            assert self.from_BESS_to_load[i] >= 0, f"Energy from BESS to load is negative (S-2).\n\n {self.soc[i]}\n\n {soc_min}"
 
             # ----------------------------------------------------------------------------------------------------------
 
@@ -444,6 +483,12 @@ class Revenues(ElementwiseProblem):
             actual_capacity = size * degradation(n_cycles_prev) / 100
             n_cycles = n_cycles_prev + total_energy / actual_capacity
 
+            # FLEXIBILITY EVALUATION
+
+            if (i >= hours_difference) & (i < (hours_end+hours_difference)) & ((start_period != 0.0) & (end_period != 0.0)):
+
+                self.flexibility_energy[i] = np.maximum(self.discharged_energy_from_BESS[i], power)
+
         # EVALUATE THE NUMBER OF CYCLES DONE BY BESS
         total_charged = np.sum(self.charged_energy_from_BESS)
         total_discharged = np.sum(-self.discharged_energy_from_BESS)
@@ -462,6 +507,7 @@ class Revenues(ElementwiseProblem):
                                       + np.abs(self.shared_energy_BESS) * 120 / 1000
                                       + np.abs(self.from_pv_to_load) * self.PUN_timeseries / 1000
                                       + np.abs(self.from_BESS_to_load) * self.PUN_timeseries  / 1000
+                                      + np.abs(self.flexibility_energy) * price / 1000
                                       - (np.abs(self.load) - np.abs(self.from_pv_to_load) - np.abs(self.from_BESS_to_load)) * self.PUN_timeseries / 1000
                                   )
 

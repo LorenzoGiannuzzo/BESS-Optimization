@@ -28,7 +28,7 @@ class EnergyPlots:
 
     def __init__(self, time_window, soc, charged_energy, discharged_energy, PUN_timeseries, taken_from_grid,
                  taken_from_pv, produced_from_pv,discharged_from_pv,self_consumption,from_pv_to_load,
-                 from_BESS_to_laod, shared_energy_bess, load, rec_load, rec_production):
+                 from_BESS_to_laod, shared_energy_bess, load, rec_load, rec_production, flexibility_energy):
 
         self.time_window = time_window
 
@@ -49,6 +49,7 @@ class EnergyPlots:
         self.shared_energy_bess = shared_energy_bess
         self.rec_load = rec_load
         self.rec_production = rec_production
+        self.flexibility_energy = flexibility_energy
 
         if not os.path.exists(self.plots_dir):
             os.makedirs(self.plots_dir)
@@ -439,6 +440,7 @@ class EnergyPlots:
         from_pv_to_load = self.from_pv_to_load
         from_BESS_to_load = self.from_BESS_to_load
         shared_energy_bess = self.shared_energy_bess
+        flexibility_energy = self.flexibility_energy
 
         # EVALUATE REVENUES
         rev = np.array( np.abs(discharged_energy) * pun_values / 1000
@@ -502,6 +504,9 @@ class EnergyPlots:
         ax1.bar(time_steps, from_pv_to_load, width=width, color="grey", label='User PV to Load', bottom=from_BESS_to_load)
 
         ax1.bar(time_steps, discharged_energy, width=width, color='darkred',
+                label="User's BESS to Grid")
+
+        ax1.bar(time_steps, flexibility_energy, width=width, color='lime',
                 label="User's BESS to Grid")
 
         ax1.bar(time_steps, taken_from_pv, width=width, color='orange', bottom=np.array(from_pv_to_load + from_BESS_to_load),

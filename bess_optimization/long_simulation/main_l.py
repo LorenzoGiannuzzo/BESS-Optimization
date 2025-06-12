@@ -82,7 +82,7 @@ class Main:
 
         # APPLY PHYSICAL CONSTRAINTS
         (soc, charged_energy, discharged_energy, c_d_timeseries, taken_from_grid, discharged_from_pv,
-         taken_from_pv, n_cycler, load_self_consumption, from_pv_to_load, from_BESS_to_load, shared_energy_bess) = \
+         taken_from_pv, n_cycler, load_self_consumption, from_pv_to_load, from_BESS_to_load, shared_energy_bess, flexibility_energy) = \
             self.apply_physical_constraints(c_d_timeseries, load_decision)  # Apply constraints to the solution
 
         # DEFINE CLASS ATTRIBUTES AS CONSTRAINED SOLUTION OBTAINED FORM OPTIMIZATION
@@ -98,6 +98,7 @@ class Main:
         self.from_pv_to_load = from_pv_to_load
         self.from_BESS_to_load = from_BESS_to_load
         self.shared_energy_bess = shared_energy_bess
+        self.flexibility_energy = flexibility_energy
 
         # GET LOAD DATA
         from Load_l import data
@@ -105,7 +106,7 @@ class Main:
         # CALCULATE AND PRINT REVENUES
         self.calculate_and_print_revenues(self.taken_from_grid, self.discharged_energy, self.taken_from_grid,
                                           self.discharged_from_pv, self.from_pv_to_load, self.from_BESS_to_load,
-                                          shared_energy_bess,data)
+                                          shared_energy_bess,data, self.flexibility_energy)
         # Calculate and display revenues
 
         # GENERATE PLOTS IF PLOT FLAG IS TRUE
@@ -113,7 +114,7 @@ class Main:
             self.plot_results(soc, charged_energy, discharged_energy, c_d_timeseries, PUN_timeseries[:, 1],
                               taken_from_grid, taken_from_pv, discharged_from_pv, load_self_consumption,
                               from_pv_to_load,
-                              from_BESS_to_load, shared_energy_bess, data)  # Generate plots for the results
+                              from_BESS_to_load, shared_energy_bess, data, flexibility_energy)  # Generate plots for the results
 
     # CONSTRAINTS FUNCTION DEFINITION
     @staticmethod
@@ -153,6 +154,7 @@ class Main:
         taken_from_pv =  np.zeros((len(PUN_timeseries)))
         charged_energy_from_grid_to_BESS =  np.zeros((len(PUN_timeseries)))
         discharged_from_pv = np.zeros((len(PUN_timeseries)))
+        flexibility_energy = np.zeros((len(PUN_timeseries)))
         n_cycler = n_cycles
 
         # GET CHARGE/DISCHARGE INTERPOLATED FUNCTIONS
@@ -171,6 +173,43 @@ class Main:
         production = pv_production['P'] # OK
         rec_load = data_rec
         load = data # OK
+
+        from flexibility import start_period, end_period, price, power
+
+        from PV_l import rec_pv as dummy
+
+
+        from datetime import datetime
+        def compare_dates_and_duration(start_period, end_period, rec_pv):
+            # Parse start_period and end_period to datetime objects
+            start_date = datetime.strptime(start_period, "%Y/%m/%d %H:%M:%S")
+            end_date = datetime.strptime(end_period, "%Y/%m/%d %H:%M:%S")
+            # Extract the first date from rec_pv and parse it
+            first_rec_date_str = rec_pv[0, 0]  # Assuming rec_pv is a 2D numpy array
+            first_rec_date = datetime.strptime(first_rec_date_str, "%Y%m%d:%H%M")
+            # Create set of available hours in rec_pv (format YYYY/MM/DD HH)
+            available_hours = {
+                datetime.strptime(rec_date, "%Y%m%d:%H%M").strftime("%Y/%m/%d %H")
+                for rec_date in rec_pv[:, 0]
+            }
+            # Format start_period hour for check
+            start_period_hour = start_date.strftime("%Y/%m/%d %H")
+            if start_period_hour not in available_hours:
+                assert False, "The date of required flexibility does not correspond to the optimization time window."
+            # Calculate the hours difference between start_period and first date in rec_pv
+            hours_difference = int((start_date - first_rec_date).total_seconds() // 3600)
+            # Calculate the duration in hours between start_period and end_period
+            duration_hours = int((end_date - start_date).total_seconds() // 3600)
+            return hours_difference, duration_hours
+
+        if (start_period != 0.0) & (end_period != 0.0):
+
+            hours_difference, hours_end = compare_dates_and_duration(start_period, end_period, dummy)
+
+        else:
+
+            hours_difference = 0.0
+            hours_end = 0.0
 
         # Loop through time window to calculate state of charge and cycles
         for i in range(time_window - 1):
@@ -523,6 +562,12 @@ class Main:
             actual_capacity = size * degradation(n_cycles_prev) / 100
             n_cycles = n_cycles_prev + total_energy / actual_capacity
 
+            # FLEXIBILITY EVALUATION
+
+            if (i >= hours_difference) & (i < (hours_end+hours_difference)) & ((start_period != 0.0) & (end_period != 0.0)):
+
+                flexibility_energy[i] = np.maximum(discharged_energy_from_BESS[i], power)
+
         # EVALUATE THE NUMBER OF CYCLES DONE BY BESS
         total_charged = np.sum(charged_energy_from_BESS)
         total_discharged = np.sum(-np.array(discharged_energy_from_BESS))
@@ -535,14 +580,16 @@ class Main:
 
         return (soc, charged_energy_from_BESS, discharged_energy_from_BESS, c_d_timeseries, charged_energy_from_grid_to_BESS,
                 discharged_from_pv, taken_from_pv, n_cycler, load_self_consumption, from_pv_to_load, from_BESS_to_load,
-                shared_energy_BESS)
+                shared_energy_BESS, flexibility_energy)
 
     # CALCULATE AND PRINT REVENUES FUNCTION
     def calculate_and_print_revenues(self, charged_energy_from_grid_to_BESS, discharged_energy_from_BESS, taken_from_grid, discharged_from_pv,
-                                     from_pv_to_load, from_BESS_to_load, shared_energy_BESS,load):
+                                     from_pv_to_load, from_BESS_to_load, shared_energy_BESS,load, flexibility_energy):
 
         # GET PUN VALUES
         PUN_ts = PUN_timeseries[:, 1]
+
+        from flexibility import price
 
         # EVALUATE THE REVENUES OBTAINED FOR EACH TIMESTEP t
         revenue_column = np.array(np.abs(discharged_energy_from_BESS) / 1000 -
@@ -551,21 +598,11 @@ class Main:
                                   + np.abs(shared_energy_BESS) * 120 / 1000
                                   + np.abs(from_pv_to_load) * PUN_ts / 1000
                                   + np.abs(from_BESS_to_load) * PUN_ts  / 1000
+                                  + np.abs(flexibility_energy) * price / 1000
                                   - (np.abs(load) - np.abs(from_pv_to_load) - np.abs(
                                   from_BESS_to_load)) * PUN_ts / 1000 )
 
-        # EVALUATES TYPICAL DAYS REVENUES
-        num_settimane = 12  # Number of weeks to evaluate
-        ore_per_settimana = 24  # Hours per week
-        revenues_settimanali = np.zeros(num_settimane)  # Initialize weekly revenues array
-
-        # EVALUATE REVENUES
-        for i in range(num_settimane):
-            inizio = i * ore_per_settimana  # Start index for the week
-            fine = inizio + ore_per_settimana  # End index for the week
-            revenues_settimanali[i] = np.sum(revenue_column[inizio:fine]) * 30  # Calculate weekly revenues
-
-        revenues_finali = np.sum(revenues_settimanali)
+        revenues_finali = np.sum(revenue_column)
 
         self.rev = revenue_column
 
@@ -578,7 +615,7 @@ class Main:
     # DEFINE PLOT RESULTS FUNCTION
     def plot_results(self, soc, charged_energy, discharged_energy, c_d_energy, PUN_Timeseries, taken_from_grid,
                      taken_from_pv, discharged_from_pv, self_consumption, from_pv_to_load, from_BESS_to_load,
-                     shared_energy_bess, load):
+                     shared_energy_bess, load, flexibility_energy):
 
         # IMPORT LOAD DATA
         from Load_l import data, data_rec
@@ -588,7 +625,7 @@ class Main:
             plots = EnergyPlots(time_window, soc, charged_energy, discharged_energy, PUN_timeseries[:, 1],
                                 taken_from_grid, taken_from_pv, pv_production['P'], discharged_from_pv,
                                 self_consumption, from_pv_to_load, from_BESS_to_load, shared_energy_bess,
-                                np.array(data), np.array(data_rec), np.array(rec_pv))
+                                np.array(data), np.array(data_rec), np.array(rec_pv),flexibility_energy)
 
             # EXECUTE PLOT FUNCTIONS
             plots.Total_View(num_values=time_window)

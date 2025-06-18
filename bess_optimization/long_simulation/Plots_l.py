@@ -442,12 +442,17 @@ class EnergyPlots:
         shared_energy_bess = self.shared_energy_bess
         flexibility_energy = self.flexibility_energy
 
-        # EVALUATE REVENUES
-        rev = np.array( np.abs(discharged_energy) * pun_values / 1000
-               - np.abs(taken_from_grid * pun_values  / 1000)
-               # + np.abs(discharged_from_pv) * pun_values / 1000
-               + np.abs(shared_energy_bess) * 120 / 1000
-                )
+        from flexibility import price
+
+        rev = np.array(np.abs(discharged_energy) * pun_values/ 1000 -
+                                  np.abs(charged_energy) * pun_values / 1000
+                                  # + self.discharged_from_pv * self.PUN_timeseries / 1000
+                                  + np.abs(self.shared_energy_bess) * 120 / 1000
+                                  + np.abs(from_pv_to_load) * pun_values / 1000
+                                  + np.abs(from_BESS_to_load) * pun_values  / 1000
+                                  + np.abs(flexibility_energy) * price / 1000
+                                  - (np.abs(self.load) - np.abs(from_pv_to_load) - np.abs(
+                                  from_BESS_to_load)) * pun_values / 1000 )
 
         rev = np.array(rev, dtype=float)
 
@@ -501,7 +506,7 @@ class EnergyPlots:
         ax1.bar(time_steps, -discharged_from_pv, width=width, bottom=from_pv_to_load + taken_from_pv,
                 label="User's PV to Grid")
 
-        ax1.bar(time_steps, from_pv_to_load, width=width, color="grey", label='User PV to Load', bottom=from_BESS_to_load)
+        ax1.bar(time_steps, from_pv_to_load, width=width, color="orange", label='User PV to Load', bottom=from_BESS_to_load)
 
         ax1.bar(time_steps, discharged_energy, width=width, color='darkred',
                 label="User's BESS to Grid")
@@ -509,11 +514,11 @@ class EnergyPlots:
         ax1.bar(time_steps, flexibility_energy, width=width, color='lime',
                 label="User's BESS to Grid")
 
-        ax1.bar(time_steps, taken_from_pv, width=width, color='orange', bottom=np.array(from_pv_to_load + from_BESS_to_load),
+        ax1.bar(time_steps, taken_from_pv, width=width, color='darkblue', bottom=np.array(from_pv_to_load + from_BESS_to_load),
                 label="User's PV to BESS")
 
         ax1.bar(time_steps, from_BESS_to_load, width=width, color='indigo',
-                label="User's PV to BESS")
+                label="User's PV to Load")
 
         ax1.bar(time_steps, shared_energy_bess, color='cyan', width=width, bottom=from_pv_to_load+taken_from_pv+np.abs(discharged_from_pv) + from_BESS_to_load, label='User BESS Add SE')
 

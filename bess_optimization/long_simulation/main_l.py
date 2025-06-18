@@ -564,9 +564,16 @@ class Main:
 
             # FLEXIBILITY EVALUATION
 
-            if (i >= hours_difference) & (i < (hours_end+hours_difference)) & ((start_period != 0.0) & (end_period != 0.0)):
+            if (i >= hours_difference) & (i < (hours_end + hours_difference)) & (
+                    (start_period != 0.0) & (end_period != 0.0)):
 
-                flexibility_energy[i] = np.maximum(discharged_energy_from_BESS[i], power)
+                if power >= 0.0:
+
+                    flexibility_energy[i] = np.maximum(discharged_energy_from_BESS[i], power)
+
+                elif power < 0.0:
+
+                    flexibility_energy[i] = np.minimum(charged_energy_from_grid_to_BESS[i], power)
 
         # EVALUATE THE NUMBER OF CYCLES DONE BY BESS
         total_charged = np.sum(charged_energy_from_BESS)
@@ -592,7 +599,7 @@ class Main:
         from flexibility import price
 
         # EVALUATE THE REVENUES OBTAINED FOR EACH TIMESTEP t
-        revenue_column = np.array(np.abs(discharged_energy_from_BESS) / 1000 -
+        revenue_column = np.array(np.abs(discharged_energy_from_BESS) * PUN_ts/ 1000 -
                                   np.abs(charged_energy_from_grid_to_BESS) * PUN_ts / 1000
                                   # + self.discharged_from_pv * self.PUN_timeseries / 1000
                                   + np.abs(shared_energy_BESS) * 120 / 1000

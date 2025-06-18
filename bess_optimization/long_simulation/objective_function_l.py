@@ -487,7 +487,13 @@ class Revenues(ElementwiseProblem):
 
             if (i >= hours_difference) & (i < (hours_end+hours_difference)) & ((start_period != 0.0) & (end_period != 0.0)):
 
-                self.flexibility_energy[i] = np.maximum(self.discharged_energy_from_BESS[i], power)
+                if power >= 0.0:
+
+                    self.flexibility_energy[i] = np.maximum(self.discharged_energy_from_BESS[i], power)
+
+                elif power < 0.0:
+
+                    self.flexibility_energy[i] = np.minimum(self.charged_energy_from_grid_to_BESS[i], power)
 
         # EVALUATE THE NUMBER OF CYCLES DONE BY BESS
         total_charged = np.sum(self.charged_energy_from_BESS)

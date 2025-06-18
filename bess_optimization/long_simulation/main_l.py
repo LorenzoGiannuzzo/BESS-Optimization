@@ -553,9 +553,7 @@ class Main:
 
             # EVALUATING SHARED ENERGY
             shared_energy_REC[i] = np.minimum(rec_load[i], np.abs(rec_pv[i]))
-
-            remaining_production[i] = np.maximum(np.abs(discharged_from_pv[i]) - shared_energy_REC[i],0.0)
-
+            remaining_production[i] = np.maximum(np.abs(rec_pv[i]) - shared_energy_REC[i], 0.0)
             shared_energy_BESS[i] = np.minimum(remaining_production[i], charged_energy_from_BESS[i])
 
             total_energy = charged_energy_from_BESS[i] + np.abs(discharged_energy_from_BESS[i])
@@ -571,17 +569,11 @@ class Main:
 
                     flexibility_energy[i] = np.maximum(discharged_energy_from_BESS[i], -power)
 
-                    print("a")
-
                     if flexibility_energy[i] > -power:
 
                         print("Flexibility Request not completely satisfied at timestep", i)
 
                 elif power < 0.0:
-
-                    print("b")
-                    print(charged_energy_from_BESS[i])
-                    print(-power)
 
                     flexibility_energy[i] = np.minimum(charged_energy_from_grid_to_BESS[i], -power)
 
@@ -731,7 +723,8 @@ if __name__ == "__main__":
             "energy_sold_from_BESS": -main.discharged_energy[i],  # Energy sold from BESS
             "energy_from_BESS_to_load": -main.from_BESS_to_load[i],  # Energy from BESS to load
             "energy_from_PV_to_load": -main.from_pv_to_load[i],  # Energy from PV to load
-            "energy_self_consumed": main.load_self_consumption[i]  # Energy self consumed (load)
+            "energy_self_consumed": main.load_self_consumption[i],  # Energy self consumed (load)
+            "energy_flexibility": main.flexibility_energy[i]  # Energy used to satisfy flexibility requirement
 
         }
 

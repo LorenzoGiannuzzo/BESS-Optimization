@@ -517,9 +517,9 @@ class EnergyPlots:
         ax1.bar(time_steps, from_BESS_to_load, width=width, color='indigo',
                 label="User's PV to Load")
 
-        ax1.bar(time_steps, shared_energy_bess, color='cyan', width=width, bottom=from_pv_to_load+taken_from_pv+np.abs(discharged_from_pv) + from_BESS_to_load, label='User BESS Add SE')
-
         ax1.bar(time_steps, [1] * np.array(taken_from_grid), width=width, color='darkgreen', label='Grid to User BESS',bottom=from_BESS_to_load)
+
+        ax1.bar(time_steps, shared_energy_bess, color='cyan', width=width, bottom=np.array(from_pv_to_load + from_BESS_to_load), label='User BESS Add SE')
 
         ax1.bar(time_steps, flexibility_energy, width=width, color='lime',
                 label="Flexibility")
@@ -527,7 +527,7 @@ class EnergyPlots:
         ax1.set_ylabel('Energy [kWh]')
         ax1.set_title('System Energy Flows')
         ax1.legend(loc='upper left')
-        plt.ylim(min(-size * 0.6,-max(produced_from_pv)), max(size * 0.6,max(produced_from_pv)))
+        plt.ylim(min(-size * 0.6,-max(produced_from_pv))*1.5, max(size * 0.6,max(produced_from_pv))*1.5)
 
         # Plot PUN values on the secondary axis
         ax3 = ax1.twinx()

@@ -44,3 +44,52 @@ class BESS:
         return charge_rate_interpolated_func, discharge_rate_interpolated_func
 
 
+
+def get_charged_energy(c_d, soc, size, soc_max, c_func):
+    """
+    Calculate the amount of energy that can be charged into the BESS at a given timestep.
+
+    Parameters:
+    - c_d (float): Charge/discharge signal at current timestep.
+    - soc (float): Current state of charge (SOC) of the battery.
+    - size (float): Battery size or power capacity.
+    - soc_max (float): Maximum allowed SOC (typically 1.0 or 100%).
+    - c_func (function): Charging power limitation function depending on SOC.
+
+    Returns:
+    - float: Amount of energy charged into the BESS.
+    """
+
+    if c_d > 0:
+        energy = min(c_d * size, c_func(soc) * size)
+        energy = min(energy, max((soc_max - soc) * size, 0.0))
+        return energy
+    else:
+        return 0.0
+
+def get_discharged_energy(c_d, soc, size, d_func, soc_min):
+    """
+    Computes the discharged energy from the BESS, respecting power and SOC constraints.
+
+    Parameters:
+    - c_d: desired discharge power value (float)
+    - soc: current state of charge (float)
+    - size: system size (float)
+    - d_func: discharge limit function that returns a negative value based on SOC
+    - soc_min: minimum allowed SOC (float)
+
+    Returns:
+    - discharged energy (float)
+    """
+    max_discharge_power = max(c_d * size, -d_func(soc) * size)
+    soc_limit = min((soc_min - soc) * size, 0.0)
+
+    if c_d < 0.0:
+
+        energy = max(max_discharge_power, soc_limit)
+
+    else:
+
+        energy = 0.0
+
+    return energy

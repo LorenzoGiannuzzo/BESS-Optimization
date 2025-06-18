@@ -152,8 +152,8 @@ of points on the unit simplex is determined by a parameter p (we call it n_parti
 indicates the number of gaps between two consecutive points along an objective axis.
 '''
 
-eta_crossover = 3
-eta_mutation = 5
+eta_crossover = 1
+eta_mutation = 3
 prob_crossover = 1.0
 prob_mutation = 0.9
 

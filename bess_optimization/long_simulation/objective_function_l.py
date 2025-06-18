@@ -454,9 +454,10 @@ class Revenues(ElementwiseProblem):
 
                 self.soc[i + 1] = min(soc_max, self.soc[i] + (np.abs(self.charged_energy_from_BESS[i]) -
                                                               np.abs(self.from_BESS_to_load[i])) / size)
-                self.discharged_energy_from_BESS[i] = 0
 
-                # assert self.soc[i+1] >= self.soc[i], "SoC is decreasing instead of incresing.\n\n"
+                # self.discharged_energy_from_BESS[i] = 0
+
+                # assert self.soc[i+1] >= self.soc[i], f"SoC is decreasing instead of incresing.\n\n {self.soc[i+1]} - {self.soc[i]}"
 
             # IF BESS IS DISCHARGING
             elif self.c_d_timeseries[i] < 0:
@@ -466,7 +467,7 @@ class Revenues(ElementwiseProblem):
 
                 # assert self.soc[i+1] <= self.soc[i], "SoC is increasing instead of decreasing.\n\n"
 
-                self.charged_energy_from_grid_to_BESS[i] = 0
+                # self.charged_energy_from_grid_to_BESS[i] = 0
             else:
 
                 self.discharged_energy_from_BESS[i] = 0
@@ -508,8 +509,8 @@ class Revenues(ElementwiseProblem):
 
         # EVALUATE THE REVENUES OBTAINED FOR EACH TIMESTEP t
         revenue_column = np.array(np.abs(self.discharged_energy_from_BESS) * self.PUN_timeseries / 1000 -
-                                      np.abs(self.charged_energy_from_grid_to_BESS) * self.PUN_timeseries  / 1000
-                                      # + self.discharged_from_pv * self.PUN_timeseries / 1000
+                                      np.abs(self.charged_energy_from_grid_to_BESS) * self.PUN_timeseries / 1000
+                                      + np.abs(self.discharged_from_pv) * self.PUN_timeseries / 1000
                                       + np.abs(self.shared_energy_BESS) * 120 / 1000
                                       + np.abs(self.from_pv_to_load) * self.PUN_timeseries / 1000
                                       + np.abs(self.from_BESS_to_load) * self.PUN_timeseries / 1000

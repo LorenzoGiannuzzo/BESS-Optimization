@@ -571,17 +571,23 @@ class Main:
 
                     flexibility_energy[i] = np.maximum(discharged_energy_from_BESS[i], -power)
 
+                    print("a")
+
                     if flexibility_energy[i] > -power:
 
-                        print("Flexibility Request not completely satisfied at timestep",i)
+                        print("Flexibility Request not completely satisfied at timestep", i)
 
                 elif power < 0.0:
+
+                    print("b")
+                    print(charged_energy_from_BESS[i])
+                    print(-power)
 
                     flexibility_energy[i] = np.minimum(charged_energy_from_grid_to_BESS[i], -power)
 
                     if flexibility_energy[i] < -power:
 
-                        print("Flexibility Request not completely satisfied at timestep",i)
+                        print("Flexibility Request not completely satisfied at timestep", i)
 
         print(flexibility_energy)
 
@@ -611,13 +617,13 @@ class Main:
         # EVALUATE THE REVENUES OBTAINED FOR EACH TIMESTEP t
         revenue_column = np.array(np.abs(discharged_energy_from_BESS) * PUN_ts/ 1000 -
                                   np.abs(charged_energy_from_grid_to_BESS) * PUN_ts / 1000
-                                  # + self.discharged_from_pv * self.PUN_timeseries / 1000
+                                  + np.abs(discharged_from_pv) * PUN_ts / 1000
                                   + np.abs(shared_energy_BESS) * 120 / 1000
                                   + np.abs(from_pv_to_load) * PUN_ts / 1000
-                                  + np.abs(from_BESS_to_load) * PUN_ts  / 1000
+                                  + np.abs(from_BESS_to_load) * PUN_ts / 1000
                                   + np.abs(flexibility_energy) * price / 1000
                                   - (np.abs(load) - np.abs(from_pv_to_load) - np.abs(
-                                  from_BESS_to_load)) * PUN_ts / 1000 )
+                                  from_BESS_to_load)) * PUN_ts / 1000)
 
         revenues_finali = np.sum(revenue_column)
 

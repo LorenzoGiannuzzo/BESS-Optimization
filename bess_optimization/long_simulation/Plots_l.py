@@ -446,13 +446,13 @@ class EnergyPlots:
 
         rev = np.array(np.abs(discharged_energy) * pun_values/ 1000 -
                                   np.abs(charged_energy) * pun_values / 1000
-                                  # + self.discharged_from_pv * self.PUN_timeseries / 1000
+                                  + np.abs(discharged_from_pv) * pun_values / 1000
                                   + np.abs(self.shared_energy_bess) * 120 / 1000
                                   + np.abs(from_pv_to_load) * pun_values / 1000
-                                  + np.abs(from_BESS_to_load) * pun_values  / 1000
+                                  + np.abs(from_BESS_to_load) * pun_values / 1000
                                   + np.abs(flexibility_energy) * price / 1000
                                   - (np.abs(self.load) - np.abs(from_pv_to_load) - np.abs(
-                                  from_BESS_to_load)) * pun_values / 1000 )
+                                  from_BESS_to_load)) * pun_values / 1000)
 
         rev = np.array(rev, dtype=float)
 

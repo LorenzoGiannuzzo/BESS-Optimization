@@ -489,11 +489,11 @@ class Revenues(ElementwiseProblem):
 
                 if power >= 0.0:
 
-                    self.flexibility_energy[i] = np.maximum(self.discharged_energy_from_BESS[i], power)
+                    self.flexibility_energy[i] = np.maximum(self.discharged_energy_from_BESS[i], -power)
 
                 elif power < 0.0:
 
-                    self.flexibility_energy[i] = np.minimum(self.charged_energy_from_grid_to_BESS[i], power)
+                    self.flexibility_energy[i] = np.minimum(self.charged_energy_from_grid_to_BESS[i], -power)
 
         # EVALUATE THE NUMBER OF CYCLES DONE BY BESS
         total_charged = np.sum(self.charged_energy_from_BESS)
@@ -512,7 +512,7 @@ class Revenues(ElementwiseProblem):
                                       # + self.discharged_from_pv * self.PUN_timeseries / 1000
                                       + np.abs(self.shared_energy_BESS) * 120 / 1000
                                       + np.abs(self.from_pv_to_load) * self.PUN_timeseries / 1000
-                                      + np.abs(self.from_BESS_to_load) * self.PUN_timeseries  / 1000
+                                      + np.abs(self.from_BESS_to_load) * self.PUN_timeseries / 1000
                                       + np.abs(self.flexibility_energy) * price / 1000
                                       - (np.abs(self.load) - np.abs(self.from_pv_to_load) - np.abs(self.from_BESS_to_load)) * self.PUN_timeseries / 1000
                                   )

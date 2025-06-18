@@ -569,11 +569,21 @@ class Main:
 
                 if power >= 0.0:
 
-                    flexibility_energy[i] = np.maximum(discharged_energy_from_BESS[i], power)
+                    flexibility_energy[i] = np.maximum(discharged_energy_from_BESS[i], -power)
+
+                    if flexibility_energy[i] > -power:
+
+                        print("Flexibility Request not completely satisfied at timestep",i)
 
                 elif power < 0.0:
 
-                    flexibility_energy[i] = np.minimum(charged_energy_from_grid_to_BESS[i], power)
+                    flexibility_energy[i] = np.minimum(charged_energy_from_grid_to_BESS[i], -power)
+
+                    if flexibility_energy[i] < -power:
+
+                        print("Flexibility Request not completely satisfied at timestep",i)
+
+        print(flexibility_energy)
 
         # EVALUATE THE NUMBER OF CYCLES DONE BY BESS
         total_charged = np.sum(charged_energy_from_BESS)

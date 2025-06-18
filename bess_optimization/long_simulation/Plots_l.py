@@ -511,9 +511,6 @@ class EnergyPlots:
         ax1.bar(time_steps, discharged_energy, width=width, color='darkred',
                 label="User's BESS to Grid")
 
-        ax1.bar(time_steps, flexibility_energy, width=width, color='lime',
-                label="User's BESS to Grid")
-
         ax1.bar(time_steps, taken_from_pv, width=width, color='darkblue', bottom=np.array(from_pv_to_load + from_BESS_to_load),
                 label="User's PV to BESS")
 
@@ -523,6 +520,9 @@ class EnergyPlots:
         ax1.bar(time_steps, shared_energy_bess, color='cyan', width=width, bottom=from_pv_to_load+taken_from_pv+np.abs(discharged_from_pv) + from_BESS_to_load, label='User BESS Add SE')
 
         ax1.bar(time_steps, [1] * np.array(taken_from_grid), width=width, color='darkgreen', label='Grid to User BESS',bottom=from_BESS_to_load)
+
+        ax1.bar(time_steps, flexibility_energy, width=width, color='lime',
+                label="Flexibility")
 
         ax1.set_ylabel('Energy [kWh]')
         ax1.set_title('System Energy Flows')

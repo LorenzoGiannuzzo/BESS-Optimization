@@ -709,7 +709,7 @@ if __name__ == "__main__":
     for i in range(len(PUN_timeseries[:, 1])):
         entry = {
             # DATETIME KEY
-            "datetime": PUN_timeseries[i, 0],  # Timestamp for the entry
+            "datetime": PUN_timeseries[i, 0].isoformat(),  # Timestamp for the entry
 
             # PUN VALUES KEY
             "PUN": PUN_timeseries[i, 1] / 1000,  # PUN value in kWh
@@ -742,12 +742,14 @@ if __name__ == "__main__":
 
     import os
 
-    # Create the JSON file only if it doesn't exist
-    if not os.path.exists(json_file_path):
-        with open(json_file_path, 'w') as json_file:
-            json.dump(data, json_file, indent=4)  # Write data to JSON file with indentation
+    os.makedirs(json_file_path, exist_ok=True)  # Ensure directory exists
+    json_file_path = os.path.join(json_file_path, 'output.json')
 
-    from argparser_l import  weekends, args2
+    with open(json_file_path, 'w') as json_file:
+        json.dump(data, json_file, indent=4)
+
+
+    from argparser_l import weekends, args2
 
     # OLD FLAG NOT INFLUENCING IN THE CURRENT STATE OF THE CODE
     if weekends == 'True':

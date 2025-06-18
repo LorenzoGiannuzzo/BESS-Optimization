@@ -412,12 +412,11 @@ class Revenues(ElementwiseProblem):
             self.charged_energy_from_grid_to_BESS[i] = np.maximum(self.charged_energy_from_BESS[i] -
                                                                       self.taken_from_pv[i], 0.0)
 
-            assert self.charged_energy_from_grid_to_BESS[
-                           i] >= 0, "Energy taken from Grid to BESS is negative (V).\n\n"
+            assert self.charged_energy_from_grid_to_BESS[i] >= 0, "Energy taken from Grid to BESS is negative (V).\n\n"
 
             # (EXTRA)
-
             if self.from_BESS_to_load[i] > 0:
+
                 self.charged_energy_from_grid_to_BESS[i] = 0
 
             # (Z) UPDATE THE ENERGY THAT THE BESS WANT TO CHARGE AS SUM OF THE ONE CHARGED FROM GRID TO BESS AND THE ENERGY
@@ -518,22 +517,8 @@ class Revenues(ElementwiseProblem):
                                       - (np.abs(self.load) - np.abs(self.from_pv_to_load) - np.abs(self.from_BESS_to_load)) * self.PUN_timeseries / 1000
                                   )
 
-        # EVALUATE REVENUES CONSIDERING TYPICAL DAYS FOR EACH MONTH
-
-        num_settimane = 12
-        ore_per_settimana = 24
-        revenues_settimanali = np.zeros(num_settimane)
-
-        for i in range(num_settimane):
-            inizio = i * ore_per_settimana
-            fine = inizio + ore_per_settimana
-            revenues_settimanali[i] = np.sum(revenue_column[inizio:fine]) * 30
-
-        somma_revenues_finali = np.sum(revenues_settimanali)
-
-
         # EVALUATE THE REVENUES OBTAINED DURING THE OPTIMIZATION TIME WINDOW
-        total_revenue = somma_revenues_finali
+        total_revenue = np.sum(revenue_column)
 
         # CORRECT THE VALUES OF THE REVENUES IN ORDER TO MINIMIZE THE OBJECTIVE FUNCTION
         final_revenues = -total_revenue

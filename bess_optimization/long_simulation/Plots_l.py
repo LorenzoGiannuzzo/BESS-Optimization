@@ -28,7 +28,7 @@ class EnergyPlots:
 
     def __init__(self, time_window, soc, charged_energy, discharged_energy, PUN_timeseries, taken_from_grid,
                  taken_from_pv, produced_from_pv,discharged_from_pv,self_consumption,from_pv_to_load,
-                 from_BESS_to_laod, shared_energy_bess, load, rec_load, rec_production, flexibility_energy):
+                 from_BESS_to_laod, shared_energy_bess, load, rec_load, rec_production, flexibility_energy, POD_profile):
 
         self.time_window = time_window
 
@@ -50,9 +50,21 @@ class EnergyPlots:
         self.rec_load = rec_load
         self.rec_production = rec_production
         self.flexibility_energy = flexibility_energy
+        self.POD_profile = np.array(POD_profile)
 
         if not os.path.exists(self.plots_dir):
             os.makedirs(self.plots_dir)
+
+    def POD_view(self):
+        plt.figure(figsize=(12, 8))
+        plt.plot(self.time_steps, self.POD_profile, color='blue', linewidth=2)
+        plt.title('POD Profile [kW]')
+        plt.xlabel('Time Window [h]')
+        plt.ylabel('Power [kW]')
+        plt.grid(True)
+        plt.tight_layout()
+        plt.savefig(os.path.join(self.plots_dir, "POD_profile.png"))
+        plt.close()
 
     # DEFINE SoC PLOT FUNCTION
     def plot_soc(self):

@@ -82,7 +82,7 @@ class Main:
 
         # APPLY PHYSICAL CONSTRAINTS
         (soc, charged_energy, discharged_energy, c_d_timeseries, taken_from_grid, discharged_from_pv,
-         taken_from_pv, n_cycler, load_self_consumption, from_pv_to_load, from_BESS_to_load, shared_energy_bess, flexibility_energy) = \
+         taken_from_pv, n_cycler, load_self_consumption, from_pv_to_load, from_BESS_to_load, shared_energy_bess, flexibility_energy, POD_profile) = \
             self.apply_physical_constraints(c_d_timeseries, load_decision)  # Apply constraints to the solution
 
         # DEFINE CLASS ATTRIBUTES AS CONSTRAINED SOLUTION OBTAINED FORM OPTIMIZATION
@@ -114,7 +114,7 @@ class Main:
             self.plot_results(soc, charged_energy, discharged_energy, c_d_timeseries, PUN_timeseries[:, 1],
                               taken_from_grid, taken_from_pv, discharged_from_pv, load_self_consumption,
                               from_pv_to_load,
-                              from_BESS_to_load, shared_energy_bess, data, flexibility_energy)  # Generate plots for the results
+                              from_BESS_to_load, shared_energy_bess, data, flexibility_energy, POD_profile)  # Generate plots for the results
 
     # CONSTRAINTS FUNCTION DEFINITION
     @staticmethod
@@ -589,6 +589,12 @@ class Main:
 
         print(flexibility_energy)
 
+        POD_profile = (-np.abs(discharged_energy_from_BESS)
+                       - np.abs(discharged_from_pv)
+                       + np.abs(charged_energy_from_grid_to_BESS)
+                       + (np.abs(load) - np.abs(from_pv_to_load) - np.abs(from_BESS_to_load))
+                       )
+
         # EVALUATE THE NUMBER OF CYCLES DONE BY BESS
         total_charged = np.sum(charged_energy_from_BESS)
         total_discharged = np.sum(-np.array(discharged_energy_from_BESS))
@@ -601,7 +607,7 @@ class Main:
 
         return (soc, charged_energy_from_BESS, discharged_energy_from_BESS, c_d_timeseries, charged_energy_from_grid_to_BESS,
                 discharged_from_pv, taken_from_pv, n_cycler, load_self_consumption, from_pv_to_load, from_BESS_to_load,
-                shared_energy_BESS, flexibility_energy)
+                shared_energy_BESS, flexibility_energy, POD_profile)
 
     # CALCULATE AND PRINT REVENUES FUNCTION
     def calculate_and_print_revenues(self, charged_energy_from_grid_to_BESS, discharged_energy_from_BESS, taken_from_grid, discharged_from_pv,
@@ -609,6 +615,12 @@ class Main:
 
         # GET PUN VALUES
         PUN_ts = PUN_timeseries[:, 1]
+
+        POD_profile = (-np.abs(discharged_energy_from_BESS)
+                       - np.abs(discharged_from_pv)
+                       + np.abs(charged_energy_from_grid_to_BESS)
+                       + (np.abs(load) - np.abs(from_pv_to_load) - np.abs(from_BESS_to_load))
+                       )
 
         from flexibility import price
 
@@ -636,7 +648,7 @@ class Main:
     # DEFINE PLOT RESULTS FUNCTION
     def plot_results(self, soc, charged_energy, discharged_energy, c_d_energy, PUN_Timeseries, taken_from_grid,
                      taken_from_pv, discharged_from_pv, self_consumption, from_pv_to_load, from_BESS_to_load,
-                     shared_energy_bess, load, flexibility_energy):
+                     shared_energy_bess, load, flexibility_energy,POD_profile):
 
         # IMPORT LOAD DATA
         from Load_l import data, data_rec
@@ -646,13 +658,14 @@ class Main:
             plots = EnergyPlots(time_window, soc, charged_energy, discharged_energy, PUN_timeseries[:, 1],
                                 taken_from_grid, taken_from_pv, pv_production['P'], discharged_from_pv,
                                 self_consumption, from_pv_to_load, from_BESS_to_load, shared_energy_bess,
-                                np.array(data), np.array(data_rec), np.array(rec_pv),flexibility_energy)
+                                np.array(data), np.array(data_rec), np.array(rec_pv),flexibility_energy, POD_profile)
 
             # EXECUTE PLOT FUNCTIONS
             plots.Total_View(num_values=time_window)
             plots.USER_View(num_values=time_window)
             #plots.REC_View(num_values=time_window)
             plots.plot_daily_energy_flows(num_values=time_window)
+            plots.POD_view()
 
             plots.plot_degradation()
             plots.Dashboard(num_values=time_window)

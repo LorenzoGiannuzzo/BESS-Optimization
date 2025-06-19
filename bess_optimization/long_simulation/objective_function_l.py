@@ -498,7 +498,12 @@ class Revenues(ElementwiseProblem):
         actual_capacity = size * degradation(n_cycles_prev)/100
         n_cycles = total_energy / actual_capacity
 
-        # EVALUATE THE REVENUES OBTAINED FOR EACH TIMESTEP t
+        POD_profile = (-np.abs(self.discharged_energy_from_BESS)
+                       - np.abs(self.discharged_from_pv)
+                       + np.abs(self.charged_energy_from_grid_to_BESS)
+                       + (np.abs(self.load) - np.abs(self.from_pv_to_load) - np.abs(self.from_BESS_to_load))
+                       )
+
         # EVALUATE THE REVENUES OBTAINED FOR EACH TIMESTEP t
         revenue_column = np.array(np.abs(self.discharged_energy_from_BESS) * self.PUN_timeseries / 1000 -
                                       np.abs(self.charged_energy_from_grid_to_BESS) * self.PUN_timeseries / 1000

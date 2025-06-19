@@ -130,7 +130,7 @@ if time_window > 100:
 
 else:
 
-    tolerance = 0.3
+    tolerance = 0.2
 
 period = 20
 

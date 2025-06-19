@@ -133,6 +133,7 @@ class Revenues(ElementwiseProblem):
         for i in range(self.time_window - 1):
 
             # UPDATE SOC MAX BASED ON ITS ACTUAL AND PAST DEGRADATION
+            flag = 0
             n_cycles_prev = n_cycles
             max_capacity = degradation(n_cycles_prev) / 100
             soc_max = min(soc_max, max_capacity)
@@ -466,15 +467,25 @@ class Revenues(ElementwiseProblem):
 
             # FLEXIBILITY EVALUATION
 
-            if (i >= hours_difference) & (i < (hours_end+hours_difference)) & ((start_period != 0.0) & (end_period != 0.0)):
+            from flexibility import price
+
+            if (i >= hours_difference) and (i < (hours_end+hours_difference)) and ((start_period != 0.0) and (end_period != 0.0)):
 
                 if power >= 0.0:
 
                     self.flexibility_energy[i] = np.maximum(self.discharged_energy_from_BESS[i], -power)
 
+                    if self.flexibility_energy[i] > -power:
+
+                        flag = 1
+
                 elif power < 0.0:
 
                     self.flexibility_energy[i] = np.minimum(self.charged_energy_from_grid_to_BESS[i], -power)
+
+                    if self.flexibility_energy[i] < -power:
+
+                        flag = 1
 
         # EVALUATE THE NUMBER OF CYCLES DONE BY BESS
         total_charged = np.sum(self.charged_energy_from_BESS)
@@ -488,6 +499,7 @@ class Revenues(ElementwiseProblem):
         n_cycles = total_energy / actual_capacity
 
         # EVALUATE THE REVENUES OBTAINED FOR EACH TIMESTEP t
+        # EVALUATE THE REVENUES OBTAINED FOR EACH TIMESTEP t
         revenue_column = np.array(np.abs(self.discharged_energy_from_BESS) * self.PUN_timeseries / 1000 -
                                       np.abs(self.charged_energy_from_grid_to_BESS) * self.PUN_timeseries / 1000
                                       + np.abs(self.discharged_from_pv) * self.PUN_timeseries / 1000
@@ -497,6 +509,7 @@ class Revenues(ElementwiseProblem):
                                       + np.abs(self.flexibility_energy) * price / 1000
                                       - (np.abs(self.load) - np.abs(self.from_pv_to_load) - np.abs(self.from_BESS_to_load)) * self.PUN_timeseries / 1000
                                   )
+        flag = 0
 
         # EVALUATE THE REVENUES OBTAINED DURING THE OPTIMIZATION TIME WINDOW
         total_revenue = np.sum(revenue_column)

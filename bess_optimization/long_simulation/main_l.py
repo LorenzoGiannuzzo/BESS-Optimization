@@ -488,15 +488,16 @@ class Main:
             charged_energy_from_grid_to_BESS[i] = np.maximum(charged_energy_from_BESS[i] -
                                                                   taken_from_pv[i], 0.0)
 
-            assert charged_energy_from_grid_to_BESS[
-                       i] >= 0, "Energy taken from Grid to BESS is negative (V).\n\n"
+            assert charged_energy_from_grid_to_BESS[i] >= 0, "Energy taken from Grid to BESS is negative (V).\n\n"
 
             # (EXTRA)
 
             if from_BESS_to_load[i] > 0:
+
                 charged_energy_from_grid_to_BESS[i] = 0
 
-            # (Z) UPDATE THE ENERGY THAT THE BESS WANT TO CHARGE AS SUM OF THE ONE CHARGED FROM GRID TO BESS AND THE ENERGY
+            # (Z) UPDATE THE ENERGY THAT THE BESS WANT TO CHARGE AS SUM OF THE ONE CHARGED FROM GRID TO BESS AND
+            # THE ENERGY
             # TAKEN FROM PV TO THE BESS
             charged_energy_from_BESS[i] = charged_energy_from_grid_to_BESS[i] + taken_from_pv[i]
 
@@ -562,8 +563,8 @@ class Main:
 
             # FLEXIBILITY EVALUATION
 
-            if (i >= hours_difference) & (i < (hours_end + hours_difference)) & (
-                    (start_period != 0.0) & (end_period != 0.0)):
+            if (i >= hours_difference) and (i < (hours_end + hours_difference)) and (
+                    (start_period != 0.0) and (end_period != 0.0)):
 
                 if power >= 0.0:
 
@@ -573,13 +574,18 @@ class Main:
 
                         print("Flexibility Request not completely satisfied at timestep", i)
 
+                        flag = 1
+
                 elif power < 0.0:
 
                     flexibility_energy[i] = np.minimum(charged_energy_from_grid_to_BESS[i], -power)
 
+
                     if flexibility_energy[i] < -power:
 
                         print("Flexibility Request not completely satisfied at timestep", i)
+
+                        flag = 1
 
         print(flexibility_energy)
 
@@ -607,7 +613,7 @@ class Main:
         from flexibility import price
 
         # EVALUATE THE REVENUES OBTAINED FOR EACH TIMESTEP t
-        revenue_column = np.array(np.abs(discharged_energy_from_BESS) * PUN_ts/ 1000 -
+        revenue_column = np.array(np.abs(discharged_energy_from_BESS) * PUN_ts / 1000 -
                                   np.abs(charged_energy_from_grid_to_BESS) * PUN_ts / 1000
                                   + np.abs(discharged_from_pv) * PUN_ts / 1000
                                   + np.abs(shared_energy_BESS) * 120 / 1000

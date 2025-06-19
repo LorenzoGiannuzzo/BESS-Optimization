@@ -152,13 +152,15 @@ of points on the unit simplex is determined by a parameter p (we call it n_parti
 indicates the number of gaps between two consecutive points along an objective axis.
 '''
 
-eta_crossover = 1
-eta_mutation = 3
-prob_crossover = 1.0
-prob_mutation = 0.9
+eta_crossover = 10
+eta_mutation = 5
 
 
-ref_dirs = get_reference_directions("das-dennis", n_obj, n_partitions=pop_size)
+prob_crossover = 0.8
+prob_mutation = 1.0
+
+
+ref_dirs = get_reference_directions("das-dennis", n_obj, n_partitions=n_obj*12)
 
 # 11) ALGORITHMS INITIALIZATION- HYPERPARAMETERS DEFINITION: Sampling, Selection, Crossover, Mutation
 algorithm = NSGA3(
@@ -169,14 +171,14 @@ algorithm = NSGA3(
     # sampling: This parameter specifies the method used to initialize the population. FloatRandomSampling
     # generates random floating-point values for the initial solutions, providing a diverse starting point.
 
-    sampling=LatinHypercubeSampling(),  # this seems to be slightly better than other sampling methods
+    #sampling=LatinHypercubeSampling(),  # this seems to be slightly better than other sampling methods
 
     # selection: This defines the selection mechanism used to choose parents for reproduction.
     # TournamentSelection selects individuals based on a comparison function.
     # func_comp=comp_by_cv_then_random: This comparison function first considers constraint violations (cv) and
     # then applies a random selection if necessary. This helps prioritize feasible solutions.
 
-    selection=TournamentSelection(func_comp=comp_by_cv_then_random),
+    #selection=TournamentSelection(func_comp=comp_by_cv_then_random),
 
     # crossover: This parameter specifies the crossover operator used for generating offspring.
     # SBX: Simulated Binary Crossover (SBX) is a common crossover method in genetic algorithms, particularly

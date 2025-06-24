@@ -697,7 +697,14 @@ class Main:
                                       + np.abs(charged_energy_from_grid_to_BESS[i])
                                       + (np.abs(load[i]) - np.abs(from_pv_to_load[i]) - np.abs(
                                 from_BESS_to_load[i]))
-                                      )
+
+                                    )
+
+        import pandas as pd
+
+        df = pd.DataFrame({'POD_profile': POD_profile})
+        df.to_csv('baseline.csv', index=False)
+
 
 
         # EVALUATE THE NUMBER OF CYCLES DONE BY BESS

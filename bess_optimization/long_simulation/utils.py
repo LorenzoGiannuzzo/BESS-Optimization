@@ -93,3 +93,33 @@ def get_discharged_energy(c_d, soc, size, d_func, soc_min):
         energy = 0.0
 
     return energy
+
+
+import pandas as pd
+from datetime import datetime, timedelta
+
+# Lista dei valori baseline (24 valori)
+baseline_values = [
+    0.7473048254393376, 0.4877515718558829, 0.022283725709009605, 0.8284010755747437,
+    0.13880282073311045, 0.05221269271088924, 0.0005144015122362511, -1.488800351961672,
+    4.214307398805435, -7.536948906923505, 4.280511936303782, -9.86481328454892,
+    2.5036515388001632, -9.232828110945556, -7.95629000238921, 5.656103860745233,
+    -0.37040000000000006, -3.4343954795199956, -3.944205505319661, -0.5059596200667091,
+    2.1218005705758713e-06, 0.0003782852260889591, 1.1273368705877473e-05, 2.196
+]
+
+# Data e ora iniziale: mezzanotte
+start_datetime = datetime.strptime("2024-05-20 00:00:00", "%Y-%m-%d %H:%M:%S")
+
+# Generazione righe
+datetimes = [start_datetime + timedelta(hours=i) for i in range(len(baseline_values))]
+
+# Creazione DataFrame
+df = pd.DataFrame({
+    'datetime': datetimes,
+    'baseline': baseline_values
+})
+
+# Salvataggio in CSV
+df.to_csv("baseline.csv", index=False)
+print("File 'baseline_clean.csv' generato con successo.")

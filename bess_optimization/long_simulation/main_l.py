@@ -594,7 +594,7 @@ class Main:
             for i in range(hours_difference+1, hours_end + hours_difference+1):
 
                 # Itera attraverso il range di ore che va da 'hours_difference' a 'hours_end' inclusivo.
-                # 'i' rappresenta l'indice temporale corrente.
+                # 'i' rappresenta  l'indice temporale corrente.
 
                 # CALCOLO IL MIO TARGET DI FLESSIBILITA'
                 target = baseline_profile[alpha] + power

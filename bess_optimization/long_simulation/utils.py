@@ -121,5 +121,5 @@ df = pd.DataFrame({
 })
 
 # Salvataggio in CSV
-df.to_csv("baseline.csv", index=False)
-print("File 'baseline_clean.csv' generato con successo.")
+#df.to_csv("baseline.csv", index=False)
+#print("File 'baseline_clean.csv' generato con successo.")

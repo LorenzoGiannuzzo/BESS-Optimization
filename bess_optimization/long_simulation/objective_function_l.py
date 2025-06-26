@@ -13,6 +13,8 @@ Last Update of current code: 18/06/2025 """
 
 import logging
 import numpy as np
+import pandas as pd
+
 import configuration_l
 import Economic_parameters_l
 from pymoo.core.problem import ElementwiseProblem
@@ -25,6 +27,7 @@ from BESS_model_l import degradation
 from logger import setup_logger
 from flexibility import start_period, end_period, power, price
 from utils import get_charged_energy, get_discharged_energy
+from baseline import baseline_data
 
 # LOGGER SETUP
 setup_logger()
@@ -58,6 +61,7 @@ class Revenues(ElementwiseProblem):
         self.shared_energy_REC = np.zeros((len(self.PUN_timeseries)))
         self.remaining_production = np.zeros((len(self.PUN_timeseries)))
         self.shared_energy_BESS = np.zeros((len(self.PUN_timeseries)))
+        self.flex_success = np.zeros((len(self.PUN_timeseries)))
 
         # INITIALIZE SoC AT t=0
         self.soc[0] = configuration_l.soc_0
@@ -92,6 +96,10 @@ class Revenues(ElementwiseProblem):
         self.remaining_pv = np.zeros((len(self.PUN_timeseries)))
         self.remaining_load = np.zeros((len(self.PUN_timeseries)))
         self.rec_pv = rec_pv[:,1]
+        self.baseline = pd.DataFrame(baseline_data)
+
+        self.baseline['datetime'] = pd.to_datetime(self.baseline['datetime'])
+        self.baseline['time'] = self.baseline['datetime'].dt.hour
 
         # EXECUTE THE UPDATE FOR EACH i-th TIMESTEP OF ALL THE ENERGY VECTORS. EVALUATING ENERGY BALANCES
         from argparser_l import n_cycles
@@ -469,24 +477,6 @@ class Revenues(ElementwiseProblem):
 
             from flexibility import price
 
-            # if (i >= hours_difference) and (i < (hours_end+hours_difference)) and ((start_period != 0.0) and (end_period != 0.0)):
-            #
-            #     if power >= 0.0:
-            #
-            #         self.flexibility_energy[i] = np.maximum(self.discharged_energy_from_BESS[i], -power)
-            #
-            #         if self.flexibility_energy[i] > -power:
-            #
-            #             flag = 1
-            #
-            #     elif power < 0.0:
-            #
-            #         self.flexibility_energy[i] = np.minimum(self.charged_energy_from_grid_to_BESS[i], -power)
-            #
-            #         if self.flexibility_energy[i] < -power:
-            #
-            #             flag = 1
-
         # EVALUATE THE NUMBER OF CYCLES DONE BY BESS
         total_charged = np.sum(self.charged_energy_from_BESS)
         total_discharged = np.sum(-self.discharged_energy_from_BESS)
@@ -504,75 +494,133 @@ class Revenues(ElementwiseProblem):
                        + (np.abs(self.load) - np.abs(self.from_pv_to_load) - np.abs(self.from_BESS_to_load))
                        )
 
-        if (hours_difference !=0) and (hours_end !=0):
-            for i in range(hours_difference, hours_end + hours_difference):
+        self.baseline = np.array(self.baseline)
+        baseline_profile = self.baseline[:,1]
 
-                # POSITIVE POWER (RICHIESTA DI ASSORBIMENTO ENERGIA)
-                if power > 0:
+        dt = pd.to_datetime(start_period)
+        alpha = dt.hour
 
-                    # Se il profilo è già <= power (entro il limite richiesto), non faccio nulla
-                    if 0 < POD_profile[i] <= power:
-                        continue
+        # FLEXIBILITY EVALUATION ---------------------------------------------------------------------------------------
 
-                    # Se il profilo supera power, limito prima la carica dalla rete
-                    excess = POD_profile[i] - power
-                    original_charge = self.charged_energy_from_grid_to_BESS[i]
-                    self.charged_energy_from_grid_to_BESS[i] = np.maximum(original_charge - excess, 0.0)
+        if (hours_difference != 0) and (hours_end != 0):
 
-                    # Ricalcolo POD_profile dopo la modifica
-                    POD_profile[i] = (-np.abs(self.discharged_energy_from_BESS[i])
-                                      - np.abs(self.discharged_from_pv[i])
-                                      + np.abs(self.charged_energy_from_grid_to_BESS[i])
-                                      + (np.abs(self.load[i]) - np.abs(self.from_pv_to_load[i]) - np.abs(
-                                self.from_BESS_to_load[i]))
-                                      )
+            # Verifica se ci sono differenze di ore e se l'ora finale è diversa da zero.
+            # Questo assicura che ci sia un intervallo di tempo valido su cui lavorare.
 
-                    # Se ancora troppo alto, log
-                    if POD_profile[i] > power:
-                        continue #print(f"[!] Flessibilità non rispettata a t={i}. POD = {POD_profile[i]:.2f}, limite = {power:.2f}")
+            # NEL RANGE DI FLESSIBILITA'
+            for i in range(hours_difference+1, hours_end + hours_difference+1):
 
-                # NEGATIVE POWER (RICHIESTA DI IMMISSIONE ENERGIA)
-                elif power < 0:
 
-                    # Se già entro il limite (POD > power), ok
-                    if POD_profile[i] >= power:
-                        continue
+                # Itera attraverso il range di ore che va da 'hours_difference' a 'hours_end' inclusivo.
+                # 'i' rappresenta l'indice temporale corrente.
 
-                    # Calcolo eccesso negativo (quanto manca per rispettare il limite)
-                    deficit = power - POD_profile[i]
+                # CALCOLO IL MIO TARGET DI FLESSIBILITA'
+                target = baseline_profile[alpha] + power
 
-                    original_discharge = -self.discharged_energy_from_BESS[i]
-                    reduced_discharge = np.maximum(original_discharge - deficit, 0.0)
+                #print(target, baseline_profile[alpha], power)
 
-                    # Riduci lo scarico del BESS
-                    self.discharged_energy_from_BESS[i] = -reduced_discharge
+                #print(target)
 
-                    # Ricalcola POD_profile
-                    POD_profile[i] = (-np.abs(self.discharged_energy_from_BESS[i])
-                                      - np.abs(self.discharged_from_pv[i])
-                                      + np.abs(self.charged_energy_from_grid_to_BESS[i])
-                                      + (np.abs(self.load[i]) - np.abs(self.from_pv_to_load[i]) - np.abs(
-                                self.from_BESS_to_load[i]))
-                                      )
+                # Calcola il target di flessibilità per l'ora corrente.
+                # 'baseline_profile[alpha]' rappresenta il profilo di base per l'ora 'alpha',
+                # e 'power' è l'energia richiesta o immessa.
 
-                    # Se non basta, riduci anche la parte dal PV (curtailment)
-                    if POD_profile[i] < power:
-                        remaining_deficit = power - POD_profile[i]
-                        original_pv = -self.discharged_from_pv[i]
-                        reduced_pv = max(original_pv - remaining_deficit, 0.0)
+                if target >= 0:
+                    # Se il target è maggiore o uguale a zero, significa che stiamo considerando un'assorbimento di energia.
 
-                        curtailed_energy = original_pv - reduced_pv
-                        self.discharged_from_pv[i] = -reduced_pv
+                    if POD_profile[i] >= target:
+                        # Se il profilo di assorbimento di energia (POD) è maggiore o uguale al target,
+                        # significa che stiamo superando il limite consentito.
 
-                        #print(f"[!] PV in curtailment a t={i}. Curtailment = {curtailed_energy:.2f} kWh")
+                        # LIMITO I VETTORI ENERGETICI CHE POSSO LIMITARE
+                        excess = POD_profile[i] - target
+                        # Calcola l'eccesso di energia rispetto al target.
 
-                    # Ricalcola POD_profile
-                    POD_profile[i] = (-np.abs(self.discharged_energy_from_BESS[i])
-                                      - np.abs(self.discharged_from_pv[i])
-                                      + np.abs(self.charged_energy_from_grid_to_BESS[i])
-                                      + (np.abs(self.load[i]) - np.abs(self.from_pv_to_load[i]) - np.abs(
-                                self.from_BESS_to_load[i]))
-                                      )
+                        original_charge = self.charged_energy_from_grid_to_BESS[i]
+                        # Salva l'energia originale caricata dalla rete al sistema di accumulo (BESS).
+
+                        # Limita l'energia caricata dalla rete sottraendo l'eccesso, senza scendere sotto zero.
+                        self.charged_energy_from_grid_to_BESS[i] = np.maximum(original_charge - excess, 0.0)
+
+                        # RICALCOLO IL PROFILO DEL POD A VALLE DELLE OPERAZIONI PRECEDENTI
+                        POD_profile[i] = (-np.abs(self.discharged_energy_from_BESS[i])
+                                          - np.abs(self.discharged_from_pv[i])
+                                          + np.abs(self.charged_energy_from_grid_to_BESS[i])
+                                          + (np.abs(self.load[i]) - np.abs(self.from_pv_to_load[i]) - np.abs(
+                                    self.from_BESS_to_load[i])))
+                        # Ricalcola il profilo POD dopo aver limitato l'energia caricata dalla rete.
+
+                        # CONTROLLO CHE IO RISPETTO I REQUISITI DI FLESSIBILITA'
+                        if POD_profile[i] > target:
+                                # Se il profilo POD è ancora maggiore del target, segna il fallimento della flessibilità.
+                            self.flex_success[i] = -1
+                        elif POD_profile[i] == target:  # Altrimenti, segna il successo della flessibilità.
+                            self.flex_success[i] = 1
+
+                    elif POD_profile[i] < target:
+                        # Se il profilo POD è inferiore al target, segna il fallimento della flessibilità.
+                        self.flex_success[i] = -1
+
+                elif target <= 0:
+                    # Se il target è minore o uguale a zero, stiamo considerando un'immissione di energia.
+
+                    if POD_profile[i] <= target:
+                        # Se il profilo POD è minore o uguale al target, significa che siamo sotto il limite consentito.
+
+                        exceed = np.abs(POD_profile[i]) - np.abs(target)
+                        # Calcola quanto manca per raggiungere il target.
+
+                        original_discharge = np.abs(self.discharged_energy_from_BESS[i])
+                        # Salva l'energia originale scaricata dal BESS (negativa perché stiamo considerando il
+                        # valore assoluto).
+
+                        # Riduci lo scarico dal BESS sottraendo l'eccesso, senza scendere sotto zero.
+                        reduced_discharge = np.maximum(original_discharge - exceed, 0.0)
+                        self.discharged_energy_from_BESS[i] = -reduced_discharge
+
+                        # Ricalcola il profilo POD
+                        POD_profile[i] = (-np.abs(self.discharged_energy_from_BESS[i])
+                                          - np.abs(self.discharged_from_pv[i])
+                                          + np.abs(self.charged_energy_from_grid_to_BESS[i])
+                                          + (np.abs(self.load[i]) - np.abs(self.from_pv_to_load[i]) - np.abs(
+                                    self.from_BESS_to_load[i])))
+
+                        # Se non basta, riduci anche la parte dal PV (curtailment)
+                        if POD_profile[i] <= target:
+                            # Se il profilo POD è ancora minore o uguale al target, calcola il deficit rimanente.
+                            remaining_deficit = np.abs(POD_profile[i]) - np.abs(target)
+                            original_pv = np.abs(self.discharged_from_pv[i])
+                            # Salva l'energia originale scaricata dal PV.
+
+                            # Riduci l'energia dal PV per soddisfare il target.
+                            reduced_pv = max(original_pv - remaining_deficit, 0.0)
+                            curtailed_energy = original_pv - reduced_pv
+                            self.discharged_from_pv[i] = -reduced_pv
+
+                        # Ricalcola il profilo POD di nuovo dopo le potenziali modifiche
+                        POD_profile[i] = (-np.abs(self.discharged_energy_from_BESS[i])
+                                          - np.abs(self.discharged_from_pv[i])
+                                          + np.abs(self.charged_energy_from_grid_to_BESS[i])
+                                          + (np.abs(self.load[i]) - np.abs(self.from_pv_to_load[i]) - np.abs(
+                                    self.from_BESS_to_load[i])))
+
+                        if POD_profile[i] < target:
+                            # Se il profilo POD è ancora minore del target, segna il fallimento della flessibilità.
+                            self.flex_success[i] = -1
+                        elif POD_profile[i] == target:
+                            # Altrimenti, segna il successo della flessibilità.
+                            self.flex_success[i] = 1
+
+                    elif POD_profile[i] > target:
+                        # Se il profilo POD è maggiore del target, segna il fallimento della flessibilità.
+                        self.flex_success[i] = -1
+
+                # Incrementa il valore di alpha per passare all'ora successiva.
+                alpha = alpha + 1
+
+                # Se alpha supera 23, resetta a 0 per ricominciare il ciclo delle ore.
+                if alpha > 23:
+                    alpha = 0
 
         # EVALUATE THE REVENUES OBTAINED FOR EACH TIMESTEP t
         revenue_column = np.array(np.abs(self.discharged_energy_from_BESS) * self.PUN_timeseries / 1000 -
@@ -581,7 +629,7 @@ class Revenues(ElementwiseProblem):
                                       + np.abs(self.shared_energy_BESS) * 120 / 1000
                                       + np.abs(self.from_pv_to_load) * self.PUN_timeseries / 1000
                                       + np.abs(self.from_BESS_to_load) * self.PUN_timeseries / 1000
-                                      + np.abs(self.flexibility_energy) * price / 1000
+                                      + self.flex_success * price / 1000
                                       - (np.abs(self.load) - np.abs(self.from_pv_to_load) - np.abs(self.from_BESS_to_load)) * self.PUN_timeseries / 1000
                                   )
         flag = 0

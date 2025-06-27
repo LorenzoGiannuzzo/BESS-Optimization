@@ -56,25 +56,45 @@ class EnergyPlots:
         if not os.path.exists(self.plots_dir):
             os.makedirs(self.plots_dir)
 
-    def POD_view(self):
+    def POD_view(self, hours_a, hours_b, power):
+        import matplotlib.pyplot as plt
+        import os
+        import numpy as np
+
         plt.figure(figsize=(12, 8))
 
         # Plotting the POD profile
-        plt.plot(self.time_steps, self.POD_profile, color='blue', linewidth=2, label='POD Profile', marker = 'o')
+        plt.plot(self.time_steps, self.POD_profile, color='orange', linewidth=1.5,
+                 label='POD Profile', marker='o', zorder=2)
 
         # Plotting the baseline profile
-        plt.plot(np.arange(2, 26), self.baseline, color='red', linewidth=1, linestyle='--', label='Baseline Profile', marker = 'o')
+        plt.plot(np.arange(2, 26), self.baseline, color='black', linewidth=1,
+                 linestyle='-', label='Baseline Profile', marker='v', zorder=2)
+
+        # Vertical lines
+        plt.axvline(x=hours_a, color='grey', linestyle='--')
+        plt.axvline(x=hours_b, color='grey', linestyle='--')
+
+        # Shaded region between hours_a and hours_b
+        plt.axvspan(hours_a, hours_b-1, color='lightgrey', alpha=0.5)
+
+        # Cyan diamonds (no line) from hours_a to hours_b - 1
+        if hasattr(self, 'baseline'):
+            x_vals = np.arange(hours_a, hours_b)
+            if len(self.baseline) >= hours_b:
+                y_vals = self.baseline[hours_a-2:hours_b-2] + power
+                plt.scatter(x_vals, y_vals, color='cyan', marker='D', label='Baseline - Target', zorder = 5)
+            else:
+                print("Warning: baseline vector too short for given hours.")
 
         # Adding title and labels
         plt.title('POD Profile [kW]', fontsize=16)
         plt.xlabel('Time Window [h]', fontsize=14)
         plt.ylabel('Power [kW]', fontsize=14)
 
-        # Adding grid
+        # Adding grid and legend
         plt.grid(True)
-
-        # Adding legend
-        plt.legend(loc='upper right', fontsize=12)  # You can adjust the location and font size as needed
+        plt.legend(loc='upper right', fontsize=12)
 
         # Adjust layout and save the figure
         plt.tight_layout()

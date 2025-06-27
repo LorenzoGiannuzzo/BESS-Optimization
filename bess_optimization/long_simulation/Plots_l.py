@@ -568,8 +568,8 @@ class EnergyPlots:
 
         ax1.bar(time_steps, shared_energy_bess, color='cyan', width=width, bottom=np.array(from_pv_to_load + from_BESS_to_load), label='User BESS Add SE')
 
-        ax1.bar(time_steps, flexibility_energy, width=width, color='lime',
-                label="Flexibility")
+        #ax1.bar(time_steps, flexibility_energy, width=width, color='lime',
+                #label="Flexibility")
 
         ax1.set_ylabel('Energy [kWh]')
         ax1.set_title('System Energy Flows')

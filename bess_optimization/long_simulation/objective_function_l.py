@@ -504,121 +504,112 @@ class Revenues(ElementwiseProblem):
 
         if (hours_difference != 0) and (hours_end != 0):
 
-            # Verifica se ci sono differenze di ore e se l'ora finale è diversa da zero.
-            # Questo assicura che ci sia un intervallo di tempo valido su cui lavorare.
+            # Check that there is a valid time range to work with.
 
-            # NEL RANGE DI FLESSIBILITA'
-            for i in range(hours_difference+1, hours_end + hours_difference+1):
+            # LOOP OVER FLEXIBILITY WINDOW
+            for i in range(hours_difference + 1, hours_end + hours_difference + 1):
 
+                # Iterate through the hours in the flexibility range.
+                # 'i' is the current time index in the full time series.
 
-                # Itera attraverso il range di ore che va da 'hours_difference' a 'hours_end' inclusivo.
-                # 'i' rappresenta l'indice temporale corrente.
-
-                # CALCOLO IL MIO TARGET DI FLESSIBILITA'
+                # COMPUTE TARGET FOR FLEXIBILITY
                 target = baseline_profile[alpha] + power
-
-                #print(target, baseline_profile[alpha], power)
-
-                #print(target)
-
-                # Calcola il target di flessibilità per l'ora corrente.
-                # 'baseline_profile[alpha]' rappresenta il profilo di base per l'ora 'alpha',
-                # e 'power' è l'energia richiesta o immessa.
+                # The flexibility target is based on the baseline at hour 'alpha' plus the requested power adjustment.
 
                 if target >= 0:
-                    # Se il target è maggiore o uguale a zero, significa che stiamo considerando un'assorbimento di energia.
+                    # Positive target → request to absorb energy (increase in demand).
 
                     if POD_profile[i] >= target:
-                        # Se il profilo di assorbimento di energia (POD) è maggiore o uguale al target,
-                        # significa che stiamo superando il limite consentito.
+                        # If the POD profile exceeds or equals the target, it needs to be reduced to meet flexibility.
 
-                        # LIMITO I VETTORI ENERGETICI CHE POSSO LIMITARE
+                        # LIMIT ENERGY FLOWS THAT CAN BE ADJUSTED
                         excess = POD_profile[i] - target
-                        # Calcola l'eccesso di energia rispetto al target.
+                        # Compute the amount by which the POD exceeds the flexibility target.
 
                         original_charge = self.charged_energy_from_grid_to_BESS[i]
-                        # Salva l'energia originale caricata dalla rete al sistema di accumulo (BESS).
+                        # Save the original grid-to-BESS charging value.
 
-                        # Limita l'energia caricata dalla rete sottraendo l'eccesso, senza scendere sotto zero.
+                        # Reduce the charge from the grid, but ensure it doesn't go below zero.
                         self.charged_energy_from_grid_to_BESS[i] = np.maximum(original_charge - excess, 0.0)
 
-                        # RICALCOLO IL PROFILO DEL POD A VALLE DELLE OPERAZIONI PRECEDENTI
+                        # RECALCULATE POD PROFILE AFTER ADJUSTMENT
                         POD_profile[i] = (-np.abs(self.discharged_energy_from_BESS[i])
                                           - np.abs(self.discharged_from_pv[i])
                                           + np.abs(self.charged_energy_from_grid_to_BESS[i])
                                           + (np.abs(self.load[i]) - np.abs(self.from_pv_to_load[i]) - np.abs(
                                     self.from_BESS_to_load[i])))
-                        # Ricalcola il profilo POD dopo aver limitato l'energia caricata dalla rete.
+                        # POD is recalculated after modifying the grid charging vector.
 
-                        # CONTROLLO CHE IO RISPETTO I REQUISITI DI FLESSIBILITA'
+                        # CHECK IF FLEXIBILITY TARGET IS MET
                         if POD_profile[i] > target:
-                                # Se il profilo POD è ancora maggiore del target, segna il fallimento della flessibilità.
+                            # Still too high → flexibility failed.
                             self.flex_success[i] = -1
-                        elif POD_profile[i] == target:  # Altrimenti, segna il successo della flessibilità.
+                        elif POD_profile[i] == target:
+                            # Exactly on target → flexibility succeeded.
                             self.flex_success[i] = 1
 
                     elif POD_profile[i] < target:
-                        # Se il profilo POD è inferiore al target, segna il fallimento della flessibilità.
+                        # If POD is below the target → over-compliance → flexibility failed.
                         self.flex_success[i] = -1
 
                 elif target <= 0:
-                    # Se il target è minore o uguale a zero, stiamo considerando un'immissione di energia.
+                    # Negative target → request to inject energy (reduce demand or export).
 
                     if POD_profile[i] <= target:
-                        # Se il profilo POD è minore o uguale al target, significa che siamo sotto il limite consentito.
+                        # POD is within or below the required limit → may need further adjustments.
 
                         exceed = np.abs(POD_profile[i]) - np.abs(target)
-                        # Calcola quanto manca per raggiungere il target.
+                        # How much the POD needs to be increased (in absolute value) to meet the target.
 
                         original_discharge = np.abs(self.discharged_energy_from_BESS[i])
-                        # Salva l'energia originale scaricata dal BESS (negativa perché stiamo considerando il
-                        # valore assoluto).
+                        # Original energy discharged from BESS.
 
-                        # Riduci lo scarico dal BESS sottraendo l'eccesso, senza scendere sotto zero.
+                        # Reduce discharge to approach the target, ensuring it's non-negative.
                         reduced_discharge = np.maximum(original_discharge - exceed, 0.0)
                         self.discharged_energy_from_BESS[i] = -reduced_discharge
 
-                        # Ricalcola il profilo POD
+                        # RECALCULATE POD AFTER BESS ADJUSTMENT
                         POD_profile[i] = (-np.abs(self.discharged_energy_from_BESS[i])
                                           - np.abs(self.discharged_from_pv[i])
                                           + np.abs(self.charged_energy_from_grid_to_BESS[i])
                                           + (np.abs(self.load[i]) - np.abs(self.from_pv_to_load[i]) - np.abs(
                                     self.from_BESS_to_load[i])))
 
-                        # Se non basta, riduci anche la parte dal PV (curtailment)
+                        # IF STILL NOT ENOUGH, CURTAIL PV
                         if POD_profile[i] <= target:
-                            # Se il profilo POD è ancora minore o uguale al target, calcola il deficit rimanente.
+                            # Still below the target → check if PV needs to be curtailed.
                             remaining_deficit = np.abs(POD_profile[i]) - np.abs(target)
                             original_pv = np.abs(self.discharged_from_pv[i])
-                            # Salva l'energia originale scaricata dal PV.
+                            # Save original PV discharge.
 
-                            # Riduci l'energia dal PV per soddisfare il target.
+                            # Reduce PV discharge to help meet target.
                             reduced_pv = max(original_pv - remaining_deficit, 0.0)
                             curtailed_energy = original_pv - reduced_pv
                             self.discharged_from_pv[i] = -reduced_pv
 
-                        # Ricalcola il profilo POD di nuovo dopo le potenziali modifiche
+                        # RECALCULATE POD AGAIN AFTER PV CURTAILMENT
                         POD_profile[i] = (-np.abs(self.discharged_energy_from_BESS[i])
                                           - np.abs(self.discharged_from_pv[i])
                                           + np.abs(self.charged_energy_from_grid_to_BESS[i])
                                           + (np.abs(self.load[i]) - np.abs(self.from_pv_to_load[i]) - np.abs(
                                     self.from_BESS_to_load[i])))
 
+                        # FINAL FLEXIBILITY CHECK
                         if POD_profile[i] < target:
-                            # Se il profilo POD è ancora minore del target, segna il fallimento della flessibilità.
+                            # Still under target → flexibility failed.
                             self.flex_success[i] = -1
                         elif POD_profile[i] == target:
-                            # Altrimenti, segna il successo della flessibilità.
+                            # Exactly on target → flexibility succeeded.
                             self.flex_success[i] = 1
 
                     elif POD_profile[i] > target:
-                        # Se il profilo POD è maggiore del target, segna il fallimento della flessibilità.
+                        # POD is above the target → flexibility failed.
                         self.flex_success[i] = -1
 
-                # Incrementa il valore di alpha per passare all'ora successiva.
+                # Move to the next baseline hour
                 alpha = alpha + 1
 
-                # Se alpha supera 23, resetta a 0 per ricominciare il ciclo delle ore.
+                # Wrap around if alpha exceeds 23 (24-hour cycle)
                 if alpha > 23:
                     alpha = 0
 

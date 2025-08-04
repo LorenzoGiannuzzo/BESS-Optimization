@@ -73,7 +73,7 @@ class EnergyPlots:
 
         # Vertical lines
         plt.axvline(x=hours_a, color='grey', linestyle='--')
-        plt.axvline(x=hours_b, color='grey', linestyle='--')
+        plt.axvline(x=hours_b-1, color='grey', linestyle='--')
 
         # Shaded region between hours_a and hours_b
         plt.axvspan(hours_a, hours_b-1, color='lightgrey', alpha=0.5)

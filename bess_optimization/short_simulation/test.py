@@ -15,77 +15,15 @@ Last Update of current code: 09/01/2025 - 17:38
 
 # IMPORT LIBRARIES
 
-import configuration_l
-from pymoo.optimize import minimize
-from objective_function_l import Revenues
-from configuration_l import plot
+import configuration_s
 import os
 import pandas as pd
 import json
 
-from argparser_l import input_load
-
-# DEFINE OPTIMIZER CLASS
-class Optimizer:
-
-    def __init__(self, objective_function: Revenues, pop_size: int, multiprocessing=True):
-        # MULTIPROCESSING CAN BE DISABLED TO COMPARE ALGORITHMS EXECUTION TIMES
-
-        self._objective_function = objective_function
-        self.pop_size = pop_size
-        self.multiprocessing = multiprocessing
-
-    # DEFINE THE OPTIMIZATION TASK: MAXIMIZATION OF REVENUES
-    def maximize_revenues(self):
-
-        if plot:
-
-            # SAVE OPTIMIZATION HISTORY IF PLOTS ARE REQUIRED
-            history = True
-
-        else:
-            history = False
-
-        if self.multiprocessing:
-
-            problem = self._objective_function
-            algorithm = configuration_l.algorithm
-            termination = configuration_l.termination
-
-            res = minimize(
-
-                problem,
-                algorithm,
-                termination,
-                seed=42,
-                verbose=True,
-                save_history=history,
-
-            )
-
-            # VISUALIZE EXECUTION TIME
-            print('Execution Time:', res.exec_time)
-
-        else:
-
-            problem = self._objective_function
-            algorithm = configuration_l.algorithm
-            termination = configuration_l.termination
-
-            res = minimize(
-                problem,
-                algorithm,
-                termination,
-                seed=42,
-                verbose=True,
-                save_history=True,
-            )
-
-
-            # VISUALIZE EXECUTION TIME
-            print('Execution Time:', res.exec_time)
-
-        return res
+from argparser_s import input_load
+from pymoo.optimize import minimize
+from objective_function_s import Revenues
+from configuration_s import plot
 
 def analyze_user_profile(rec_load_path, sheet_name='Sheet 1', output_folder='data/Output/Short_Simulation'):
 
@@ -126,3 +64,4 @@ def analyze_user_profile(rec_load_path, sheet_name='Sheet 1', output_folder='dat
         json.dump(stats, f, indent=4)
 
     print(f"[INFO] User statistics saved to {output_path}")
+

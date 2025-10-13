@@ -1,8 +1,11 @@
 """
-================================================================================
+------------------------------------------------------------------------------------------------------------------------
+
 BATTERY ENERGY STORAGE SYSTEM (BESS) OPTIMIZATION
 Particle Swarm Optimization with Rolling Horizon and MACSE Integration
-================================================================================
+
+------------------------------------------------------------------------------------------------------------------------
+
 Author: Lorenzo Giannuzzo
 Affiliation: Politecnico di Torino
              Dipartimento Energia (DENERG)
@@ -17,7 +20,7 @@ Description:
     - Gestione ottimale del degrado della batteria
 Version: 1.0.0
 Date: October 2025
-================================================================================
+------------------------------------------------------------------------------------------------------------------------
 MIT License
 Copyright (c) 2024 Lorenzo Giannuzzo
 Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -37,7 +40,7 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
-================================================================================
+------------------------------------------------------------------------------------------------------------------------
 """
 import pandas as pd
 import numpy as np

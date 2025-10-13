@@ -95,7 +95,7 @@ soc_0 = soc
 assert (soc_0 >= 0) & (soc_0 <= 100), logging.error("Inital SoC is lower than 0% or higher tan 100%.\n\n")
 
 # 3) DEFINE POPULATION SITE USED TO EXPLORE THE OPTIMIZATION DOMAIN
-pop_size = 70
+pop_size = 400
 
 if pop_size < 20:
     logging.info("Population size is lower than 20, it's highly suggested to increase it above 20.\n\n")
@@ -130,7 +130,7 @@ if time_window > 100:
 
 else:
 
-    tolerance = 0.5
+    tolerance = 0.1
 
 period = 20
 

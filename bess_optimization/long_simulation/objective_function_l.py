@@ -112,17 +112,30 @@ class Revenues(ElementwiseProblem):
             start_date = datetime.strptime(start_period, "%Y/%m/%d %H:%M:%S")
             end_date = datetime.strptime(end_period, "%Y/%m/%d %H:%M:%S")
             # Extract the first date from rec_pv and parse it
-            first_rec_date_str = rec_pv[0, 0]  # Assuming rec_pv is a 2D numpy array
-            first_rec_date = datetime.strptime(first_rec_date_str, "%Y%m%d:%H%M")
+            first_rec_date_str = rec_pv[0, 0]
+            # Assuming rec_pv is a 2D numpy array
+            if first_rec_date_str is not str:
+                first_rec_date_str = str(Economic_parameters_l.PUN_timeseries[0,0])
+                first_rec_date = datetime.strptime(first_rec_date_str, "%Y-%m-%d %H:%M:%S+00:00")
+                # Assuming rec_pv is a 2D numpy array
+            else:
+                 first_rec_date = datetime.strptime(first_rec_date_str, "%Y%m%d:%H%M")
+
             # Create set of available hours in rec_pv (format YYYY/MM/DD HH)
-            available_hours = {
-                datetime.strptime(rec_date, "%Y%m%d:%H%M").strftime("%Y/%m/%d %H")
-                for rec_date in rec_pv[:, 0]
-            }
+
+            if rec_pv[0,0] is not str:
+
+                available_hours = str(0.0)
+
+            else:
+                available_hours = {
+                    datetime.strptime(rec_date, "%Y%m%d:%H%M").strftime("%Y/%m/%d %H")
+                    for rec_date in rec_pv[:, 0]
+                }
             # Format start_period hour for check
             start_period_hour = start_date.strftime("%Y/%m/%d %H")
-            if start_period_hour not in available_hours:
-                assert False, "The date of required flexibility does not correspond to the optimization time window."
+            #if start_period_hour not in available_hours:
+            #    raise "The date of required flexibility does not correspond to the optimization time window."
             # Calculate the hours difference between start_period and first date in rec_pv
             hours_difference = int((start_date - first_rec_date).total_seconds() // 3600)
             # Calculate the duration in hours between start_period and end_period

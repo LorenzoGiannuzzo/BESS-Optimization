@@ -6,7 +6,6 @@ Particle Swarm Optimization with Rolling Horizon and MACSE Integration
 Supporto per Litio-ione e Grafene
 
 ------------------------------------------------------------------------------------------------------------------------
-
 Author: Lorenzo Giannuzzo
 Affiliation: Politecnico di Torino
              Dipartimento Energia (DENERG)

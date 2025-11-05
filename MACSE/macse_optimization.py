@@ -46,6 +46,7 @@ from matplotlib.patches import Rectangle, FancyBboxPatch
 # ========================================================================================================
 # SEZIONE 1: PARAMETRI CONFIGURABILI PRINCIPALI
 # ========================================================================================================
+file_name = '20240101_20241231_PUN.xlsx' # Lorenzo Giannuzzo: Da mettere dentro la cartella data
 
 # ---------------------------------- SCELTA TECNOLOGIA BATTERIA -------------------------------------------
 BATTERY_TECHNOLOGY = "LITIO-IONE"  # Lorenzo Giannuzzo: Tecnologia batteria ["LITIO-IONE" | "GRAFENE"]
@@ -72,7 +73,7 @@ GRAPHENE_EOL_CYCLES = 500000  # Lorenzo Giannuzzo: Cicli nominali End-of-Life [c
 
 # ---------------------------------- PARAMETRI GENERALI ---------------------------------------------------
 SAVE_PLOTS = True  # Lorenzo Giannuzzo: Flag salvataggio grafici [bool]
-DEGRADATION_COST_PER_MWH = 10.0  # Lorenzo Giannuzzo: Costo degrado per ottimizzatore [Euro/MWh] - RIDOTTO DA 25
+DEGRADATION_COST_PER_MWH = 10.0  # Lorenzo Giannuzzo: Costo degrado per ottimizzatore [Euro/MWh]
 
 # ---------------------------------- PARAMETRI MACSE ------------------------------------------------------
 MACSE_ENABLED = True  # Lorenzo Giannuzzo: Abilitazione servizio MACSE [bool]
@@ -94,7 +95,7 @@ np.random.seed(42)  # Lorenzo Giannuzzo: Seed riproducibilità algoritmo PSO
 # SEZIONE 2: DATI SPERIMENTALI CURVE DI EFFICIENZA
 # ========================================================================================================
 
-# Lorenzo Giannuzzo: Dati sperimentali LITIO-IONE @ 0.5C (batterie LFP commerciali)
+# Lorenzo Giannuzzo: Dati sperimentali LITIO-IONE @ 0.5C
 # Lorenzo Giannuzzo: Test effettuati su 3 cicli completi per validazione statistica
 LITHIUM_ION_05C_DATA = {
     'charge_energy_kwh': [11.45, 11.42, 11.48],
@@ -142,7 +143,7 @@ FONTI:
 - Dati commerciali CATL Energy Storage Systems
 """
 
-# Lorenzo Giannuzzo: Dati sperimentali GRAFENE @ 0.5C (test su prototipo avanzato)
+# Lorenzo Giannuzzo: Dati sperimentali GRAFENE @ 0.5C
 # Lorenzo Giannuzzo: Prestazioni superiori grazie a bassa resistenza interna
 GRAPHENE_05C_DATA = {
     'charge_energy_kwh': [11.5, 11.308, 11.3],
@@ -1448,11 +1449,11 @@ def create_visualizations(results_df, battery):
 
 
 # ========================================================================================================
-# SEZIONE 11: FUNZIONE MAIN
+# FUNZIONE MAIN
 # ========================================================================================================
 
-def main():
-    file_path = os.path.join('data', '20240101_20241231_PUN.xlsx')
+def main(file_name):
+    file_path = os.path.join('data', file_name)
 
     print("=" * 80)
     print("BESS OPTIMIZATION WITH MACSE - MULTI TECHNOLOGY v2.2.0")
@@ -1608,4 +1609,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    main(file_name)

@@ -1,8 +1,8 @@
 {
   "simulation_info": {
-    "timestamp": "2025-11-05T17:06:50",
+    "timestamp": "2025-11-06T00:29:53",
     "version": "2.2.0",
-    "simulation_duration_seconds": 5246.159425
+    "simulation_duration_seconds": 2569.99519
   },
   "battery_configuration": {
     "technology": "LITIO-IONE",

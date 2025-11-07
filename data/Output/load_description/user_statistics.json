@@ -1,9 +1,0 @@
-{
-    "peak_load_kW": 13.95,
-    "mean_load_kW": 4.3152228510273964,
-    "annual_energy_consumption_kWh": 37801.352175,
-    "average_monthly_energy_consumption_kWh": 3150.11268125,
-    "minimum_monthly_energy_consumption_kWh": 2126.345,
-    "maximum_monthly_energy_consumption_kWh": 4271.996,
-    "maximum_hourly_energy_consumption_kW": 13.95
-}

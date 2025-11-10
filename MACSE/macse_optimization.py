@@ -1001,12 +1001,136 @@ def export_results_to_json(results_df, battery, pv_system, load_profile, trading
                            macse_penalty, macse_bonus, battery_investment, simulation_time):
     # (Funzione estesa per includere statistiche carico)
     actions = results_df['Azione_MW'].values
-    prices = results_df['€/MWh'].values
+    prices_sell = results_df['€/MWh'].values
+    prices_buy = results_df['Prezzo_Acquisto_€/MWh'].values
 
     pv_stats = pv_system.get_statistics() if pv_system else {}
     load_stats = load_profile.get_statistics() if load_profile else {}
+    # Statistiche PV
+    pv_stats = pv_system.get_statistics() if pv_system else {
+        'total_production_mwh': 0,
+        'energy_to_battery_mwh': 0,
+        'energy_to_grid_mwh': 0,
+        'energy_to_load_mwh': 0,
+        'curtailed_energy_mwh': 0,
+        'battery_utilization_percent': 0,
+        'grid_sale_percent': 0,
+        'load_service_percent': 0,
+        'curtailment_percent': 0
+    }
 
-    # ... (resto codice JSON identico con aggiunta sezioni load_stats)
+    # Statistiche carico
+    load_stats = load_profile.get_statistics() if load_profile else {
+        'total_energy_required_mwh': 0,
+        'energy_from_pv_mwh': 0,
+        'energy_from_battery_mwh': 0,
+        'energy_from_grid_mwh': 0,
+        'pv_coverage_percent': 0,
+        'battery_coverage_percent': 0,
+        'grid_dependency_percent': 0
+    }
+
+    # Analisi azioni batteria
+    charge_hours = np.sum(actions > 0.01)
+    discharge_hours = np.sum(actions < -0.01)
+    idle_hours = len(actions) - charge_hours - discharge_hours
+    total_energy_charged = np.sum(actions[actions > 0] * 1.0)
+    total_energy_discharged = np.sum(np.abs(actions[actions < 0]) * 1.0)
+
+    # ROI e payback
+    total_revenue = trading_profit + macse_revenue
+    annual_profit = total_revenue
+    roi_percent = (annual_profit / battery_investment) * 100 if battery_investment > 0 else 0
+    payback_years = battery_investment / annual_profit if annual_profit > 0 else float('inf')
+
+    # Costruisci JSON
+    results_json = {
+        "simulation_info": {
+            "technology": battery.technology,
+            "simulation_time_seconds": simulation_time,
+            "total_hours": len(actions),
+            "timestamp": datetime.now().isoformat()
+        },
+        "battery_parameters": {
+            "nominal_capacity_mwh": battery.nominal_capacity,
+            "max_power_mw": battery.max_power,
+            "max_c_rate": battery.max_c_rate,
+            "soc_min": battery.soc_min,
+            "soc_max": battery.soc_max,
+            "charge_efficiency": battery.charge_efficiency,
+            "discharge_efficiency": battery.discharge_efficiency,
+            "roundtrip_efficiency": battery.efficiency
+        },
+        "battery_state": {
+            "final_soc": float(battery.get_soc()),
+            "final_soh_percent": float(battery.get_soh()),
+            "final_capacity_mwh": float(battery.capacity),
+            "equivalent_cycles": float(battery.equivalent_cycles),
+            "throughput_kwh": float(battery.throughput_kwh),
+            "energy_from_grid_mwh": float(battery.energy_from_grid_mwh),
+            "energy_from_pv_mwh": float(battery.energy_from_pv_mwh)
+        },
+        "trading_operations": {
+            "charge_hours": int(charge_hours),
+            "discharge_hours": int(discharge_hours),
+            "idle_hours": int(idle_hours),
+            "total_energy_charged_mwh": float(total_energy_charged),
+            "total_energy_discharged_mwh": float(total_energy_discharged),
+            "utilization_factor": float((charge_hours + discharge_hours) / len(actions)) if len(actions) > 0 else 0
+        },
+        "photovoltaic_system": {
+            "enabled": PV_ENABLED,
+            "nominal_power_kwp": PV_NOMINAL_POWER_KWP if PV_ENABLED else 0,
+            "total_production_mwh": pv_stats['total_production_mwh'],
+            "energy_to_battery_mwh": pv_stats['energy_to_battery_mwh'],
+            "energy_to_grid_mwh": pv_stats['energy_to_grid_mwh'],
+            "energy_to_load_mwh": pv_stats['energy_to_load_mwh'],
+            "curtailed_energy_mwh": pv_stats['curtailed_energy_mwh'],
+            "battery_utilization_percent": pv_stats['battery_utilization_percent'],
+            "grid_sale_percent": pv_stats['grid_sale_percent'],
+            "load_service_percent": pv_stats['load_service_percent'],
+            "curtailment_percent": pv_stats['curtailment_percent']
+        },
+        "load_profile": {
+            "enabled": LOAD_ENABLED,
+            "total_energy_required_mwh": load_stats['total_energy_required_mwh'],
+            "energy_from_pv_mwh": load_stats['energy_from_pv_mwh'],
+            "energy_from_battery_mwh": load_stats['energy_from_battery_mwh'],
+            "energy_from_grid_mwh": load_stats['energy_from_grid_mwh'],
+            "pv_coverage_percent": load_stats['pv_coverage_percent'],
+            "battery_coverage_percent": load_stats['battery_coverage_percent'],
+            "grid_dependency_percent": load_stats['grid_dependency_percent']
+        },
+        "macse": {
+            "enabled": MACSE_ENABLED,
+            "capacity_mwh": battery.macse_capacity if MACSE_ENABLED else 0,
+            "power_mw": battery.macse_power if MACSE_ENABLED else 0,
+            "availability_factor": float(battery.get_macse_availability_factor()) if MACSE_ENABLED else 0,
+            "base_revenue_euro": float(macse_base),
+            "penalty_euro": float(macse_penalty),
+            "bonus_euro": float(macse_bonus),
+            "total_revenue_euro": float(macse_revenue)
+        },
+        "economic_results": {
+            "trading_profit_euro": float(trading_profit),
+            "macse_revenue_euro": float(macse_revenue),
+            "total_system_profit_euro": float(total_revenue),
+            "battery_investment_euro": float(battery_investment),
+            "roi_percent": float(roi_percent),
+            "payback_years": float(payback_years) if payback_years != float('inf') else None,
+            "avg_price_sell_euro_mwh": float(np.mean(prices_sell)),
+            "avg_price_buy_euro_mwh": float(np.mean(prices_buy)),
+            "price_markup_percent": PRICE_MARKUP_PERCENT
+        }
+    }
+
+    # Salva JSON
+    json_file = os.path.join('results',
+                             f'simulation_results_{battery.technology.lower().replace("-", "_")}_with_load.json')
+    with open(json_file, 'w', encoding='utf-8') as f:
+        json.dump(results_json, f, indent=2, ensure_ascii=False)
+
+    print(f"Risultati JSON salvati in: {json_file}")
     print("Export JSON con statistiche carico integrato completato")
 
 

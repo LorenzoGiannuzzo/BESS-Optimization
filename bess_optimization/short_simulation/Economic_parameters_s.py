@@ -25,7 +25,7 @@ json_file_path = input_json_path
 df = pd.read_json(json_file_path)
 
 # Convert 'datetime' to pandas datetime object, handling the 'Z' at the end
-df['datetime'] = pd.to_datetime(df['datetime'].str.replace('Z', ''), utc=True)
+df['datetime'] = pd.to_datetime(df['datetime'].astype(str).str.replace('Z', ''), utc=True)
 
 # Set 'datetime' as the index
 df.set_index('datetime', inplace=True)
@@ -117,4 +117,5 @@ else:
 # TODO BRUTE FORCE PUN TO BE THE ONE EVALUATED FOR WEEKDAYS, SHOULD BE FIXED
 PUN_timeseries = final_result_weekdays.to_numpy()
 time_window = len(PUN_timeseries[:, 1])
+print(time_window)
 

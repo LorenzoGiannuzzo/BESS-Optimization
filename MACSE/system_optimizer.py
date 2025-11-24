@@ -2,7 +2,7 @@
 ------------------------------------------------------------------------------------------------------------------------
 BATTERY ENERGY STORAGE SYSTEM (BESS) OPTIMIZATION - AUTONOMOUS LOAD DECISIONS
 Particle Swarm Optimization with Rolling Horizon, MACSE, Autonomous PV and AUTONOMOUS Load Management
-Supporto Litio-ione e Grafene + Sistema Fotovoltaico + Carico Utente con DECISIONE OTTIMALE AUTONOMA
+Support Litio-ione e Grafene + Sistema Fotovoltaico + Carico Utente con DECISIONE OTTIMALE AUTONOMA
 ------------------------------------------------------------------------------------------------------------------------
 Author: Lorenzo Giannuzzo (Modified)
 Affiliation: Politecnico di Torino
@@ -19,8 +19,8 @@ Description:
     - Autonomous PV: L'algoritmo decide autonomamente allocazione energia PV
     - **AUTONOMOUS LOAD: Batteria DECIDE quando servire carico vs trading**
 
-Version: 2.6.0
-Date: November 2025
+Version: 3.7.0
+Date: 25 November 2025
 ------------------------------------------------------------------------------------------------------------------------
 """
 
@@ -40,6 +40,9 @@ energy_buying_price_name = 'Prezzo_Acquisto.xlsx'
 pv_production_file = 'PV_formattato.csv'
 load_file = 'Consumo.xlsx'
 
+# ---------------------------------- PARAMETRI POINT OF DELIVERY (POD) --------------------------------
+POD_POWER_MW = 1.5  # Potenza massima scambio con rete [MW]
+
 # ---------------------------------- SCELTA TECNOLOGIA BATTERIA -------------------------------------------
 BATTERY_TECHNOLOGY = "LITIO-IONE"
 
@@ -58,8 +61,6 @@ PV_SYSTEM_LOSSES = 0.0
 # ---------------------------------- PARAMETRI CARICO UTENTE -----------------------------------------------
 LOAD_ENABLED = True
 LOAD_SHEET_NAME = None  # None = primo sheet disponibile
-
-
 
 # ---------------------------------- PARAMETRI SPECIFICI PER TECNOLOGIA -----------------------------------
 LITHIUM_ION_SOC_MIN = 0.1
@@ -227,7 +228,6 @@ class LoadProfile:
         self.energy_from_battery_mwh = 0.0
         self.energy_from_grid_mwh = 0.0
 
-        # NUOVO: Contatori decisioni batteria
         self.battery_served_load_count = 0  # Ore in cui batteria ha SCELTO di servire carico
         self.grid_served_load_count = 0      # Ore in cui batteria ha SCELTO di lasciare carico a rete
         self.total_decision_hours = 0
@@ -241,7 +241,6 @@ class LoadProfile:
 
     def register_battery_decision(self, battery_served: bool):
         """
-        NUOVO v2.6.0: Registra decisione batteria su carico
         battery_served=True → Batteria ha SCELTO di servire carico
         battery_served=False → Batteria ha SCELTO di lasciare carico a rete (per trading futuro)
         """
@@ -410,7 +409,7 @@ class Battery:
 
     def update_degradation(self):
         if self.technology == "LITIO-IONE":
-            self.equivalent_cycles = self.throughput_kwh / (2 * self.nominal_capacity * 1000)
+            self.equivalent_cycles = self.throughput_kwh / (2 * 10 * self.nominal_capacity * 1000)
             capacity_percentage = degradation(self.equivalent_cycles)
             self.capacity = self.nominal_capacity * (capacity_percentage / 100.0)
             if MACSE_ENABLED:
@@ -454,7 +453,7 @@ class Battery:
 
 
 # ========================================================================================================
-# SEZIONE 6: OTTIMIZZATORE PSO - NUOVO v2.6.0 CON DECISIONI AUTONOME CARICO
+# SEZIONE 6: OTTIMIZZATORE PSO
 # ========================================================================================================
 class PSOOptimizer:
     """
@@ -472,7 +471,7 @@ class PSOOptimizer:
     L'AUTOCONSUMO NON GENERA RICAVI - riduce solo il carico che deve essere servito dalla rete
     """
 
-    def __init__(self, n_particles=100, n_iterations=300, w_start=0.95, w_end=0.1, c1=2.0, c2=2.0):
+    def __init__(self, n_particles=150, n_iterations=350, w_start=0.95, w_end=0.5, c1=2.0, c2=2.0):
         self.n_particles = n_particles
         self.n_iterations = n_iterations
         self.w_start = w_start
@@ -482,7 +481,7 @@ class PSOOptimizer:
         self.stagnation_limit = 15
 
     def optimize(self, battery, prices_sell, prices_buy, pv_production, load_demand, horizon_hours=24):
-        """Ottimizzazione PSO standard - identica a prima"""
+        """Ottimizzazione PSO con vincolo POD"""
         n_hours = min(horizon_hours, len(prices_sell))
         max_power_limit = min(battery.trading_power, battery.get_max_power_by_crate())
 
@@ -514,10 +513,11 @@ class PSOOptimizer:
 
                 positions[i] += velocities[i]
 
-                # Clipping azioni
-                positions[i, :, 0] = np.clip(positions[i, :, 0], -max_power_limit, max_power_limit)
+                # Clipping azioni con vincolo POD
+                positions[i, :, 0] = np.clip(positions[i, :, 0], -min(max_power_limit, POD_POWER_MW),
+                                             min(max_power_limit, POD_POWER_MW))
                 positions[i, :, 1] = np.clip(positions[i, :, 1], 0, 1)
-                positions[i, :, 2] = np.clip(positions[i, :, 2], 0, max_power_limit)
+                positions[i, :, 2] = np.clip(positions[i, :, 2], 0, min(max_power_limit, POD_POWER_MW))
 
                 score = self._evaluate(battery, positions[i], prices_sell, prices_buy, pv_production, load_demand)
 
@@ -535,12 +535,13 @@ class PSOOptimizer:
                 worst_indices = np.argsort(personal_best_scores)[:n_reinit]
                 for idx in worst_indices:
                     noise = np.random.uniform(-0.3, 0.3, (n_hours, 3))
-                    noise[:, 0] *= max_power_limit
-                    noise[:, 2] *= max_power_limit
+                    noise[:, 0] *= min(max_power_limit, POD_POWER_MW)
+                    noise[:, 2] *= min(max_power_limit, POD_POWER_MW)
                     positions[idx] = global_best_position + noise
-                    positions[idx, :, 0] = np.clip(positions[idx, :, 0], -max_power_limit, max_power_limit)
+                    positions[idx, :, 0] = np.clip(positions[idx, :, 0], -min(max_power_limit, POD_POWER_MW),
+                                                   min(max_power_limit, POD_POWER_MW))
                     positions[idx, :, 1] = np.clip(positions[idx, :, 1], 0, 1)
-                    positions[idx, :, 2] = np.clip(positions[idx, :, 2], 0, max_power_limit)
+                    positions[idx, :, 2] = np.clip(positions[idx, :, 2], 0, min(max_power_limit, POD_POWER_MW))
                     velocities[idx] = np.random.uniform(-0.5, 0.5, (n_hours, 3))
                 stagnation_counter = 0
 
@@ -548,12 +549,7 @@ class PSOOptimizer:
 
     def _smart_initialization(self, battery, prices_sell, prices_buy, pv_production, load_demand, max_power):
         """
-        Inizializzazione smart con euristiche economiche
-
-        STRATEGIA:
-        1. Price-driven: Carica quando prezzo basso, scarica quando alto
-        2. Load-priority: Massimizza autoconsumo
-        3. Random: Esplorazione casuale
+        Inizializzazione smart con euristiche economiche E vincolo POD
         """
         n_hours = len(prices_sell)
         positions = np.zeros((self.n_particles, n_hours, 3))
@@ -561,137 +557,106 @@ class PSOOptimizer:
         price_low = np.percentile(prices_sell, 25)
         price_high = np.percentile(prices_sell, 75)
 
-        # Calcola spread prezzo vendita-acquisto per time-shifting
-        price_spread = prices_buy - prices_sell  # Quando spread alto, conviene time-shift
+        # VINCOLO POD: Limita max_power al POD
+        max_power_with_pod = min(max_power, POD_POWER_MW)
 
         for i in range(self.n_particles):
-            if i < self.n_particles // 3:  # STRATEGIA 1: Price-driven + time-shifting
+            if i < self.n_particles // 3:  # STRATEGIA 1: Price-driven
                 for h in range(n_hours):
                     # === BATTERIA TRADING ===
                     if prices_sell[h] < price_low:
-                        # Prezzo basso → CARICA per vendere dopo
-                        positions[i, h, 0] = np.random.uniform(0.4 * max_power, max_power)
+                        positions[i, h, 0] = np.random.uniform(0.4 * max_power_with_pod, max_power_with_pod)
                     elif prices_sell[h] > price_high:
-                        # Prezzo alto → SCARICA per vendere ora
-                        positions[i, h, 0] = np.random.uniform(-max_power, -0.4 * max_power)
+                        positions[i, h, 0] = np.random.uniform(-max_power_with_pod, -0.4 * max_power_with_pod)
                     else:
-                        # Prezzo medio → Conservativo
-                        positions[i, h, 0] = np.random.uniform(-0.3 * max_power, 0.3 * max_power)
+                        positions[i, h, 0] = np.random.uniform(-0.3 * max_power_with_pod, 0.3 * max_power_with_pod)
 
                     # === ALLOCAZIONE PV ===
-                    # Se prezzo acquisto alto → PV al carico (risparmio)
-                    # Se prezzo vendita alto → PV alla rete (ricavo)
-                    if prices_buy[h] > prices_sell[h] * 1.2:  # Spread significativo
-                        # Conviene autoconsumo
+                    if prices_buy[h] > prices_sell[h] * 1.2:
                         positions[i, h, 1] = np.random.uniform(0.7, 1.0)
                     else:
-                        # Prezzo vendita competitivo
                         positions[i, h, 1] = np.random.uniform(0.3, 0.7)
 
                     # === BATTERIA PER CARICO ===
-                    # Se prezzo acquisto alto e carico alto → Usa batteria
                     if prices_buy[h] > np.mean(prices_buy) and load_demand[h] > np.mean(load_demand):
-                        positions[i, h, 2] = np.random.uniform(0.3 * max_power, 0.8 * max_power)
+                        positions[i, h, 2] = np.random.uniform(0.3 * max_power_with_pod, 0.8 * max_power_with_pod)
                     else:
-                        positions[i, h, 2] = np.random.uniform(0, 0.3 * max_power)
+                        positions[i, h, 2] = np.random.uniform(0, 0.3 * max_power_with_pod)
 
-            elif i < 2 * self.n_particles // 3:  # STRATEGIA 2: Load-priority + autoconsumo
+            elif i < 2 * self.n_particles // 3:  # STRATEGIA 2: Load-priority
                 for h in range(n_hours):
-                    # Conservativo sul trading
-                    positions[i, h, 0] = np.random.uniform(-0.4 * max_power, 0.4 * max_power)
-
-                    # Massima preferenza PV al carico
+                    positions[i, h, 0] = np.random.uniform(-0.4 * max_power_with_pod, 0.4 * max_power_with_pod)
                     positions[i, h, 1] = np.random.uniform(0.8, 1.0)
-
-                    # Batteria sempre disponibile per carico
                     if load_demand[h] > 0.001:
-                        positions[i, h, 2] = np.random.uniform(0.2 * max_power, max_power)
+                        positions[i, h, 2] = np.random.uniform(0.2 * max_power_with_pod, max_power_with_pod)
                     else:
                         positions[i, h, 2] = 0.0
 
             else:  # STRATEGIA 3: Random exploration
-                positions[i, :, 0] = np.random.uniform(-max_power, max_power, n_hours)
+                positions[i, :, 0] = np.random.uniform(-max_power_with_pod, max_power_with_pod, n_hours)
                 positions[i, :, 1] = np.random.uniform(0, 1, n_hours)
-                positions[i, :, 2] = np.random.uniform(0, max_power, n_hours)
+                positions[i, :, 2] = np.random.uniform(0, max_power_with_pod, n_hours)
 
         return positions
 
     def _evaluate(self, battery, actions, prices_sell, prices_buy, pv_production, load_demand):
         """
         ===============================================================================
-        FUNZIONE OBIETTIVO CORRETTA v3.2 - SCARICA SOLO ENERGIA EFFETTIVAMENTE USATA
+        FUNZIONE OBIETTIVO - CON VINCOLO POD (POINT OF DELIVERY)
         ===============================================================================
 
-        LOGICA ECONOMICA CORRETTA:
+        VINCOLO FISICO:
+        - POD_POWER_MW: Potenza massima scambio con rete elettrica
+        - Limita PRELIEVO dalla rete: ≤ POD_POWER_MW
+        - Limita IMMISSIONE in rete: ≤ POD_POWER_MW
 
-        Profitto = Ricavi - Costi - Degrado
+        APPLICAZIONE:
+        - Prelievo = Energia per batteria + Energia per carico
+        - Immissione = Scarica batteria trading + PV venduto
 
-        Dove per ogni ora:
-
-        RICAVI (SOLO transazioni reali con la rete):
-        + Energia venduta a rete da PV: pv_to_grid × price_sell
-        + Energia venduta a rete da batteria: discharge_trading × price_sell
-
-        COSTI (SOLO acquisti reali dalla rete):
-        - Energia acquistata per caricare batteria: grid_to_battery × price_buy
-        - Energia acquistata per servire carico residuo: load_from_grid × price_buy
-        - Degrado batteria: (charge + discharge) × degradation_cost
-
-        AUTOCONSUMO (NON genera ricavi):
-        - PV al carico: riduce load_remaining → riduce costo acquisto rete
-        - Batteria al carico: riduce load_remaining → riduce costo acquisto rete
-
-        CORREZIONE v3.2:
-        La batteria scarica SOLO l'energia effettivamente utilizzata (trading + carico),
-        non l'energia richiesta se questa supera il carico disponibile.
-
+        PENALITÀ:
+        - Se violazione POD → penalità pesante nel profitto
         ===============================================================================
         """
         bat_sim = battery.copy()
         profit = 0.0
+        pod_violation_penalty = 0.0  # Penalità per violazioni POD
 
         for hour, (action, price_sell, price_buy, pv_available, load_required) in enumerate(
                 zip(actions, prices_sell, prices_buy, pv_production, load_demand)
         ):
-            p_batt_trading = action[0]  # MW: >0 carica, <0 scarica trading
-            alpha_pv_load = action[1]  # [0,1]: frazione PV al carico
-            p_batt_load = action[2]  # MW: >=0 scarica per carico
+            p_batt_trading = action[0]
+            alpha_pv_load = action[1]
+            p_batt_load = action[2]
 
             pv_available = pv_available if PV_ENABLED else 0.0
             load_required = load_required if LOAD_ENABLED else 0.0
 
             # ========================================================================
-            # FASE 1: ALLOCAZIONE PV (decisione PSO via alpha_pv_load)
+            # FASE 1: ALLOCAZIONE PV
             # ========================================================================
             pv_to_load = min(alpha_pv_load * pv_available, load_required)
             pv_remaining = pv_available - pv_to_load
             load_remaining = load_required - pv_to_load
 
-            # ✅ AUTOCONSUMO PV: nessun ricavo virtuale, solo riduzione carico residuo
-
             # ========================================================================
-            # FASE 2: VINCOLO XOR ESPLICITO - BATTERIA CARICA **XOR** SCARICA
+            # FASE 2: VINCOLO XOR BATTERIA
             # ========================================================================
-
-            # Determina modalità PRIMA di eseguire
             if p_batt_trading > 0.001:
                 charge_request = p_batt_trading
                 discharge_request_trading = 0.0
                 discharge_request_load = 0.0
                 action_mode = "CHARGE"
-
             elif p_batt_trading < -0.001:
                 charge_request = 0.0
                 discharge_request_trading = -p_batt_trading
                 discharge_request_load = p_batt_load
                 action_mode = "DISCHARGE"
-
             elif p_batt_load > 0.001:
                 charge_request = 0.0
                 discharge_request_trading = 0.0
                 discharge_request_load = p_batt_load
                 action_mode = "DISCHARGE"
-
             else:
                 charge_request = 0.0
                 discharge_request_trading = 0.0
@@ -700,10 +665,13 @@ class PSOOptimizer:
 
             total_discharge_request = discharge_request_trading + discharge_request_load
 
-            # ========================================================================
-            # FASE 3: ESECUZIONE AZIONI BATTERIA
-            # ========================================================================
+            # Tracciamento flussi per vincolo POD
+            grid_withdrawal_this_hour = 0.0  # Prelievo totale dalla rete
+            grid_injection_this_hour = 0.0  # Immissione totale in rete
 
+            # ========================================================================
+            # FASE 3: ESECUZIONE AZIONI BATTERIA CON VINCOLO POD
+            # ========================================================================
             if action_mode == "DISCHARGE" and total_discharge_request > 0.001:
                 # === SCARICA ===
                 max_discharge = (
@@ -711,37 +679,37 @@ class PSOOptimizer:
                 actual_discharge_total = min(total_discharge_request, max_discharge)
 
                 if actual_discharge_total > 0.001:
-                    # Distribuzione proporzionale
                     ratio_trading = discharge_request_trading / total_discharge_request if total_discharge_request > 0 else 0
                     ratio_load = discharge_request_load / total_discharge_request if total_discharge_request > 0 else 0
 
                     discharge_for_trading = actual_discharge_total * ratio_trading
                     discharge_for_load_raw = actual_discharge_total * ratio_load
-
-                    # Limita al carico disponibile
                     discharge_for_load = min(discharge_for_load_raw, load_remaining)
 
-                    # ✅ v3.2 FIX: Ricalcola energia effettivamente usata
+                    # VINCOLO POD: Limita scarica trading se eccede POD
+                    discharge_for_trading = min(discharge_for_trading, POD_POWER_MW)
+
                     actual_discharge_used = discharge_for_trading + discharge_for_load
 
-                    # Esegui scarica fisica SOLO per l'energia usata
+                    # Controlla violazione POD per immissione
+                    if discharge_for_trading > POD_POWER_MW:
+                        pod_violation_penalty += (discharge_for_trading - POD_POWER_MW) * price_sell * 10.0
+
+                    # Esegui scarica fisica
                     energy_consumed = actual_discharge_used / bat_sim.discharge_efficiency
                     new_soc = bat_sim.soc - (energy_consumed / bat_sim.capacity)
                     bat_sim.soc = max(new_soc, bat_sim.soc_min)
                     bat_sim.throughput_kwh += energy_consumed * 1000
 
-                    # 💰 RICAVO REALE: Scarica per trading venduta alla rete
+                    # RICAVO: Vendita trading
                     if discharge_for_trading > 0.001:
                         profit += discharge_for_trading * price_sell
-
-                        # 💸 COSTO: Degrado
                         profit -= discharge_for_trading * DEGRADATION_COST_PER_MWH / (2 * bat_sim.eol_cycles)
+                        grid_injection_this_hour += discharge_for_trading
 
-                    # ✅ AUTOCONSUMO BATTERIA: riduce carico residuo (NO ricavo virtuale)
+                    # AUTOCONSUMO: Scarica per carico
                     if discharge_for_load > 0.001:
                         load_remaining -= discharge_for_load
-
-                        # 💸 COSTO: Degrado
                         profit -= discharge_for_load * DEGRADATION_COST_PER_MWH / (2 * bat_sim.eol_cycles)
 
             elif action_mode == "CHARGE" and charge_request > 0.001:
@@ -754,50 +722,84 @@ class PSOOptimizer:
                     if actual_power > 0.01:
                         energy_needed = actual_power * 1.0
 
-                        # Priorità 1: PV (se disponibile) - TIME-SHIFTING
+                        # Priorità 1: PV (se disponibile)
                         if pv_remaining > 0:
                             energy_from_pv = min(energy_needed, pv_remaining)
                             bat_sim.charge(energy_from_pv / 1.0, dt=1.0, source='pv')
                             pv_remaining -= energy_from_pv
                             energy_needed -= energy_from_pv
-
-                            # ✅ TIME-SHIFTING PV: nessun flusso economico immediato
-
-                            # 💸 COSTO: Solo degrado
                             profit -= energy_from_pv * DEGRADATION_COST_PER_MWH / (2 * bat_sim.eol_cycles)
 
-                        # Priorità 2: Rete (se serve ancora)
+                        # Priorità 2: Rete (con VINCOLO POD)
                         if energy_needed > 0.01:
-                            energy_from_grid = bat_sim.charge(energy_needed / 1.0, dt=1.0, source='grid')
+                            # VINCOLO POD: Limita prelievo da rete
+                            energy_from_grid_requested = energy_needed
+                            energy_from_grid = min(energy_from_grid_requested, POD_POWER_MW)
 
-                            # 💸 COSTO REALE: Acquisto energia dalla rete
-                            profit -= energy_from_grid * price_buy
+                            # Controlla violazione POD per prelievo
+                            if energy_from_grid_requested > POD_POWER_MW:
+                                pod_violation_penalty += (energy_from_grid_requested - POD_POWER_MW) * price_buy * 10.0
 
-                            # 💸 COSTO: Degrado
-                            profit -= energy_from_grid * DEGRADATION_COST_PER_MWH / (2 * bat_sim.eol_cycles)
+                            if energy_from_grid > 0.001:
+                                actual_charged = bat_sim.charge(energy_from_grid / 1.0, dt=1.0, source='grid')
+                                profit -= actual_charged * price_buy
+                                profit -= actual_charged * DEGRADATION_COST_PER_MWH / (2 * bat_sim.eol_cycles)
+                                grid_withdrawal_this_hour += actual_charged
 
             # ========================================================================
-            # FASE 4: GESTIONE PV RESIDUO E CARICO RESIDUO
+            # FASE 4: GESTIONE PV RESIDUO E CARICO RESIDUO CON VINCOLO POD
             # ========================================================================
 
-            # PV residuo → Vendi a rete
+            # PV residuo → Vendi a rete (CON VINCOLO POD)
             if pv_remaining > 0.001:
-                # 💰 RICAVO REALE: Vendita PV alla rete
-                profit += pv_remaining * price_sell
+                # VINCOLO POD: Limita immissione PV
+                pv_to_grid = min(pv_remaining, POD_POWER_MW - grid_injection_this_hour)
 
-            # Carico residuo → Acquista da rete
+                if pv_to_grid > 0.001:
+                    profit += pv_to_grid * price_sell
+                    grid_injection_this_hour += pv_to_grid
+
+                # Penalità per PV curtailed causa POD
+                pv_curtailed = pv_remaining - pv_to_grid
+                if pv_curtailed > 0.001:
+                    # Penalità minore: è energia persa ma non costa
+                    pod_violation_penalty += pv_curtailed * price_sell * 0.5
+
+            # Carico residuo → Acquista da rete (CON VINCOLO POD)
             if load_remaining > 0.001:
-                # 💸 COSTO REALE: Acquisto energia dalla rete per servire carico
-                profit -= load_remaining * price_buy
+                # VINCOLO POD: Limita prelievo per carico
+                load_from_grid = min(load_remaining, POD_POWER_MW - grid_withdrawal_this_hour)
 
-        return profit
+                if load_from_grid > 0.001:
+                    profit -= load_from_grid * price_buy
+                    grid_withdrawal_this_hour += load_from_grid
+
+                # Penalità PESANTE per carico non servito
+                load_unserved = load_remaining - load_from_grid
+                if load_unserved > 0.001:
+                    # Penalità molto alta: il carico DEVE essere servito
+                    pod_violation_penalty += load_unserved * price_buy * 100.0
+
+            # ========================================================================
+            # CONTROLLO FINALE VIOLAZIONI POD
+            # ========================================================================
+            if grid_withdrawal_this_hour > POD_POWER_MW + 0.001:
+                pod_violation_penalty += (grid_withdrawal_this_hour - POD_POWER_MW) * price_buy * 50.0
+
+            if grid_injection_this_hour > POD_POWER_MW + 0.001:
+                pod_violation_penalty += (grid_injection_this_hour - POD_POWER_MW) * price_sell * 50.0
+
+        # Sottrai penalità POD dal profitto finale
+        final_profit = profit - pod_violation_penalty
+
+        return final_profit
 
 
 # ========================================================================================================
 # SEZIONE 7: ROLLING HORIZON SIMULATOR - v3.2 CORRECTED
 # ========================================================================================================
 class RollingHorizonSimulator:
-    """v3.2: Scarica SOLO energia effettivamente utilizzata"""
+    """Scarica SOLO energia effettivamente utilizzata"""
 
     def __init__(self, battery, optimizer, pv_system=None, load_profile=None, horizon_hours=24, step_hours=1):
         self.battery = battery
@@ -809,13 +811,12 @@ class RollingHorizonSimulator:
 
     def simulate(self, prices_df, price_df2, pv_df=None, load_df=None):
         """
-        VERSIONE v3.2 - SCARICA SOLO ENERGIA EFFETTIVAMENTE USATA
+        CON VINCOLO POD (POINT OF DELIVERY)
 
-        MODIFICHE v3.2:
-        - Dopo aver limitato discharge_for_load al carico disponibile,
-          ricalcola la scarica totale effettiva
-        - La batteria scarica SOLO l'energia che verrà utilizzata
-        - Risolve il bug del SOC che scendeva troppo
+        NUOVO: Rispetta limite potenza scambio con rete (POD_POWER_MW)
+        - Limita prelievo dalla rete
+        - Limita immissione in rete
+        - Traccia curtailment PV e carico non servito causa POD
         """
         prices_sell = prices_df['€/MWh'].values
         prices_buy = price_df2['€/MWh'].values
@@ -844,7 +845,7 @@ class RollingHorizonSimulator:
             load_demand = np.zeros(n_hours)
 
         # ========================================================================
-        # ARRAYS RISULTATI
+        # ARRAYS RISULTATI + TRACKING POD
         # ========================================================================
         actions_trading_effective = []
         actions_alpha_pv = []
@@ -860,11 +861,13 @@ class RollingHorizonSimulator:
         pv_to_battery_history = []
         pv_to_grid_history = []
         pv_to_load_history = []
+        pv_curtailed_history = []
 
         load_demand_history = []
         load_from_pv_history = []
         load_from_battery_history = []
         load_from_grid_history = []
+        load_unserved_history = []
 
         energy_from_grid_to_battery_history = []
         energy_from_pv_to_battery_history = []
@@ -874,19 +877,25 @@ class RollingHorizonSimulator:
         load_discharge_history = []
         trading_discharge_history = []
 
+        # Tracking POD
+        grid_withdrawal_history = []  # Prelievo orario totale
+        grid_injection_history = []  # Immissione oraria totale
+        pod_violation_history = []  # Flag violazione POD
+
         cumulative_profit = 0.0
 
         print("=" * 80)
-        print("SIMULAZIONE BESS v3.2 - SCARICA SOLO ENERGIA USATA")
+        print("SIMULAZIONE BESS v3.3 - CON VINCOLO POD")
         print("=" * 80)
         print(f"Tecnologia: {self.battery.technology}")
         print(f"Capacità: {self.battery.nominal_capacity} MWh")
+        print(f"POD Power: {POD_POWER_MW} MW ⚡")
         if PV_ENABLED and self.pv_system:
             print(f"PV: {self.pv_system.nominal_power_kwp:.0f} kWp")
         if LOAD_ENABLED:
             print(f"Carico: {np.sum(load_demand):.2f} MWh totali")
         print(f"Obiettivo: Minimizzare costo netto energia")
-        print(f"Fix v3.2: Batteria scarica solo energia effettivamente utilizzata")
+        print(f"Vincolo: Scambio rete ≤ {POD_POWER_MW} MW")
         print("=" * 80)
 
         current_hour = 0
@@ -898,12 +907,11 @@ class RollingHorizonSimulator:
         # ========================================================================
         while current_hour < n_hours:
             progress = int((current_hour / n_hours) * 100)
-            if progress >= last_progress + 20:
+            if progress >= last_progress + 20 or progress == 0:
                 print(
                     f"Progresso: {progress}% - SOH: {self.battery.get_soh():.2f}% - SOC: {self.battery.get_soc() * 100:.1f}%")
                 last_progress = progress
 
-            # Aggiornamento degrado periodico
             if current_hour % degradation_update_interval == 0 and current_hour > 0:
                 self.battery.update_degradation()
 
@@ -918,34 +926,38 @@ class RollingHorizonSimulator:
                 self.horizon_hours
             )
 
-            # Estrai azioni RICHIESTE per l'ora corrente
             action = optimal_actions[0]
             p_batt_trading_requested = action[0]
             alpha_pv_load = action[1]
             p_batt_load_requested = action[2]
 
-            # Dati ora corrente
             price_sell = prices_sell[current_hour]
             price_buy = prices_buy[current_hour]
             pv_available = pv_production[current_hour]
             load_required = load_demand[current_hour]
 
             # ====================================================================
-            # VARIABILI TRACKING - RESET OGNI ORA
+            # VARIABILI TRACKING POD - RESET OGNI ORA
             # ====================================================================
+            grid_withdrawal_this_hour = 0.0  # Prelievo totale dalla rete
+            grid_injection_this_hour = 0.0  # Immissione totale in rete
+
             pv_to_battery_this_hour = 0.0
             pv_to_grid_this_hour = 0.0
             pv_to_load_this_hour = 0.0
+            pv_curtailed_this_hour = 0.0
+
             load_from_pv_this_hour = 0.0
             load_from_battery_this_hour = 0.0
             load_from_grid_this_hour = 0.0
+            load_unserved_this_hour = 0.0
+
             grid_to_battery_this_hour = 0.0
             pv_for_battery_charging = 0.0
             battery_served_load = False
             load_discharge_this_hour = 0.0
             trading_discharge_this_hour = 0.0
 
-            # Azioni effettive
             actual_charge_this_hour = 0.0
             actual_trading_discharge_this_hour = 0.0
             actual_load_discharge_this_hour = 0.0
@@ -966,19 +978,16 @@ class RollingHorizonSimulator:
                 discharge_request_trading = 0.0
                 discharge_request_load = 0.0
                 action_mode = "CHARGE"
-
             elif p_batt_trading_requested < -0.001:
                 charge_request = 0.0
                 discharge_request_trading = -p_batt_trading_requested
                 discharge_request_load = p_batt_load_requested
                 action_mode = "DISCHARGE"
-
             elif p_batt_load_requested > 0.001:
                 charge_request = 0.0
                 discharge_request_trading = 0.0
                 discharge_request_load = p_batt_load_requested
                 action_mode = "DISCHARGE"
-
             else:
                 charge_request = 0.0
                 discharge_request_trading = 0.0
@@ -987,7 +996,6 @@ class RollingHorizonSimulator:
 
             total_discharge_request = discharge_request_trading + discharge_request_load
 
-            # Limiti fisici batteria
             max_power_c_rate = self.battery.nominal_capacity * self.battery.max_c_rate
             max_power_physical = min(self.battery.max_power, max_power_c_rate)
             max_discharge_soc = (
@@ -995,7 +1003,7 @@ class RollingHorizonSimulator:
             max_energy_storable = (self.battery.soc_max - self.battery.soc) * self.battery.trading_capacity
 
             # ====================================================================
-            # FASE 3: ESECUZIONE AZIONI BATTERIA
+            # FASE 3: ESECUZIONE AZIONI BATTERIA CON VINCOLO POD
             # ====================================================================
 
             if action_mode == "DISCHARGE" and total_discharge_request > 0.001:
@@ -1008,30 +1016,31 @@ class RollingHorizonSimulator:
 
                     discharge_for_trading = actual_discharge_total * ratio_trading
                     discharge_for_load_raw = actual_discharge_total * ratio_load
-
-                    # Limita al carico disponibile
                     discharge_for_load = min(discharge_for_load_raw, load_remaining)
 
-                    # ✅ v3.2 FIX: Ricalcola energia effettivamente usata
+                    # VINCOLO POD: Limita scarica trading per immissione rete
+                    pod_available_for_injection = POD_POWER_MW - grid_injection_this_hour
+                    discharge_for_trading = min(discharge_for_trading, pod_available_for_injection)
+
                     actual_discharge_used = discharge_for_trading + discharge_for_load
 
-                    # Registra azioni effettive
                     actual_trading_discharge_this_hour = discharge_for_trading
                     actual_load_discharge_this_hour = discharge_for_load
 
-                    # ✅ Esegui scarica fisica SOLO per l'energia usata
+                    # Esegui scarica fisica
                     total_energy_discharge = actual_discharge_used / self.battery.discharge_efficiency
                     new_soc = self.battery.soc - (total_energy_discharge / self.battery.capacity)
                     self.battery.soc = max(new_soc, self.battery.soc_min)
                     self.battery.throughput_kwh += total_energy_discharge * 1000
 
-                    # 💰 RICAVO REALE: Vendita batteria alla rete
+                    # RICAVO: Vendita batteria alla rete
                     if discharge_for_trading > 0.001:
                         revenue_discharge = discharge_for_trading * price_sell
                         cumulative_profit += revenue_discharge
                         trading_discharge_this_hour = discharge_for_trading
+                        grid_injection_this_hour += discharge_for_trading
 
-                    # ✅ AUTOCONSUMO BATTERIA: riduce carico residuo
+                    # AUTOCONSUMO: Batteria al carico
                     if discharge_for_load > 0.001:
                         load_from_battery_this_hour = discharge_for_load
                         load_remaining -= discharge_for_load
@@ -1046,8 +1055,6 @@ class RollingHorizonSimulator:
 
                     if actual_power > 0.01:
                         energy_needed = actual_power * 1.0
-
-                        # Registra azione effettiva
                         actual_charge_this_hour = actual_power
 
                         # Priorità 1: PV (TIME-SHIFTING)
@@ -1059,44 +1066,82 @@ class RollingHorizonSimulator:
                             energy_needed -= energy_from_pv
                             pv_remaining -= energy_from_pv
 
-                        # Priorità 2: Rete
+                        # Priorità 2: Rete CON VINCOLO POD
                         if energy_needed > 0.01:
-                            energy_from_grid = self.battery.charge(energy_needed / 1.0, dt=1.0, source='grid')
-                            grid_to_battery_this_hour += energy_from_grid
+                            # VINCOLO POD: Limita prelievo da rete
+                            pod_available_for_withdrawal = POD_POWER_MW - grid_withdrawal_this_hour
+                            energy_from_grid_allowed = min(energy_needed, pod_available_for_withdrawal)
 
-                            # 💸 COSTO REALE: Acquisto energia dalla rete
-                            cost_grid_charge = energy_from_grid * price_buy
-                            cumulative_profit -= cost_grid_charge
+                            if energy_from_grid_allowed > 0.01:
+                                energy_from_grid = self.battery.charge(energy_from_grid_allowed / 1.0, dt=1.0,
+                                                                       source='grid')
+                                grid_to_battery_this_hour += energy_from_grid
+                                grid_withdrawal_this_hour += energy_from_grid
+
+                                # COSTO: Acquisto energia dalla rete
+                                cost_grid_charge = energy_from_grid * price_buy
+                                cumulative_profit -= cost_grid_charge
 
             # ====================================================================
-            # FASE 4: CARICO RESIDUO DALLA RETE
+            # FASE 4: CARICO RESIDUO DALLA RETE CON VINCOLO POD
             # ====================================================================
             if load_remaining > 0.001:
-                load_from_grid_this_hour = load_remaining
+                # VINCOLO POD: Limita prelievo per carico
+                pod_available_for_withdrawal = POD_POWER_MW - grid_withdrawal_this_hour
+                load_from_grid_allowed = min(load_remaining, pod_available_for_withdrawal)
 
-                # 💸 COSTO REALE: Acquisto energia dalla rete per carico
-                cost_grid_load = load_from_grid_this_hour * price_buy
-                cumulative_profit -= cost_grid_load
+                if load_from_grid_allowed > 0.001:
+                    load_from_grid_this_hour = load_from_grid_allowed
+                    grid_withdrawal_this_hour += load_from_grid_allowed
+
+                    # COSTO: Acquisto energia dalla rete per carico
+                    cost_grid_load = load_from_grid_this_hour * price_buy
+                    cumulative_profit -= cost_grid_load
+
+                # NUOVO: Carico non servito causa POD
+                load_unserved_this_hour = load_remaining - load_from_grid_allowed
+                if load_unserved_this_hour > 0.001:
+                    # PENALITÀ PESANTE: Carico non servito
+                    penalty = load_unserved_this_hour * price_buy * 100.0
+                    cumulative_profit -= penalty
+                    print(f"⚠️  Ora {current_hour}: Carico non servito {load_unserved_this_hour:.3f} MWh (POD limit)")
 
             # Registra decisione batteria per carico
             if self.load_profile and (load_from_battery_this_hour > 0.001 or load_from_grid_this_hour > 0.001):
                 self.load_profile.register_battery_decision(battery_served_load)
 
             # ====================================================================
-            # FASE 5: VENDITA PV RESIDUO
+            # FASE 5: VENDITA PV RESIDUO CON VINCOLO POD
             # ====================================================================
             if pv_remaining > 0.001:
-                pv_to_grid_this_hour += pv_remaining
+                # VINCOLO POD: Limita immissione PV
+                pod_available_for_injection = POD_POWER_MW - grid_injection_this_hour
+                pv_to_grid_allowed = min(pv_remaining, pod_available_for_injection)
 
-                # 💰 RICAVO REALE: Vendita PV alla rete
-                revenue_pv = pv_remaining * price_sell
-                cumulative_profit += revenue_pv
+                if pv_to_grid_allowed > 0.001:
+                    pv_to_grid_this_hour += pv_to_grid_allowed
+                    grid_injection_this_hour += pv_to_grid_allowed
+
+                    # RICAVO: Vendita PV alla rete
+                    revenue_pv = pv_to_grid_allowed * price_sell
+                    cumulative_profit += revenue_pv
+
+                # NUOVO: PV curtailed causa POD
+                pv_curtailed_this_hour = pv_remaining - pv_to_grid_allowed
+                if pv_curtailed_this_hour > 0.001:
+                    # Penalità leggera: energia persa ma non costo diretto
+                    penalty = pv_curtailed_this_hour * price_sell * 0.5
+                    cumulative_profit -= penalty
+                    if pv_curtailed_this_hour > 0.1:  # Log solo se significativo
+                        print(f"⚠️  Ora {current_hour}: PV curtailed {pv_curtailed_this_hour:.3f} MWh (POD limit)")
 
             # ====================================================================
             # TRACKING E REGISTRAZIONE
             # ====================================================================
             if self.pv_system and (pv_to_battery_this_hour > 0 or pv_to_grid_this_hour > 0 or pv_to_load_this_hour > 0):
                 self.pv_system.allocate_energy(pv_to_battery_this_hour, pv_to_grid_this_hour, pv_to_load_this_hour)
+                if pv_curtailed_this_hour > 0:
+                    self.pv_system.curtailed_energy_mwh += pv_curtailed_this_hour
 
             if self.load_profile:
                 self.load_profile.register_supply(load_from_pv_this_hour, load_from_battery_this_hour,
@@ -1106,12 +1151,12 @@ class RollingHorizonSimulator:
             if MACSE_ENABLED:
                 self.battery.update_macse_availability(macse_available)
 
-            # ====================================================================
-            # APPEND RISULTATI - AZIONI EFFETTIVE
-            # ====================================================================
             # Converti scarica in negativo per compatibilità grafici
             net_trading_action = actual_charge_this_hour if actual_charge_this_hour > 0 else -actual_trading_discharge_this_hour
 
+            # ====================================================================
+            # APPEND RISULTATI + POD TRACKING
+            # ====================================================================
             actions_trading_effective.append(net_trading_action)
             actions_alpha_pv.append(alpha_pv_load)
             actions_p_load_effective.append(actual_load_discharge_this_hour)
@@ -1126,11 +1171,13 @@ class RollingHorizonSimulator:
             pv_to_battery_history.append(pv_to_battery_this_hour)
             pv_to_grid_history.append(pv_to_grid_this_hour)
             pv_to_load_history.append(pv_to_load_this_hour)
+            pv_curtailed_history.append(pv_curtailed_this_hour)  # NUOVO
 
             load_demand_history.append(load_demand[current_hour])
             load_from_pv_history.append(load_from_pv_this_hour)
             load_from_battery_history.append(load_from_battery_this_hour)
             load_from_grid_history.append(load_from_grid_this_hour)
+            load_unserved_history.append(load_unserved_this_hour)  # NUOVO
 
             energy_from_grid_to_battery_history.append(grid_to_battery_this_hour)
             energy_from_pv_to_battery_history.append(pv_for_battery_charging)
@@ -1140,17 +1187,36 @@ class RollingHorizonSimulator:
             load_discharge_history.append(load_discharge_this_hour)
             trading_discharge_history.append(trading_discharge_this_hour)
 
+            # NUOVO: POD tracking
+            grid_withdrawal_history.append(grid_withdrawal_this_hour)
+            grid_injection_history.append(grid_injection_this_hour)
+            pod_violated = (grid_withdrawal_this_hour > POD_POWER_MW + 0.001) or (
+                        grid_injection_this_hour > POD_POWER_MW + 0.001)
+            pod_violation_history.append(1 if pod_violated else 0)
+
             current_hour += self.step_hours
 
         # ========================================================================
         # AGGIORNAMENTO FINALE DEGRADO
         # ========================================================================
         self.battery.update_degradation()
-        print("Simulazione completata!")
-        print(f"Profitto finale (solo transazioni reali): {cumulative_profit:.2f} €")
+
+        # Statistiche POD
+        total_pod_violations = sum(pod_violation_history)
+        total_pv_curtailed = sum(pv_curtailed_history)
+        total_load_unserved = sum(load_unserved_history)
+
+        print("\nSimulazione completata!")
+        print(f"Profitto finale: {cumulative_profit:.2f} €")
+        print(f"\n STATISTICHE POD:")
+        print(f"  • Violazioni POD: {total_pod_violations} ore su {len(pod_violation_history)}")
+        print(f"  • PV curtailed: {total_pv_curtailed:.2f} MWh")
+        print(f"  • Carico non servito: {total_load_unserved:.2f} MWh")
+        if total_pod_violations > 0:
+            print(f"  ⚠️  ATTENZIONE: Rilevate {total_pod_violations} violazioni POD")
 
         # ========================================================================
-        # CREAZIONE DATAFRAME RISULTATI
+        # CREAZIONE DATAFRAME RISULTATI CON COLONNE POD
         # ========================================================================
         results_df = prices_df.copy()
         pad_length = len(results_df) - len(actions_trading_effective)
@@ -1171,17 +1237,19 @@ class RollingHorizonSimulator:
         results_df['Profitto_Euro'] = profits_history + [profits_history[-1]] * pad_length
         results_df['MACSE_Availability'] = macse_availability_history + [macse_availability_history[-1]] * pad_length
 
-        # PV
+        # PV + NUOVO: curtailment
         results_df['PV_Production_MWh'] = pv_production_history + [0] * pad_length
         results_df['PV_to_Battery_MWh'] = pv_to_battery_history + [0] * pad_length
         results_df['PV_to_Grid_MWh'] = pv_to_grid_history + [0] * pad_length
         results_df['PV_to_Load_MWh'] = pv_to_load_history + [0] * pad_length
+        results_df['PV_Curtailed_MWh'] = pv_curtailed_history + [0] * pad_length  # NUOVO
 
-        # Load
+        # Load + NUOVO: unserved
         results_df['Load_Demand_MWh'] = load_demand_history + [0] * pad_length
         results_df['Load_from_PV_MWh'] = load_from_pv_history + [0] * pad_length
         results_df['Load_from_Battery_MWh'] = load_from_battery_history + [0] * pad_length
         results_df['Load_from_Grid_MWh'] = load_from_grid_history + [0] * pad_length
+        results_df['Load_Unserved_MWh'] = load_unserved_history + [0] * pad_length  # NUOVO
 
         # Energy sources
         results_df['Energy_from_Grid_MWh'] = energy_from_grid_to_battery_history + [0] * pad_length
@@ -1192,6 +1260,11 @@ class RollingHorizonSimulator:
         results_df['Load_Discharge_MW'] = load_discharge_history + [0] * pad_length
         results_df['Trading_Discharge_MW'] = trading_discharge_history + [0] * pad_length
 
+        # NUOVO: POD tracking
+        results_df['Grid_Withdrawal_MW'] = grid_withdrawal_history + [0] * pad_length
+        results_df['Grid_Injection_MW'] = grid_injection_history + [0] * pad_length
+        results_df['POD_Violation'] = pod_violation_history + [0] * pad_length
+
         # Retrocompatibilità
         results_df['Azione_MW'] = actions_trading_effective + [0] * pad_length
 
@@ -1199,7 +1272,7 @@ class RollingHorizonSimulator:
 
 
 # ========================================================================================================
-# SEZIONE 8: MACSE E JSON EXPORT (identico v2.5.0, aggiunge stats decisioni)
+# SEZIONE 8: MACSE E JSON EXPORT
 # ========================================================================================================
 def calculate_macse_revenue(battery):
     if not MACSE_ENABLED:
@@ -1364,7 +1437,23 @@ def export_results_to_json(results_df, battery, pv_system, load_profile, trading
                 "battery_served_count": load_stats['battery_served_count'],
                 "grid_served_count": load_stats['grid_served_count'],
                 "total_decision_hours": load_stats['total_decisions']
-            }
+            },
+        "point_of_delivery": {
+                "pod_power_mw": POD_POWER_MW,
+                "total_violations": int(results_df['POD_Violation'].sum()),
+                "violation_hours": int(results_df['POD_Violation'].sum()),
+                "total_hours": len(results_df),
+                "violation_rate_percent": float(results_df['POD_Violation'].sum() / len(results_df) * 100),
+                "pv_curtailed_mwh": float(results_df['PV_Curtailed_MWh'].sum()),
+                "load_unserved_mwh": float(results_df['Load_Unserved_MWh'].sum()),
+                "max_grid_withdrawal_mw": float(results_df['Grid_Withdrawal_MW'].max()),
+                "max_grid_injection_mw": float(results_df['Grid_Injection_MW'].max()),
+                "avg_grid_withdrawal_mw": float(results_df['Grid_Withdrawal_MW'].mean()),
+                "avg_grid_injection_mw": float(results_df['Grid_Injection_MW'].mean()),
+                "energy_lost_to_pod_mwh": float(
+                    results_df['PV_Curtailed_MWh'].sum() + results_df['Load_Unserved_MWh'].sum())
+            },
+
         },
 
         "macse": {
@@ -1603,17 +1692,17 @@ def create_detailed_monthly_pv_plots(results_df, battery, pv_system):
         ax3 = fig.add_subplot(gs[1, 1])
         ax3_twin = ax3.twinx()
 
-        # ✅ USA DIRETTAMENTE LE COLONNE CORRETTE DAL DATAFRAME
+        # USA DIRETTAMENTE LE COLONNE CORRETTE DAL DATAFRAME
         charge_pv_bars = []
         charge_grid_bars = []
         discharge_load_bars = []
         discharge_trading_bars = []
 
         for idx, row in df_giorno.iterrows():
-            # ✅ Usa Azione_Trading_MW che contiene già l'azione trading corretta
+            # Usa Azione_Trading_MW che contiene già l'azione trading corretta
             trading_action = row['Azione_Trading_MW']  # Positivo=carica, Negativo=scarica trading
 
-            # ✅ Usa le colonne dedicate già presenti nel DataFrame
+            # Usa le colonne dedicate già presenti nel DataFrame
             load_discharge = row.get('Load_Discharge_MW', 0.0)
             trading_discharge = row.get('Trading_Discharge_MW', 0.0)
 
@@ -2347,21 +2436,19 @@ Strategia Ottimizzazione:
 
 def calculate_baseline_scenario(prices_sell, prices_buy, pv_production, load_demand):
     """
-    Calcola scenario BASELINE senza batteria:
-    - PV copre carico direttamente (priorità massima)
-    - PV in eccesso venduto a rete
-    - Carico residuo comprato da rete
-
-    Returns:
-        dict con bilancio economico e statistiche energetiche
+    Calcola scenario BASELINE senza batteria CON VINCOLO POD
     """
-    total_cost_buy = 0.0  # Costi acquisto da rete
-    total_revenue_sell = 0.0  # Ricavi vendita PV
+    total_cost_buy = 0.0
+    total_revenue_sell = 0.0
 
     total_pv_to_load = 0.0
     total_pv_to_grid = 0.0
     total_load_from_grid = 0.0
     total_load_required = 0.0
+
+    # NUOVO: tracking POD baseline
+    total_pv_curtailed_baseline = 0.0
+    total_load_unserved_baseline = 0.0
 
     n_hours = len(prices_sell)
 
@@ -2373,26 +2460,40 @@ def calculate_baseline_scenario(prices_sell, prices_buy, pv_production, load_dem
 
         total_load_required += load_required
 
-        # LOGICA BASELINE: PV al carico prima, poi eccesso venduto
+        # LOGICA BASELINE: PV al carico prima
         pv_to_load = min(pv_available, load_required)
         pv_remaining = pv_available - pv_to_load
         load_remaining = load_required - pv_to_load
 
         total_pv_to_load += pv_to_load
 
-        # PV eccesso venduto
+        # PV eccesso venduto CON VINCOLO POD
         if pv_remaining > 0.001:
-            total_pv_to_grid += pv_remaining
-            total_revenue_sell += pv_remaining * price_sell
+            pv_to_grid = min(pv_remaining, POD_POWER_MW)  # ✅ VINCOLO POD
+            pv_curtailed = pv_remaining - pv_to_grid
 
-        # Carico residuo comprato da rete
+            total_pv_to_grid += pv_to_grid
+            total_revenue_sell += pv_to_grid * price_sell
+
+            if pv_curtailed > 0.001:
+                total_pv_curtailed_baseline += pv_curtailed
+                # Penalità leggera per PV perso
+                total_cost_buy += pv_curtailed * price_sell * 0.5
+
+        # Carico residuo comprato da rete CON VINCOLO POD
         if load_remaining > 0.001:
-            total_load_from_grid += load_remaining
-            total_cost_buy += load_remaining * price_buy
+            load_from_grid = min(load_remaining, POD_POWER_MW)  # ✅ VINCOLO POD
+            load_unserved = load_remaining - load_from_grid
+
+            total_load_from_grid += load_from_grid
+            total_cost_buy += load_from_grid * price_buy
+
+            if load_unserved > 0.001:
+                total_load_unserved_baseline += load_unserved
+                # Penalità pesante per carico non servito
+                total_cost_buy += load_unserved * price_buy * 100.0
 
     net_balance = total_revenue_sell - total_cost_buy
-
-    # Calcola autosufficienza
     autosufficienza = (total_pv_to_load / total_load_required * 100) if total_load_required > 0 else 0
 
     return {
@@ -2403,7 +2504,9 @@ def calculate_baseline_scenario(prices_sell, prices_buy, pv_production, load_dem
         'total_pv_to_grid': total_pv_to_grid,
         'total_load_from_grid': total_load_from_grid,
         'total_load_required': total_load_required,
-        'autosufficienza_percent': autosufficienza
+        'autosufficienza_percent': autosufficienza,
+        'pv_curtailed_baseline': total_pv_curtailed_baseline,  # NUOVO
+        'load_unserved_baseline': total_load_unserved_baseline  # NUOVO
     }
 
 # ========================================================================================================
@@ -2593,6 +2696,39 @@ def main(file_name, file_name2, pv_file_name=None, load_file_name=None):
 
     system_sign = "✅" if total_system_profit >= 0 else "❌"
     print(f"  • BILANCIO NETTO (con batteria):   {total_system_profit:>10,.2f} €  {system_sign}")
+
+    if 'POD_Violation' in results_df.columns:
+        print("\n" + "⚡ " * 40)
+        print("ANALISI VINCOLO POD (POINT OF DELIVERY)")
+        print("⚡ " * 40)
+
+        total_violations = results_df['POD_Violation'].sum()
+        violation_rate = (total_violations / len(results_df) * 100)
+        total_pv_curtailed = results_df['PV_Curtailed_MWh'].sum()
+        total_load_unserved = results_df['Load_Unserved_MWh'].sum()
+        max_withdrawal = results_df['Grid_Withdrawal_MW'].max()
+        max_injection = results_df['Grid_Injection_MW'].max()
+
+        print(f"\n📊 LIMITE POD: {POD_POWER_MW} MW")
+        print(f"\n🔴 VIOLAZIONI:")
+        print(
+            f"  • Ore con violazione:             {int(total_violations)} / {len(results_df)} ({violation_rate:.1f}%)")
+        print(f"  • PV curtailed (perso):           {total_pv_curtailed:.2f} MWh")
+        print(f"  • Carico non servito:             {total_load_unserved:.2f} MWh")
+
+        print(f"\n📈 SCAMBI MASSIMI:")
+        print(
+            f"  • Max prelievo rete:              {max_withdrawal:.2f} MW {'⚠️ VIOLA POD' if max_withdrawal > POD_POWER_MW else '✅'}")
+        print(
+            f"  • Max immissione rete:            {max_injection:.2f} MW {'⚠️ VIOLA POD' if max_injection > POD_POWER_MW else '✅'}")
+
+        if baseline_scenario and 'pv_curtailed_baseline' in baseline_scenario:
+            print(f"\n🔵 CONFRONTO CON BASELINE:")
+            print(f"  • PV curtailed SENZA batteria:    {baseline_scenario['pv_curtailed_baseline']:.2f} MWh")
+            print(f"  • PV curtailed CON batteria:      {total_pv_curtailed:.2f} MWh")
+            delta_curtailment = baseline_scenario['pv_curtailed_baseline'] - total_pv_curtailed
+            print(
+                f"  • Riduzione curtailment:          {delta_curtailment:.2f} MWh {'✅' if delta_curtailment > 0 else '❌'}")
 
     # ========================================================================
     # CONFRONTO E DELTA

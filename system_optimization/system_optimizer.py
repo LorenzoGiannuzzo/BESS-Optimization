@@ -1899,7 +1899,7 @@ ECONOMIA:
                  fontsize=11, verticalalignment='top', fontfamily='monospace',
                  bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.3))
 
-        plt.tight_layout()
+        #plt.tight_layout()
         filename = f'{mese:02d}_{mesi_nomi[mese - 1]}_dettaglio_pv_{battery.technology}.png'
         plt.savefig(os.path.join(monthly_pv_folder, filename),
                     dpi=300, bbox_inches='tight')

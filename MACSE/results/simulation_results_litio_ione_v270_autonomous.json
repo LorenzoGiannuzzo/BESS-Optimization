@@ -4,9 +4,9 @@
     "feature": "Fully Autonomous Multi-Dimensional PSO - Zero Hardcoded Logic",
     "description": "PSO decides all allocations: [p_batt_trading, alpha_pv_load, p_batt_load]",
     "technology": "LITIO-IONE",
-    "simulation_time_seconds": 3817.902314,
+    "simulation_time_seconds": 3384.322074,
     "total_hours": 8760,
-    "timestamp": "2025-11-15T11:54:45.741969"
+    "timestamp": "2025-11-24T19:43:01.016425"
   },
   "battery_parameters": {
     "nominal_capacity_mwh": 1.0,
@@ -20,48 +20,62 @@
   },
   "battery_state": {
     "final_soc": 0.1,
-    "final_soh_percent": 93.16105759677042,
-    "final_capacity_mwh": 0.9316105759677042,
-    "equivalent_cycles": 412.8267189705804,
-    "throughput_kwh": 825653.4379411608,
-    "energy_from_grid_mwh": 408.20074204878296,
-    "energy_from_pv_mwh": 15.769255926943359
+    "final_soh_percent": 98.99152843479304,
+    "final_capacity_mwh": 0.9899152843479304,
+    "equivalent_cycles": 38.33273186154155,
+    "throughput_kwh": 766654.6372308311,
+    "energy_from_grid_mwh": 383.2531351072543,
+    "energy_from_pv_mwh": 15.663014084940711
   },
   "trading_operations": {
-    "charge_hours": 725,
-    "discharge_hours": 195,
-    "idle_hours": 7840,
-    "total_energy_charged_mwh": 437.66505911023967,
-    "total_energy_discharged_mwh": 20.151152755669884,
-    "utilization_factor": 0.1050228310502283
+    "charge_hours": 692,
+    "discharge_hours": 119,
+    "idle_hours": 7949,
+    "total_energy_charged_mwh": 400.6962069241124,
+    "total_energy_discharged_mwh": 7.312265960451924,
+    "utilization_factor": 0.09257990867579909
   },
   "photovoltaic_system": {
     "enabled": true,
     "total_production_mwh": 591.2840000000001,
-    "energy_to_battery_mwh": 15.769255926943359,
-    "energy_to_grid_mwh": 0.7730818579875728,
-    "energy_to_load_mwh": 574.6644269921625,
+    "energy_to_battery_mwh": 15.663014084940716,
+    "energy_to_grid_mwh": 0.8147275474879816,
+    "energy_to_load_mwh": 574.6848828380101,
     "curtailed_energy_mwh": 0.0,
-    "battery_utilization_percent": 2.6669512327313702,
-    "grid_sale_percent": 0.1307462840170836,
-    "load_service_percent": 97.1892401945871,
+    "battery_utilization_percent": 2.6489832440824905,
+    "grid_sale_percent": 0.1377895474066576,
+    "load_service_percent": 97.19269975815514,
     "curtailment_percent": 0.0
   },
   "load_profile": {
     "enabled": true,
-    "total_energy_required_mwh": 4978.499849923118,
-    "energy_from_pv_mwh": 574.6644269921625,
-    "energy_from_battery_mwh": 381.73964188595846,
-    "energy_from_grid_mwh": 4022.095781044989,
-    "pv_coverage_percent": 11.542923457174293,
-    "battery_coverage_percent": 7.66776445502662,
-    "grid_dependency_percent": 80.78931208779892,
+    "total_energy_required_mwh": 4978.679920899501,
+    "energy_from_pv_mwh": 574.6848828380101,
+    "energy_from_battery_mwh": 361.0346106834881,
+    "energy_from_grid_mwh": 4042.9604273779955,
+    "pv_coverage_percent": 11.542916836762254,
+    "battery_coverage_percent": 7.251613207106107,
+    "grid_dependency_percent": 81.2054699561315,
     "autonomous_decisions": {
-      "battery_served_load_percent": 9.82988925676447,
-      "grid_served_load_percent": 90.17011074323553,
-      "battery_served_count": 861,
-      "grid_served_count": 7898,
+      "battery_served_load_percent": 10.43498116223313,
+      "grid_served_load_percent": 89.56501883776686,
+      "battery_served_count": 914,
+      "grid_served_count": 7845,
       "total_decision_hours": 8759
+    },
+    "point_of_delivery": {
+      "pod_power_mw": 1.5,
+      "total_violations": 0,
+      "violation_hours": 0,
+      "total_hours": 8760,
+      "violation_rate_percent": 0.0,
+      "pv_curtailed_mwh": 0.0,
+      "load_unserved_mwh": 0.002997515956040586,
+      "max_grid_withdrawal_mw": 1.5,
+      "max_grid_injection_mw": 0.2533449803767479,
+      "avg_grid_withdrawal_mw": 0.5052755208316475,
+      "avg_grid_injection_mw": 0.0009246496905402025,
+      "energy_lost_to_pod_mwh": 0.002997515956040586
     }
   },
   "macse": {
@@ -75,11 +89,11 @@
     "total_revenue_euro": 0.0
   },
   "economic_results": {
-    "trading_profit_euro": -938776.663050013,
+    "trading_profit_euro": -940095.9040413459,
     "macse_revenue_euro": 0.0,
-    "total_system_profit_euro": -938776.663050013,
+    "total_system_profit_euro": -940095.9040413459,
     "battery_investment_euro": 600000.0,
-    "roi_percent": -156.46277717500217,
+    "roi_percent": -156.68265067355765,
     "payback_years": null,
     "avg_price_sell_euro_mwh": 118.81022882978311,
     "avg_price_buy_euro_mwh": 213.80924394165524
@@ -100,8 +114,8 @@
     },
     "scenario_with_battery": {
       "description": "Scenario ottimizzato con sistema di accumulo",
-      "net_balance_euro": -938776.663050013,
-      "autosufficienza_percent": 19.21068791220108
+      "net_balance_euro": -940095.9040413459,
+      "autosufficienza_percent": 18.794530043868505
     },
     "battery_benefits": {
       "economic_benefit_euro": 0.0,
@@ -118,7 +132,7 @@
       "break_even_point_years": null,
       "annual_savings_euro": 0.0,
       "energy_independence_gain_percent": 0.0,
-      "load_served_by_battery_percent": 7.66776445502662
+      "load_served_by_battery_percent": 7.251613207106107
     }
   },
   "pso_decision_space": {

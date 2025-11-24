@@ -23,7 +23,6 @@ Version: 3.7.0
 Date: 25 November 2025
 ------------------------------------------------------------------------------------------------------------------------
 """
-
 import pandas as pd
 import numpy as np
 from datetime import datetime

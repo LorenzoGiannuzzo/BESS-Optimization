@@ -1,8 +1,8 @@
 """"
 ------------------------------------------------------------------------------------------------------------------------
-BATTERY ENERGY STORAGE SYSTEM (BESS) OPTIMIZATION - WITH USER LOAD INTEGRATION
-Particle Swarm Optimization with Rolling Horizon, MACSE, Autonomous PV and Load Management
-Supporto Litio-ione e Grafene + Sistema Fotovoltaico + Carico Utente con Decisione Ottimale
+BATTERY ENERGY STORAGE SYSTEM (BESS) OPTIMIZATION - AUTONOMOUS LOAD DECISIONS
+Particle Swarm Optimization with Rolling Horizon, MACSE, Autonomous PV and AUTONOMOUS Load Management
+Supporto Litio-ione e Grafene + Sistema Fotovoltaico + Carico Utente con DECISIONE OTTIMALE AUTONOMA
 ------------------------------------------------------------------------------------------------------------------------
 Author: Lorenzo Giannuzzo (Modified)
 Affiliation: Politecnico di Torino
@@ -17,19 +17,10 @@ Description:
     - Gestione ottimale del degrado della batteria
     - Supporto per tecnologie Litio-ione e Grafene
     - Autonomous PV: L'algoritmo decide autonomamente allocazione energia PV
-    - **LOAD MANAGEMENT: Soddisfacimento carico da PV, Batteria o Rete con logica ottimale**
-Version: 2.5.0-CORRECTED
+    - **AUTONOMOUS LOAD: Batteria DECIDE quando servire carico vs trading**
+
+Version: 2.6.0
 Date: November 2025
-------------------------------------------------------------------------------------------------------------------------
-CORREZIONI VERSIONE 2.5.0:
-- FIX: Rimossi virtual revenues sia da PSO che da simulatore (contabilità reale)
-- FIX: Aggiunto costo degrado batteria per servizio carico
-- FIX: Aggiunto costo degrado batteria per trading
-- FIX: Corretto calcolo profitto orario nei grafici
-- FIX: Produzione PV ora letta correttamente (era trattata come irradianza)
-- FIX: Prezzo acquisto calcolato da vendita con mark-up (non più da file separato)
-- FIX: C-rate standardizzato su nominal_capacity
-- FIX: Coerenza completa PSO-Simulatore-Report
 ------------------------------------------------------------------------------------------------------------------------
 """
 
@@ -44,32 +35,31 @@ import matplotlib.dates as mdates
 # ========================================================================================================
 # SEZIONE 1: PARAMETRI CONFIGURABILI PRINCIPALI
 # ========================================================================================================
-energy_selling_price_name = '20240101_20241231_PUN.xlsx'
-energy_buying_price_name = '20240101_20241231_PUN.xlsx'  # Non più usato, calcolato con mark-up
-pv_production_file = 'year_PV.csv'
-load_file = 'BTA6_5.xlsx'
+energy_selling_price_name = 'Prezzo_Vendita.xlsx'
+energy_buying_price_name = 'Prezzo_Acquisto.xlsx'
+pv_production_file = 'PV_formattato.csv'
+load_file = 'Consumo.xlsx'
 
 # ---------------------------------- SCELTA TECNOLOGIA BATTERIA -------------------------------------------
 BATTERY_TECHNOLOGY = "LITIO-IONE"
 
 # ---------------------------------- PARAMETRI BATTERIA ---------------------------------------------------
-BATTERY_CAPACITY_MWH = 4.0
-BATTERY_MAX_POWER_MW = 2.0
-BATTERY_MAX_C_RATE = 0.5
+BATTERY_CAPACITY_MWH = 1.0
+BATTERY_MAX_POWER_MW = 1.0
+BATTERY_MAX_C_RATE = 1.0
 BATTERY_BASE_EFFICIENCY = 0.95
 
 # ---------------------------------- PARAMETRI FOTOVOLTAICO -----------------------------------------------
 PV_ENABLED = True
-PV_NOMINAL_POWER_KWP = 1000.0
+PV_NOMINAL_POWER_KWP = 1.0
 PV_INVERTER_EFFICIENCY = 0.98
-PV_SYSTEM_LOSSES = 0.05
+PV_SYSTEM_LOSSES = 0.0
 
 # ---------------------------------- PARAMETRI CARICO UTENTE -----------------------------------------------
 LOAD_ENABLED = True
 LOAD_SHEET_NAME = None  # None = primo sheet disponibile
 
-# ---------------------------------- PARAMETRI ECONOMICI -----------------------------------------------
-PRICE_MARKUP_PERCENT = 15.0  # Mark-up % tra prezzo acquisto e vendita (acquisto = vendita * (1 + markup/100))
+
 
 # ---------------------------------- PARAMETRI SPECIFICI PER TECNOLOGIA -----------------------------------
 LITHIUM_ION_SOC_MIN = 0.1
@@ -84,10 +74,10 @@ GRAPHENE_EOL_CYCLES = 500000
 
 # ---------------------------------- PARAMETRI GENERALI ---------------------------------------------------
 SAVE_PLOTS = True
-DEGRADATION_COST_PER_MWH = 10.0
+DEGRADATION_COST_PER_MWH = 20
 
 # ---------------------------------- PARAMETRI MACSE ------------------------------------------------------
-MACSE_ENABLED = True
+MACSE_ENABLED = False
 MACSE_CAPACITY_MWH = 1.0
 MACSE_CONTRACT_YEARS = 1
 MACSE_PRICE_PER_MW_YEAR = 50000
@@ -169,7 +159,6 @@ class BatteryEfficiencyModel:
 class PhotovoltaicSystem:
     """
     Lorenzo Giannuzzo: Modello sistema fotovoltaico con tracking completo allocazione energia
-    CORRETTO: Produzione PV letta direttamente in kW, non più moltiplicata per taglia impianto
     """
     def __init__(self, nominal_power_kwp=PV_NOMINAL_POWER_KWP,
                  inverter_efficiency=PV_INVERTER_EFFICIENCY,
@@ -188,7 +177,7 @@ class PhotovoltaicSystem:
 
     def get_production(self, irradiance_w_per_kwp):
         """Calcola produzione effettiva dato irraggiamento [MW]"""
-        power_mw = (irradiance_w_per_kwp * self.nominal_power_kwp * self.total_efficiency) / 1e6
+        power_mw = (irradiance_w_per_kwp * self.nominal_power_kwp * self.total_efficiency) * 1000
         return power_mw
 
     def get_energy(self, irradiance_w_per_kwp, dt=1.0):
@@ -200,8 +189,7 @@ class PhotovoltaicSystem:
 
     def load_pv_production(self, pv_value_kw, dt=1.0):
         """
-        NUOVO METODO CORRETTO: Carica produzione PV già calcolata in kW
-        Utilizzare questo invece di get_energy() quando il file contiene già la produzione
+        Carica produzione PV già calcolata in kW
         """
         energy_mwh = (pv_value_kw / 1000.0) * dt
         self.total_production_mwh += energy_mwh
@@ -230,13 +218,19 @@ class PhotovoltaicSystem:
 
 class LoadProfile:
     """
-    Lorenzo Giannuzzo: Modello carico elettrico utente con tracking completo fonti di fornitura
+    Lorenzo Giannuzzo: Modello carico elettrico utente con tracking decisioni autonome
+    NUOVO v2.6.0: Traccia quando batteria SCEGLIE di servire carico vs lasciare a rete
     """
     def __init__(self):
         self.total_energy_required_mwh = 0.0
         self.energy_from_pv_mwh = 0.0
         self.energy_from_battery_mwh = 0.0
         self.energy_from_grid_mwh = 0.0
+
+        # NUOVO: Contatori decisioni batteria
+        self.battery_served_load_count = 0  # Ore in cui batteria ha SCELTO di servire carico
+        self.grid_served_load_count = 0      # Ore in cui batteria ha SCELTO di lasciare carico a rete
+        self.total_decision_hours = 0
 
     def register_supply(self, from_pv, from_battery, from_grid):
         """Registra fonti di fornitura carico"""
@@ -245,10 +239,22 @@ class LoadProfile:
         self.energy_from_grid_mwh += from_grid
         self.total_energy_required_mwh += (from_pv + from_battery + from_grid)
 
+    def register_battery_decision(self, battery_served: bool):
+        """
+        NUOVO v2.6.0: Registra decisione batteria su carico
+        battery_served=True → Batteria ha SCELTO di servire carico
+        battery_served=False → Batteria ha SCELTO di lasciare carico a rete (per trading futuro)
+        """
+        self.total_decision_hours += 1
+        if battery_served:
+            self.battery_served_load_count += 1
+        else:
+            self.grid_served_load_count += 1
+
     def get_statistics(self):
-        """Ritorna statistiche fornitura carico"""
+        """Ritorna statistiche fornitura carico con decisioni autonome"""
         total = self.total_energy_required_mwh
-        return {
+        stats = {
             'total_energy_required_mwh': total,
             'energy_from_pv_mwh': self.energy_from_pv_mwh,
             'energy_from_battery_mwh': self.energy_from_battery_mwh,
@@ -257,6 +263,22 @@ class LoadProfile:
             'battery_coverage_percent': (self.energy_from_battery_mwh / total * 100) if total > 0 else 0,
             'grid_dependency_percent': (self.energy_from_grid_mwh / total * 100) if total > 0 else 0
         }
+
+        # NUOVO: Statistiche decisioni
+        if self.total_decision_hours > 0:
+            stats['battery_served_decisions_percent'] = (self.battery_served_load_count / self.total_decision_hours * 100)
+            stats['grid_served_decisions_percent'] = (self.grid_served_load_count / self.total_decision_hours * 100)
+            stats['battery_served_count'] = self.battery_served_load_count
+            stats['grid_served_count'] = self.grid_served_load_count
+            stats['total_decisions'] = self.total_decision_hours
+        else:
+            stats['battery_served_decisions_percent'] = 0
+            stats['grid_served_decisions_percent'] = 0
+            stats['battery_served_count'] = 0
+            stats['grid_served_count'] = 0
+            stats['total_decisions'] = 0
+
+        return stats
 
 # ========================================================================================================
 # SEZIONE 4: DEGRADO
@@ -281,7 +303,6 @@ def degradation(cycle_num):
 class Battery:
     """
     Lorenzo Giannuzzo: Modello batteria con tracking separato carica da rete vs PV
-    CORRETTO: C-rate sempre su nominal_capacity
     """
     def __init__(self, technology=BATTERY_TECHNOLOGY,
                  capacity_mwh=BATTERY_CAPACITY_MWH,
@@ -428,18 +449,30 @@ class Battery:
         return b
 
     def get_max_power_by_crate(self):
-        """CORRETTO: C-rate sempre su nominal_capacity"""
+        """C-rate sempre su nominal_capacity"""
         return self.nominal_capacity * self.max_c_rate
 
 
 # ========================================================================================================
-# SEZIONE 6: OTTIMIZZATORE PSO - CORRETTO v2.5.0
+# SEZIONE 6: OTTIMIZZATORE PSO - NUOVO v2.6.0 CON DECISIONI AUTONOME CARICO
 # ========================================================================================================
 class PSOOptimizer:
     """
-    CORRETTO v2.5.0: PSO SENZA virtual revenues - contabilità reale
+    PSO con decisioni autonome multi-dimensionali
+    Ogni ora: 3 decisioni continue [p_batt_trading, alpha_pv_load, p_batt_load]
+
+    OBIETTIVO ECONOMICO REALE:
+    Minimizzare: Costo Netto = Costi - Ricavi + Degrado
+
+    Dove:
+    - Ricavi = SOLO vendite energia alla rete (PV + batteria)
+    - Costi = SOLO acquisti energia dalla rete (per batteria + per carico)
+    - Degrado = Costo cicli batteria
+
+    L'AUTOCONSUMO NON GENERA RICAVI - riduce solo il carico che deve essere servito dalla rete
     """
-    def __init__(self, n_particles=50, n_iterations=150, w_start=0.95, w_end=0.1, c1=2.0, c2=2.0):
+
+    def __init__(self, n_particles=100, n_iterations=300, w_start=0.95, w_end=0.1, c1=2.0, c2=2.0):
         self.n_particles = n_particles
         self.n_iterations = n_iterations
         self.w_start = w_start
@@ -449,11 +482,15 @@ class PSOOptimizer:
         self.stagnation_limit = 15
 
     def optimize(self, battery, prices_sell, prices_buy, pv_production, load_demand, horizon_hours=24):
+        """Ottimizzazione PSO standard - identica a prima"""
         n_hours = min(horizon_hours, len(prices_sell))
         max_power_limit = min(battery.trading_power, battery.get_max_power_by_crate())
 
-        positions = self._smart_initialization(battery, prices_sell, prices_buy, pv_production, load_demand, max_power_limit)
-        velocities = np.random.uniform(-1.0, 1.0, (self.n_particles, n_hours))
+        # Inizializzazione smart
+        positions = self._smart_initialization(battery, prices_sell, prices_buy, pv_production, load_demand,
+                                               max_power_limit)
+        velocities = np.random.uniform(-0.5, 0.5, (self.n_particles, n_hours, 3))
+
         personal_best_positions = positions.copy()
         personal_best_scores = np.array([self._evaluate(battery, p, prices_sell, prices_buy, pv_production, load_demand)
                                          for p in positions])
@@ -464,16 +501,26 @@ class PSOOptimizer:
 
         for iteration in range(self.n_iterations):
             w = self.w_start - (self.w_start - self.w_end) * (iteration / self.n_iterations)
+
             for i in range(self.n_particles):
-                r1, r2 = np.random.random(n_hours), np.random.random(n_hours)
+                r1, r2 = np.random.random((n_hours, 3)), np.random.random((n_hours, 3))
                 cognitive = self.c1 * r1 * (personal_best_positions[i] - positions[i])
                 social = self.c2 * r2 * (global_best_position - positions[i])
                 velocities[i] = w * velocities[i] + cognitive + social
-                max_velocity = max_power_limit * 0.5
-                velocities[i] = np.clip(velocities[i], -max_velocity, max_velocity)
+
+                # Limiti velocità
+                max_vel = np.array([max_power_limit * 0.5, 0.3, max_power_limit * 0.5])
+                velocities[i] = np.clip(velocities[i], -max_vel, max_vel)
+
                 positions[i] += velocities[i]
-                positions[i] = np.clip(positions[i], -max_power_limit, max_power_limit)
+
+                # Clipping azioni
+                positions[i, :, 0] = np.clip(positions[i, :, 0], -max_power_limit, max_power_limit)
+                positions[i, :, 1] = np.clip(positions[i, :, 1], 0, 1)
+                positions[i, :, 2] = np.clip(positions[i, :, 2], 0, max_power_limit)
+
                 score = self._evaluate(battery, positions[i], prices_sell, prices_buy, pv_production, load_demand)
+
                 if score > personal_best_scores[i]:
                     personal_best_scores[i] = score
                     personal_best_positions[i] = positions[i].copy()
@@ -481,149 +528,277 @@ class PSOOptimizer:
                         global_best_score = score
                         global_best_position = positions[i].copy()
                         stagnation_counter = 0
+
             stagnation_counter += 1
             if stagnation_counter > self.stagnation_limit:
                 n_reinit = self.n_particles // 4
                 worst_indices = np.argsort(personal_best_scores)[:n_reinit]
                 for idx in worst_indices:
-                    noise = np.random.uniform(-max_power_limit * 0.3, max_power_limit * 0.3, n_hours)
-                    positions[idx] = np.clip(global_best_position + noise, -max_power_limit, max_power_limit)
-                    velocities[idx] = np.random.uniform(-0.5, 0.5, n_hours)
+                    noise = np.random.uniform(-0.3, 0.3, (n_hours, 3))
+                    noise[:, 0] *= max_power_limit
+                    noise[:, 2] *= max_power_limit
+                    positions[idx] = global_best_position + noise
+                    positions[idx, :, 0] = np.clip(positions[idx, :, 0], -max_power_limit, max_power_limit)
+                    positions[idx, :, 1] = np.clip(positions[idx, :, 1], 0, 1)
+                    positions[idx, :, 2] = np.clip(positions[idx, :, 2], 0, max_power_limit)
+                    velocities[idx] = np.random.uniform(-0.5, 0.5, (n_hours, 3))
                 stagnation_counter = 0
+
         return global_best_position
 
     def _smart_initialization(self, battery, prices_sell, prices_buy, pv_production, load_demand, max_power):
+        """
+        Inizializzazione smart con euristiche economiche
+
+        STRATEGIA:
+        1. Price-driven: Carica quando prezzo basso, scarica quando alto
+        2. Load-priority: Massimizza autoconsumo
+        3. Random: Esplorazione casuale
+        """
         n_hours = len(prices_sell)
-        positions = np.zeros((self.n_particles, n_hours))
+        positions = np.zeros((self.n_particles, n_hours, 3))
+
         price_low = np.percentile(prices_sell, 25)
         price_high = np.percentile(prices_sell, 75)
 
+        # Calcola spread prezzo vendita-acquisto per time-shifting
+        price_spread = prices_buy - prices_sell  # Quando spread alto, conviene time-shift
+
         for i in range(self.n_particles):
-            if i < self.n_particles // 3:
+            if i < self.n_particles // 3:  # STRATEGIA 1: Price-driven + time-shifting
                 for h in range(n_hours):
-                    net_energy = pv_production[h] - load_demand[h]
-                    if prices_sell[h] < price_low and net_energy < 0:
-                        positions[i, h] = np.random.uniform(0.5 * max_power, max_power)
-                    elif prices_sell[h] > price_high:
-                        positions[i, h] = np.random.uniform(-max_power, -0.5 * max_power)
-                    else:
-                        positions[i, h] = np.random.uniform(-0.3 * max_power, 0.3 * max_power)
-            elif i < 2 * self.n_particles // 3:
-                for h in range(n_hours):
+                    # === BATTERIA TRADING ===
                     if prices_sell[h] < price_low:
-                        positions[i, h] = np.random.uniform(0, 0.7 * max_power)
+                        # Prezzo basso → CARICA per vendere dopo
+                        positions[i, h, 0] = np.random.uniform(0.4 * max_power, max_power)
                     elif prices_sell[h] > price_high:
-                        positions[i, h] = np.random.uniform(-0.7 * max_power, 0)
+                        # Prezzo alto → SCARICA per vendere ora
+                        positions[i, h, 0] = np.random.uniform(-max_power, -0.4 * max_power)
                     else:
-                        positions[i, h] = np.random.uniform(-0.2 * max_power, 0.2 * max_power)
-            else:
-                positions[i] = np.random.uniform(-max_power, max_power, n_hours)
+                        # Prezzo medio → Conservativo
+                        positions[i, h, 0] = np.random.uniform(-0.3 * max_power, 0.3 * max_power)
+
+                    # === ALLOCAZIONE PV ===
+                    # Se prezzo acquisto alto → PV al carico (risparmio)
+                    # Se prezzo vendita alto → PV alla rete (ricavo)
+                    if prices_buy[h] > prices_sell[h] * 1.2:  # Spread significativo
+                        # Conviene autoconsumo
+                        positions[i, h, 1] = np.random.uniform(0.7, 1.0)
+                    else:
+                        # Prezzo vendita competitivo
+                        positions[i, h, 1] = np.random.uniform(0.3, 0.7)
+
+                    # === BATTERIA PER CARICO ===
+                    # Se prezzo acquisto alto e carico alto → Usa batteria
+                    if prices_buy[h] > np.mean(prices_buy) and load_demand[h] > np.mean(load_demand):
+                        positions[i, h, 2] = np.random.uniform(0.3 * max_power, 0.8 * max_power)
+                    else:
+                        positions[i, h, 2] = np.random.uniform(0, 0.3 * max_power)
+
+            elif i < 2 * self.n_particles // 3:  # STRATEGIA 2: Load-priority + autoconsumo
+                for h in range(n_hours):
+                    # Conservativo sul trading
+                    positions[i, h, 0] = np.random.uniform(-0.4 * max_power, 0.4 * max_power)
+
+                    # Massima preferenza PV al carico
+                    positions[i, h, 1] = np.random.uniform(0.8, 1.0)
+
+                    # Batteria sempre disponibile per carico
+                    if load_demand[h] > 0.001:
+                        positions[i, h, 2] = np.random.uniform(0.2 * max_power, max_power)
+                    else:
+                        positions[i, h, 2] = 0.0
+
+            else:  # STRATEGIA 3: Random exploration
+                positions[i, :, 0] = np.random.uniform(-max_power, max_power, n_hours)
+                positions[i, :, 1] = np.random.uniform(0, 1, n_hours)
+                positions[i, :, 2] = np.random.uniform(0, max_power, n_hours)
+
         return positions
 
     def _evaluate(self, battery, actions, prices_sell, prices_buy, pv_production, load_demand):
-        """CORRETTO: NO virtual revenues - solo costi/ricavi reali"""
+        """
+        ===============================================================================
+        FUNZIONE OBIETTIVO CORRETTA v3.2 - SCARICA SOLO ENERGIA EFFETTIVAMENTE USATA
+        ===============================================================================
+
+        LOGICA ECONOMICA CORRETTA:
+
+        Profitto = Ricavi - Costi - Degrado
+
+        Dove per ogni ora:
+
+        RICAVI (SOLO transazioni reali con la rete):
+        + Energia venduta a rete da PV: pv_to_grid × price_sell
+        + Energia venduta a rete da batteria: discharge_trading × price_sell
+
+        COSTI (SOLO acquisti reali dalla rete):
+        - Energia acquistata per caricare batteria: grid_to_battery × price_buy
+        - Energia acquistata per servire carico residuo: load_from_grid × price_buy
+        - Degrado batteria: (charge + discharge) × degradation_cost
+
+        AUTOCONSUMO (NON genera ricavi):
+        - PV al carico: riduce load_remaining → riduce costo acquisto rete
+        - Batteria al carico: riduce load_remaining → riduce costo acquisto rete
+
+        CORREZIONE v3.2:
+        La batteria scarica SOLO l'energia effettivamente utilizzata (trading + carico),
+        non l'energia richiesta se questa supera il carico disponibile.
+
+        ===============================================================================
+        """
         bat_sim = battery.copy()
         profit = 0.0
 
-        for hour, (power, price_sell, price_buy, pv_energy, load_energy) in enumerate(
+        for hour, (action, price_sell, price_buy, pv_available, load_required) in enumerate(
                 zip(actions, prices_sell, prices_buy, pv_production, load_demand)
         ):
-            pv_available = pv_energy if PV_ENABLED else 0.0
-            load_required = load_energy if LOAD_ENABLED else 0.0
+            p_batt_trading = action[0]  # MW: >0 carica, <0 scarica trading
+            alpha_pv_load = action[1]  # [0,1]: frazione PV al carico
+            p_batt_load = action[2]  # MW: >=0 scarica per carico
 
-            # FASE 1: SODDISFACIMENTO CARICO
-            if load_required > 0.001:
-                # 1. PV al carico
-                if pv_available > 0:
-                    load_from_pv = min(load_required, pv_available)
-                    pv_available -= load_from_pv
-                    load_required -= load_from_pv
-                    # NESSUN ricavo virtuale
+            pv_available = pv_available if PV_ENABLED else 0.0
+            load_required = load_required if LOAD_ENABLED else 0.0
 
-                # 2. Batteria al carico
-                if load_required > 0.001 and bat_sim.soc > bat_sim.soc_min:
-                    max_discharge_load = ((bat_sim.soc - bat_sim.soc_min) * bat_sim.trading_capacity * bat_sim.discharge_efficiency)
-                    load_from_battery = min(load_required, max_discharge_load)
-                    if load_from_battery > 0.001:
-                        actual_discharge = load_from_battery / bat_sim.discharge_efficiency
-                        new_soc = bat_sim.soc - (actual_discharge / bat_sim.capacity)
-                        bat_sim.soc = max(new_soc, bat_sim.soc_min)
-                        bat_sim.throughput_kwh += actual_discharge * 1000
-                        load_required -= load_from_battery
-                        # Solo degrado
-                        degradation_cost = (load_from_battery * DEGRADATION_COST_PER_MWH / (2 * bat_sim.eol_cycles))
-                        profit -= degradation_cost
+            # ========================================================================
+            # FASE 1: ALLOCAZIONE PV (decisione PSO via alpha_pv_load)
+            # ========================================================================
+            pv_to_load = min(alpha_pv_load * pv_available, load_required)
+            pv_remaining = pv_available - pv_to_load
+            load_remaining = load_required - pv_to_load
 
-                # 3. Rete al carico
-                if load_required > 0.001:
-                    load_from_grid = load_required
-                    profit -= load_from_grid * price_buy  # COSTO
+            # ✅ AUTOCONSUMO PV: nessun ricavo virtuale, solo riduzione carico residuo
 
-            # FASE 2: TRADING BATTERIA
-            if power > 0.01:  # CARICA
-                if bat_sim.soc >= bat_sim.soc_max:
-                    if pv_available > 0:
-                        profit += pv_available * price_sell
-                    continue
+            # ========================================================================
+            # FASE 2: VINCOLO XOR ESPLICITO - BATTERIA CARICA **XOR** SCARICA
+            # ========================================================================
 
-                max_energy_storable = (bat_sim.soc_max - bat_sim.soc) * bat_sim.trading_capacity
-                max_power_available = max_energy_storable / (1.0 * bat_sim.charge_efficiency)
-                actual_power = min(power, max_power_available)
+            # Determina modalità PRIMA di eseguire
+            if p_batt_trading > 0.001:
+                charge_request = p_batt_trading
+                discharge_request_trading = 0.0
+                discharge_request_load = 0.0
+                action_mode = "CHARGE"
 
-                if actual_power > 0.01:
-                    energy_needed = actual_power * 1.0
+            elif p_batt_trading < -0.001:
+                charge_request = 0.0
+                discharge_request_trading = -p_batt_trading
+                discharge_request_load = p_batt_load
+                action_mode = "DISCHARGE"
 
-                    if pv_available > 0:
-                        energy_from_pv = min(energy_needed, pv_available)
-                        bat_sim.charge(energy_from_pv / 1.0, dt=1.0, source='pv')
-                        degradation_cost_pv = (energy_from_pv * DEGRADATION_COST_PER_MWH / (2 * bat_sim.eol_cycles))
-                        profit -= degradation_cost_pv
-                        energy_needed -= energy_from_pv
-                        pv_available -= energy_from_pv
-                        if pv_available > 0:
-                            profit += pv_available * price_sell
+            elif p_batt_load > 0.001:
+                charge_request = 0.0
+                discharge_request_trading = 0.0
+                discharge_request_load = p_batt_load
+                action_mode = "DISCHARGE"
 
-                    if energy_needed > 0.01:
-                        energy_from_grid = bat_sim.charge(energy_needed / 1.0, dt=1.0, source='grid')
-                        profit -= energy_from_grid * price_buy  # COSTO
-                        degradation_cost_grid = (energy_from_grid * DEGRADATION_COST_PER_MWH / (2 * bat_sim.eol_cycles))
-                        profit -= degradation_cost_grid
-                else:
-                    if pv_available > 0:
-                        profit += pv_available * price_sell
+            else:
+                charge_request = 0.0
+                discharge_request_trading = 0.0
+                discharge_request_load = 0.0
+                action_mode = "IDLE"
 
-            elif power < -0.01:  # SCARICA
-                if bat_sim.soc <= bat_sim.soc_min:
-                    if pv_available > 0:
-                        profit += pv_available * price_sell
-                    continue
+            total_discharge_request = discharge_request_trading + discharge_request_load
 
-                max_energy_available = ((bat_sim.soc - bat_sim.soc_min) * bat_sim.trading_capacity)
-                max_power_available = max_energy_available * bat_sim.discharge_efficiency / 1.0
-                actual_power = min(-power, max_power_available)
+            # ========================================================================
+            # FASE 3: ESECUZIONE AZIONI BATTERIA
+            # ========================================================================
 
-                if actual_power > 0.01:
-                    energy_to_grid_battery = bat_sim.discharge(actual_power, dt=1.0)
-                    total_energy_sold = energy_to_grid_battery + pv_available
-                    profit += total_energy_sold * price_sell  # RICAVO
-                    degradation_cost = (energy_to_grid_battery * DEGRADATION_COST_PER_MWH / (2 * bat_sim.eol_cycles))
-                    profit -= degradation_cost
-                else:
-                    if pv_available > 0:
-                        profit += pv_available * price_sell
+            if action_mode == "DISCHARGE" and total_discharge_request > 0.001:
+                # === SCARICA ===
+                max_discharge = (
+                                            bat_sim.soc - bat_sim.soc_min) * bat_sim.trading_capacity * bat_sim.discharge_efficiency
+                actual_discharge_total = min(total_discharge_request, max_discharge)
 
-            else:  # IDLE
-                if pv_available > 0:
-                    profit += pv_available * price_sell
+                if actual_discharge_total > 0.001:
+                    # Distribuzione proporzionale
+                    ratio_trading = discharge_request_trading / total_discharge_request if total_discharge_request > 0 else 0
+                    ratio_load = discharge_request_load / total_discharge_request if total_discharge_request > 0 else 0
+
+                    discharge_for_trading = actual_discharge_total * ratio_trading
+                    discharge_for_load_raw = actual_discharge_total * ratio_load
+
+                    # Limita al carico disponibile
+                    discharge_for_load = min(discharge_for_load_raw, load_remaining)
+
+                    # ✅ v3.2 FIX: Ricalcola energia effettivamente usata
+                    actual_discharge_used = discharge_for_trading + discharge_for_load
+
+                    # Esegui scarica fisica SOLO per l'energia usata
+                    energy_consumed = actual_discharge_used / bat_sim.discharge_efficiency
+                    new_soc = bat_sim.soc - (energy_consumed / bat_sim.capacity)
+                    bat_sim.soc = max(new_soc, bat_sim.soc_min)
+                    bat_sim.throughput_kwh += energy_consumed * 1000
+
+                    # 💰 RICAVO REALE: Scarica per trading venduta alla rete
+                    if discharge_for_trading > 0.001:
+                        profit += discharge_for_trading * price_sell
+
+                        # 💸 COSTO: Degrado
+                        profit -= discharge_for_trading * DEGRADATION_COST_PER_MWH / (2 * bat_sim.eol_cycles)
+
+                    # ✅ AUTOCONSUMO BATTERIA: riduce carico residuo (NO ricavo virtuale)
+                    if discharge_for_load > 0.001:
+                        load_remaining -= discharge_for_load
+
+                        # 💸 COSTO: Degrado
+                        profit -= discharge_for_load * DEGRADATION_COST_PER_MWH / (2 * bat_sim.eol_cycles)
+
+            elif action_mode == "CHARGE" and charge_request > 0.001:
+                # === CARICA ===
+                if bat_sim.soc < bat_sim.soc_max:
+                    max_storable = (bat_sim.soc_max - bat_sim.soc) * bat_sim.trading_capacity
+                    max_power = max_storable / (1.0 * bat_sim.charge_efficiency)
+                    actual_power = min(charge_request, max_power)
+
+                    if actual_power > 0.01:
+                        energy_needed = actual_power * 1.0
+
+                        # Priorità 1: PV (se disponibile) - TIME-SHIFTING
+                        if pv_remaining > 0:
+                            energy_from_pv = min(energy_needed, pv_remaining)
+                            bat_sim.charge(energy_from_pv / 1.0, dt=1.0, source='pv')
+                            pv_remaining -= energy_from_pv
+                            energy_needed -= energy_from_pv
+
+                            # ✅ TIME-SHIFTING PV: nessun flusso economico immediato
+
+                            # 💸 COSTO: Solo degrado
+                            profit -= energy_from_pv * DEGRADATION_COST_PER_MWH / (2 * bat_sim.eol_cycles)
+
+                        # Priorità 2: Rete (se serve ancora)
+                        if energy_needed > 0.01:
+                            energy_from_grid = bat_sim.charge(energy_needed / 1.0, dt=1.0, source='grid')
+
+                            # 💸 COSTO REALE: Acquisto energia dalla rete
+                            profit -= energy_from_grid * price_buy
+
+                            # 💸 COSTO: Degrado
+                            profit -= energy_from_grid * DEGRADATION_COST_PER_MWH / (2 * bat_sim.eol_cycles)
+
+            # ========================================================================
+            # FASE 4: GESTIONE PV RESIDUO E CARICO RESIDUO
+            # ========================================================================
+
+            # PV residuo → Vendi a rete
+            if pv_remaining > 0.001:
+                # 💰 RICAVO REALE: Vendita PV alla rete
+                profit += pv_remaining * price_sell
+
+            # Carico residuo → Acquista da rete
+            if load_remaining > 0.001:
+                # 💸 COSTO REALE: Acquisto energia dalla rete per servire carico
+                profit -= load_remaining * price_buy
 
         return profit
 
 
 # ========================================================================================================
-# SEZIONE 7: ROLLING HORIZON SIMULATOR - CORRETTO v2.5.0
+# SEZIONE 7: ROLLING HORIZON SIMULATOR - v3.2 CORRECTED
 # ========================================================================================================
 class RollingHorizonSimulator:
-    """CORRETTO v2.5.0: Coerenza completa con PSO"""
+    """v3.2: Scarica SOLO energia effettivamente utilizzata"""
+
     def __init__(self, battery, optimizer, pv_system=None, load_profile=None, horizon_hours=24, step_hours=1):
         self.battery = battery
         self.optimizer = optimizer
@@ -632,15 +807,25 @@ class RollingHorizonSimulator:
         self.horizon_hours = horizon_hours
         self.step_hours = step_hours
 
-    def simulate(self, prices_df, pv_df=None, load_df=None):
+    def simulate(self, prices_df, price_df2, pv_df=None, load_df=None):
+        """
+        VERSIONE v3.2 - SCARICA SOLO ENERGIA EFFETTIVAMENTE USATA
+
+        MODIFICHE v3.2:
+        - Dopo aver limitato discharge_for_load al carico disponibile,
+          ricalcola la scarica totale effettiva
+        - La batteria scarica SOLO l'energia che verrà utilizzata
+        - Risolve il bug del SOC che scendeva troppo
+        """
         prices_sell = prices_df['€/MWh'].values
-        # CORRETTO: Calcola prezzo acquisto con mark-up
-        prices_buy = prices_sell * (1 + PRICE_MARKUP_PERCENT / 100.0)
+        prices_buy = price_df2['€/MWh'].values
         n_hours = len(prices_sell)
 
-        # CORRETTO: Prepara PV (kW -> MWh)
+        # ========================================================================
+        # PREPARAZIONE DATI
+        # ========================================================================
         if PV_ENABLED and pv_df is not None and self.pv_system is not None:
-            pv_production = pv_df['P'].values / 1000.0
+            pv_production = pv_df['P'].values / 1000.0  # kW → MW
             self.pv_system.total_production_mwh = np.sum(pv_production)
             if len(pv_production) < n_hours:
                 pv_production = np.pad(pv_production, (0, n_hours - len(pv_production)), 'constant')
@@ -650,7 +835,7 @@ class RollingHorizonSimulator:
             pv_production = np.zeros(n_hours)
 
         if LOAD_ENABLED and load_df is not None:
-            load_demand = load_df['value'].values / 1000.0
+            load_demand = load_df['value'].values / 1000.0  # kW → MW
             if len(load_demand) < n_hours:
                 load_demand = np.pad(load_demand, (0, n_hours - len(load_demand)), 'constant')
             elif len(load_demand) > n_hours:
@@ -658,29 +843,41 @@ class RollingHorizonSimulator:
         else:
             load_demand = np.zeros(n_hours)
 
-        # Arrays risultati
-        actions_taken = []
+        # ========================================================================
+        # ARRAYS RISULTATI
+        # ========================================================================
+        actions_trading_effective = []
+        actions_alpha_pv = []
+        actions_p_load_effective = []
+
         soc_history = []
         capacity_history = []
         soh_history = []
         profits_history = []
         macse_availability_history = []
+
         pv_production_history = []
         pv_to_battery_history = []
         pv_to_grid_history = []
         pv_to_load_history = []
+
         load_demand_history = []
         load_from_pv_history = []
         load_from_battery_history = []
         load_from_grid_history = []
-        energy_from_grid_history = []
-        energy_from_pv_history = []
+
+        energy_from_grid_to_battery_history = []
+        energy_from_pv_to_battery_history = []
         price_buy_history = []
+
+        battery_decision_history = []
+        load_discharge_history = []
+        trading_discharge_history = []
 
         cumulative_profit = 0.0
 
         print("=" * 80)
-        print("SIMULAZIONE BESS v2.5.0 CORRECTED - CONTABILITÀ REALE")
+        print("SIMULAZIONE BESS v3.2 - SCARICA SOLO ENERGIA USATA")
         print("=" * 80)
         print(f"Tecnologia: {self.battery.technology}")
         print(f"Capacità: {self.battery.nominal_capacity} MWh")
@@ -688,22 +885,29 @@ class RollingHorizonSimulator:
             print(f"PV: {self.pv_system.nominal_power_kwp:.0f} kWp")
         if LOAD_ENABLED:
             print(f"Carico: {np.sum(load_demand):.2f} MWh totali")
-        print(f"Prezzi: vendita {np.mean(prices_sell):.2f}, acquisto {np.mean(prices_buy):.2f} €/MWh")
+        print(f"Obiettivo: Minimizzare costo netto energia")
+        print(f"Fix v3.2: Batteria scarica solo energia effettivamente utilizzata")
         print("=" * 80)
 
         current_hour = 0
         last_progress = 0
         degradation_update_interval = 24
 
+        # ========================================================================
+        # ROLLING HORIZON LOOP
+        # ========================================================================
         while current_hour < n_hours:
             progress = int((current_hour / n_hours) * 100)
             if progress >= last_progress + 20:
-                print(f"Progresso: {progress}% - SOH: {self.battery.get_soh():.2f}%")
+                print(
+                    f"Progresso: {progress}% - SOH: {self.battery.get_soh():.2f}% - SOC: {self.battery.get_soc() * 100:.1f}%")
                 last_progress = progress
 
+            # Aggiornamento degrado periodico
             if current_hour % degradation_update_interval == 0 and current_hour > 0:
                 self.battery.update_degradation()
 
+            # Ottimizzazione rolling horizon
             end_hour = min(current_hour + self.horizon_hours, n_hours)
             optimal_actions = self.optimizer.optimize(
                 self.battery,
@@ -714,12 +918,21 @@ class RollingHorizonSimulator:
                 self.horizon_hours
             )
 
+            # Estrai azioni RICHIESTE per l'ora corrente
             action = optimal_actions[0]
+            p_batt_trading_requested = action[0]
+            alpha_pv_load = action[1]
+            p_batt_load_requested = action[2]
+
+            # Dati ora corrente
             price_sell = prices_sell[current_hour]
             price_buy = prices_buy[current_hour]
-            pv_energy_available = pv_production[current_hour]
+            pv_available = pv_production[current_hour]
             load_required = load_demand[current_hour]
 
+            # ====================================================================
+            # VARIABILI TRACKING - RESET OGNI ORA
+            # ====================================================================
             pv_to_battery_this_hour = 0.0
             pv_to_grid_this_hour = 0.0
             pv_to_load_this_hour = 0.0
@@ -727,186 +940,266 @@ class RollingHorizonSimulator:
             load_from_battery_this_hour = 0.0
             load_from_grid_this_hour = 0.0
             grid_to_battery_this_hour = 0.0
+            pv_for_battery_charging = 0.0
+            battery_served_load = False
+            load_discharge_this_hour = 0.0
+            trading_discharge_this_hour = 0.0
 
-            # ESECUZIONE: CARICO
-            if load_required > 0.001:
-                if pv_energy_available > 0:
-                    load_from_pv_this_hour = min(load_required, pv_energy_available)
-                    pv_to_load_this_hour = load_from_pv_this_hour
-                    pv_energy_available -= load_from_pv_this_hour
-                    load_required -= load_from_pv_this_hour
-                    # CORRETTO: NO ricavo virtuale
+            # Azioni effettive
+            actual_charge_this_hour = 0.0
+            actual_trading_discharge_this_hour = 0.0
+            actual_load_discharge_this_hour = 0.0
 
-                if load_required > 0.001 and self.battery.soc > self.battery.soc_min:
-                    max_power_c_rate = self.battery.nominal_capacity * self.battery.max_c_rate
-                    max_power_physical = min(self.battery.max_power, max_power_c_rate)
-                    max_discharge_from_soc = ((self.battery.soc - self.battery.soc_min) * self.battery.trading_capacity * self.battery.discharge_efficiency)
-                    max_energy_for_load = min(max_power_physical * 1.0, max_discharge_from_soc)
-                    load_from_battery_this_hour = min(load_required, max_energy_for_load)
+            # ====================================================================
+            # FASE 1: ALLOCAZIONE PV AL CARICO
+            # ====================================================================
+            pv_to_load_this_hour = min(alpha_pv_load * pv_available, load_required)
+            load_from_pv_this_hour = pv_to_load_this_hour
+            pv_remaining = pv_available - pv_to_load_this_hour
+            load_remaining = load_required - pv_to_load_this_hour
 
-                    if load_from_battery_this_hour > 0.001:
-                        actual_discharge = load_from_battery_this_hour / self.battery.discharge_efficiency
-                        new_soc = self.battery.soc - (actual_discharge / self.battery.capacity)
-                        self.battery.soc = max(new_soc, self.battery.soc_min)
-                        self.battery.throughput_kwh += actual_discharge * 1000
-                        load_required -= load_from_battery_this_hour
-                        # CORRETTO: Solo degrado
-                        degradation_cost = (load_from_battery_this_hour * DEGRADATION_COST_PER_MWH / (2 * self.battery.eol_cycles))
-                        cumulative_profit -= degradation_cost
+            # ====================================================================
+            # FASE 2: VINCOLO XOR ESPLICITO
+            # ====================================================================
+            if p_batt_trading_requested > 0.001:
+                charge_request = p_batt_trading_requested
+                discharge_request_trading = 0.0
+                discharge_request_load = 0.0
+                action_mode = "CHARGE"
 
-                if load_required > 0.001:
-                    load_from_grid_this_hour = load_required
-                    profit_grid = -load_from_grid_this_hour * price_buy
-                    cumulative_profit += profit_grid
+            elif p_batt_trading_requested < -0.001:
+                charge_request = 0.0
+                discharge_request_trading = -p_batt_trading_requested
+                discharge_request_load = p_batt_load_requested
+                action_mode = "DISCHARGE"
 
-            # ESECUZIONE: TRADING
-            power_used_for_load_mw = load_from_battery_this_hour / 1.0
+            elif p_batt_load_requested > 0.001:
+                charge_request = 0.0
+                discharge_request_trading = 0.0
+                discharge_request_load = p_batt_load_requested
+                action_mode = "DISCHARGE"
+
+            else:
+                charge_request = 0.0
+                discharge_request_trading = 0.0
+                discharge_request_load = 0.0
+                action_mode = "IDLE"
+
+            total_discharge_request = discharge_request_trading + discharge_request_load
+
+            # Limiti fisici batteria
             max_power_c_rate = self.battery.nominal_capacity * self.battery.max_c_rate
-            max_power_physical = self.battery.max_power - power_used_for_load_mw
-            max_power_available_trading = min(max_power_physical, max_power_c_rate)
-            actual_action = 0.0
+            max_power_physical = min(self.battery.max_power, max_power_c_rate)
+            max_discharge_soc = (
+                                            self.battery.soc - self.battery.soc_min) * self.battery.trading_capacity * self.battery.discharge_efficiency
+            max_energy_storable = (self.battery.soc_max - self.battery.soc) * self.battery.trading_capacity
 
-            if action > 0.01:  # CARICA
+            # ====================================================================
+            # FASE 3: ESECUZIONE AZIONI BATTERIA
+            # ====================================================================
+
+            if action_mode == "DISCHARGE" and total_discharge_request > 0.001:
+                # ===== SCARICA =====
+                actual_discharge_total = min(total_discharge_request, max_power_physical, max_discharge_soc)
+
+                if actual_discharge_total > 0.001:
+                    ratio_trading = discharge_request_trading / total_discharge_request
+                    ratio_load = discharge_request_load / total_discharge_request
+
+                    discharge_for_trading = actual_discharge_total * ratio_trading
+                    discharge_for_load_raw = actual_discharge_total * ratio_load
+
+                    # Limita al carico disponibile
+                    discharge_for_load = min(discharge_for_load_raw, load_remaining)
+
+                    # ✅ v3.2 FIX: Ricalcola energia effettivamente usata
+                    actual_discharge_used = discharge_for_trading + discharge_for_load
+
+                    # Registra azioni effettive
+                    actual_trading_discharge_this_hour = discharge_for_trading
+                    actual_load_discharge_this_hour = discharge_for_load
+
+                    # ✅ Esegui scarica fisica SOLO per l'energia usata
+                    total_energy_discharge = actual_discharge_used / self.battery.discharge_efficiency
+                    new_soc = self.battery.soc - (total_energy_discharge / self.battery.capacity)
+                    self.battery.soc = max(new_soc, self.battery.soc_min)
+                    self.battery.throughput_kwh += total_energy_discharge * 1000
+
+                    # 💰 RICAVO REALE: Vendita batteria alla rete
+                    if discharge_for_trading > 0.001:
+                        revenue_discharge = discharge_for_trading * price_sell
+                        cumulative_profit += revenue_discharge
+                        trading_discharge_this_hour = discharge_for_trading
+
+                    # ✅ AUTOCONSUMO BATTERIA: riduce carico residuo
+                    if discharge_for_load > 0.001:
+                        load_from_battery_this_hour = discharge_for_load
+                        load_remaining -= discharge_for_load
+                        battery_served_load = True
+                        load_discharge_this_hour = discharge_for_load
+
+            elif action_mode == "CHARGE" and charge_request > 0.001:
+                # ===== CARICA =====
                 if self.battery.soc < self.battery.soc_max:
-                    max_energy_storable = (self.battery.soc_max - self.battery.soc) * self.battery.trading_capacity
-                    max_power_available = max_energy_storable / (1.0 * self.battery.charge_efficiency)
-                    actual_power = min(action, max_power_available, max_power_available_trading)
-                    actual_action = actual_power
+                    max_power_charge = max_energy_storable / (1.0 * self.battery.charge_efficiency)
+                    actual_power = min(charge_request, max_power_charge, max_power_physical)
 
                     if actual_power > 0.01:
                         energy_needed = actual_power * 1.0
 
-                        if pv_energy_available > 0:
-                            energy_from_pv = min(energy_needed, pv_energy_available)
+                        # Registra azione effettiva
+                        actual_charge_this_hour = actual_power
+
+                        # Priorità 1: PV (TIME-SHIFTING)
+                        if pv_remaining > 0:
+                            energy_from_pv = min(energy_needed, pv_remaining)
                             self.battery.charge(energy_from_pv / 1.0, dt=1.0, source='pv')
-                            pv_to_battery_this_hour = energy_from_pv
+                            pv_to_battery_this_hour += energy_from_pv
+                            pv_for_battery_charging += energy_from_pv
                             energy_needed -= energy_from_pv
-                            pv_energy_available -= energy_from_pv
-                            # CORRETTO: Degrado
-                            degradation_cost_pv = (energy_from_pv * DEGRADATION_COST_PER_MWH / (2 * self.battery.eol_cycles))
-                            cumulative_profit -= degradation_cost_pv
+                            pv_remaining -= energy_from_pv
 
-                            if pv_energy_available > 0:
-                                profit_pv = pv_energy_available * price_sell
-                                cumulative_profit += profit_pv
-                                pv_to_grid_this_hour = pv_energy_available
-                                pv_energy_available = 0
-
+                        # Priorità 2: Rete
                         if energy_needed > 0.01:
                             energy_from_grid = self.battery.charge(energy_needed / 1.0, dt=1.0, source='grid')
-                            grid_to_battery_this_hour = energy_from_grid
-                            profit = -energy_from_grid * price_buy
-                            cumulative_profit += profit
-                            # CORRETTO: Degrado
-                            degradation_cost_grid = (energy_from_grid * DEGRADATION_COST_PER_MWH / (2 * self.battery.eol_cycles))
-                            cumulative_profit -= degradation_cost_grid
-                    else:
-                        if pv_energy_available > 0:
-                            profit_pv = pv_energy_available * price_sell
-                            cumulative_profit += profit_pv
-                            pv_to_grid_this_hour = pv_energy_available
-                else:
-                    actual_action = 0.0
-                    if pv_energy_available > 0:
-                        profit_pv = pv_energy_available * price_sell
-                        cumulative_profit += profit_pv
-                        pv_to_grid_this_hour = pv_energy_available
+                            grid_to_battery_this_hour += energy_from_grid
 
-            elif action < -0.01:  # SCARICA
-                if self.battery.soc > self.battery.soc_min:
-                    max_energy_available = (self.battery.soc - self.battery.soc_min) * self.battery.trading_capacity
-                    max_power_by_soc = max_energy_available * self.battery.discharge_efficiency / 1.0
-                    actual_power = min(-action, max_power_by_soc, max_power_available_trading)
-                    actual_action = -actual_power
+                            # 💸 COSTO REALE: Acquisto energia dalla rete
+                            cost_grid_charge = energy_from_grid * price_buy
+                            cumulative_profit -= cost_grid_charge
 
-                    if actual_power > 0.01:
-                        energy_to_grid = self.battery.discharge(actual_power, dt=1.0)
-                        total_energy_sold = energy_to_grid + pv_energy_available
-                        profit = total_energy_sold * price_sell
-                        cumulative_profit += profit
-                        # CORRETTO: Degrado
-                        degradation_cost = (energy_to_grid * DEGRADATION_COST_PER_MWH / (2 * self.battery.eol_cycles))
-                        cumulative_profit -= degradation_cost
+            # ====================================================================
+            # FASE 4: CARICO RESIDUO DALLA RETE
+            # ====================================================================
+            if load_remaining > 0.001:
+                load_from_grid_this_hour = load_remaining
 
-                        if pv_energy_available > 0:
-                            pv_to_grid_this_hour = pv_energy_available
-                    else:
-                        if pv_energy_available > 0:
-                            profit_pv = pv_energy_available * price_sell
-                            cumulative_profit += profit_pv
-                            pv_to_grid_this_hour = pv_energy_available
-                else:
-                    actual_action = 0.0
-                    if pv_energy_available > 0:
-                        profit_pv = pv_energy_available * price_sell
-                        cumulative_profit += profit_pv
-                        pv_to_grid_this_hour = pv_energy_available
+                # 💸 COSTO REALE: Acquisto energia dalla rete per carico
+                cost_grid_load = load_from_grid_this_hour * price_buy
+                cumulative_profit -= cost_grid_load
 
-            else:  # IDLE
-                actual_action = 0.0
-                if pv_energy_available > 0:
-                    profit_pv = pv_energy_available * price_sell
-                    cumulative_profit += profit_pv
-                    pv_to_grid_this_hour = pv_energy_available
+            # Registra decisione batteria per carico
+            if self.load_profile and (load_from_battery_this_hour > 0.001 or load_from_grid_this_hour > 0.001):
+                self.load_profile.register_battery_decision(battery_served_load)
 
+            # ====================================================================
+            # FASE 5: VENDITA PV RESIDUO
+            # ====================================================================
+            if pv_remaining > 0.001:
+                pv_to_grid_this_hour += pv_remaining
+
+                # 💰 RICAVO REALE: Vendita PV alla rete
+                revenue_pv = pv_remaining * price_sell
+                cumulative_profit += revenue_pv
+
+            # ====================================================================
+            # TRACKING E REGISTRAZIONE
+            # ====================================================================
             if self.pv_system and (pv_to_battery_this_hour > 0 or pv_to_grid_this_hour > 0 or pv_to_load_this_hour > 0):
                 self.pv_system.allocate_energy(pv_to_battery_this_hour, pv_to_grid_this_hour, pv_to_load_this_hour)
 
             if self.load_profile:
-                self.load_profile.register_supply(load_from_pv_this_hour, load_from_battery_this_hour, load_from_grid_this_hour)
+                self.load_profile.register_supply(load_from_pv_this_hour, load_from_battery_this_hour,
+                                                  load_from_grid_this_hour)
 
             macse_available = self.battery.check_macse_availability() if MACSE_ENABLED else False
             if MACSE_ENABLED:
                 self.battery.update_macse_availability(macse_available)
 
-            actions_taken.append(actual_action)
+            # ====================================================================
+            # APPEND RISULTATI - AZIONI EFFETTIVE
+            # ====================================================================
+            # Converti scarica in negativo per compatibilità grafici
+            net_trading_action = actual_charge_this_hour if actual_charge_this_hour > 0 else -actual_trading_discharge_this_hour
+
+            actions_trading_effective.append(net_trading_action)
+            actions_alpha_pv.append(alpha_pv_load)
+            actions_p_load_effective.append(actual_load_discharge_this_hour)
+
             soc_history.append(self.battery.get_soc())
             capacity_history.append(self.battery.capacity)
             soh_history.append(self.battery.get_soh())
             profits_history.append(cumulative_profit)
             macse_availability_history.append(self.battery.get_macse_availability_factor() if MACSE_ENABLED else 0)
+
             pv_production_history.append(pv_production[current_hour])
             pv_to_battery_history.append(pv_to_battery_this_hour)
             pv_to_grid_history.append(pv_to_grid_this_hour)
             pv_to_load_history.append(pv_to_load_this_hour)
+
             load_demand_history.append(load_demand[current_hour])
             load_from_pv_history.append(load_from_pv_this_hour)
             load_from_battery_history.append(load_from_battery_this_hour)
             load_from_grid_history.append(load_from_grid_this_hour)
-            energy_from_grid_history.append(grid_to_battery_this_hour)
-            energy_from_pv_history.append(pv_to_battery_this_hour)
+
+            energy_from_grid_to_battery_history.append(grid_to_battery_this_hour)
+            energy_from_pv_to_battery_history.append(pv_for_battery_charging)
             price_buy_history.append(price_buy)
+
+            battery_decision_history.append(1 if battery_served_load else 0)
+            load_discharge_history.append(load_discharge_this_hour)
+            trading_discharge_history.append(trading_discharge_this_hour)
 
             current_hour += self.step_hours
 
+        # ========================================================================
+        # AGGIORNAMENTO FINALE DEGRADO
+        # ========================================================================
         self.battery.update_degradation()
         print("Simulazione completata!")
+        print(f"Profitto finale (solo transazioni reali): {cumulative_profit:.2f} €")
 
+        # ========================================================================
+        # CREAZIONE DATAFRAME RISULTATI
+        # ========================================================================
         results_df = prices_df.copy()
-        pad_length = len(results_df) - len(actions_taken)
+        pad_length = len(results_df) - len(actions_trading_effective)
+
         results_df['Prezzo_Acquisto_€/MWh'] = price_buy_history + [price_buy_history[-1]] * pad_length
-        results_df['Azione_MW'] = actions_taken + [0] * pad_length
+
+        # Azioni PSO effettive
+        results_df['Azione_Trading_MW'] = actions_trading_effective + [0] * pad_length
+        results_df['Azione_Alpha_PV_Load'] = actions_alpha_pv + [0] * pad_length
+        results_df['Azione_P_Batt_Load_MW'] = actions_p_load_effective + [0] * pad_length
+
+        # Stati batteria
         results_df['SOC'] = soc_history + [soc_history[-1]] * pad_length
         results_df['Capacita_MWh'] = capacity_history + [capacity_history[-1]] * pad_length
         results_df['SOH_%'] = soh_history + [soh_history[-1]] * pad_length
+
+        # Economia
         results_df['Profitto_Euro'] = profits_history + [profits_history[-1]] * pad_length
         results_df['MACSE_Availability'] = macse_availability_history + [macse_availability_history[-1]] * pad_length
+
+        # PV
         results_df['PV_Production_MWh'] = pv_production_history + [0] * pad_length
         results_df['PV_to_Battery_MWh'] = pv_to_battery_history + [0] * pad_length
         results_df['PV_to_Grid_MWh'] = pv_to_grid_history + [0] * pad_length
         results_df['PV_to_Load_MWh'] = pv_to_load_history + [0] * pad_length
+
+        # Load
         results_df['Load_Demand_MWh'] = load_demand_history + [0] * pad_length
         results_df['Load_from_PV_MWh'] = load_from_pv_history + [0] * pad_length
         results_df['Load_from_Battery_MWh'] = load_from_battery_history + [0] * pad_length
         results_df['Load_from_Grid_MWh'] = load_from_grid_history + [0] * pad_length
-        results_df['Energy_from_Grid_MWh'] = energy_from_grid_history + [0] * pad_length
-        results_df['Energy_from_PV_MWh'] = energy_from_pv_history + [0] * pad_length
+
+        # Energy sources
+        results_df['Energy_from_Grid_MWh'] = energy_from_grid_to_battery_history + [0] * pad_length
+        results_df['Energy_from_PV_MWh'] = energy_from_pv_to_battery_history + [0] * pad_length
+
+        # Decisioni
+        results_df['Battery_Decision'] = battery_decision_history + [0] * pad_length
+        results_df['Load_Discharge_MW'] = load_discharge_history + [0] * pad_length
+        results_df['Trading_Discharge_MW'] = trading_discharge_history + [0] * pad_length
+
+        # Retrocompatibilità
+        results_df['Azione_MW'] = actions_trading_effective + [0] * pad_length
 
         return results_df, cumulative_profit
 
 
 # ========================================================================================================
-# SEZIONE 8: MACSE E JSON EXPORT
+# SEZIONE 8: MACSE E JSON EXPORT (identico v2.5.0, aggiunge stats decisioni)
 # ========================================================================================================
 def calculate_macse_revenue(battery):
     if not MACSE_ENABLED:
@@ -924,43 +1217,95 @@ def calculate_macse_revenue(battery):
     return annual_revenue, base_revenue * (365 * 24), penalty, bonus
 
 def export_results_to_json(results_df, battery, pv_system, load_profile, trading_profit, macse_revenue, macse_base,
-                           macse_penalty, macse_bonus, battery_investment, simulation_time):
-    actions = results_df['Azione_MW'].values
+                       macse_penalty, macse_bonus, battery_investment, simulation_time, baseline_scenario=None):
+    """
+    Esporta risultati simulazione in formato JSON con confronto baseline
+    """
+    actions = results_df['Azione_Trading_MW'].values
     prices_sell = results_df['€/MWh'].values
     prices_buy = results_df['Prezzo_Acquisto_€/MWh'].values
 
+    # ========================================================================
+    # STATISTICHE PV
+    # ========================================================================
     pv_stats = pv_system.get_statistics() if pv_system else {
-        'total_production_mwh': 0, 'energy_to_battery_mwh': 0, 'energy_to_grid_mwh': 0,
-        'energy_to_load_mwh': 0, 'curtailed_energy_mwh': 0, 'battery_utilization_percent': 0,
-        'grid_sale_percent': 0, 'load_service_percent': 0, 'curtailment_percent': 0
+        'total_production_mwh': 0,
+        'energy_to_battery_mwh': 0,
+        'energy_to_grid_mwh': 0,
+        'energy_to_load_mwh': 0,
+        'curtailed_energy_mwh': 0,
+        'battery_utilization_percent': 0,
+        'grid_sale_percent': 0,
+        'load_service_percent': 0,
+        'curtailment_percent': 0
     }
 
+    # ========================================================================
+    # STATISTICHE CARICO
+    # ========================================================================
     load_stats = load_profile.get_statistics() if load_profile else {
-        'total_energy_required_mwh': 0, 'energy_from_pv_mwh': 0, 'energy_from_battery_mwh': 0,
-        'energy_from_grid_mwh': 0, 'pv_coverage_percent': 0, 'battery_coverage_percent': 0,
-        'grid_dependency_percent': 0
+        'total_energy_required_mwh': 0,
+        'energy_from_pv_mwh': 0,
+        'energy_from_battery_mwh': 0,
+        'energy_from_grid_mwh': 0,
+        'pv_coverage_percent': 0,
+        'battery_coverage_percent': 0,
+        'grid_dependency_percent': 0,
+        'battery_served_decisions_percent': 0,
+        'grid_served_decisions_percent': 0,
+        'battery_served_count': 0,
+        'grid_served_count': 0,
+        'total_decisions': 0
     }
 
+    # ========================================================================
+    # STATISTICHE TRADING
+    # ========================================================================
     charge_hours = np.sum(actions > 0.01)
     discharge_hours = np.sum(actions < -0.01)
     idle_hours = len(actions) - charge_hours - discharge_hours
     total_energy_charged = np.sum(actions[actions > 0] * 1.0)
     total_energy_discharged = np.sum(np.abs(actions[actions < 0]) * 1.0)
 
+    # ========================================================================
+    # CALCOLI ECONOMICI
+    # ========================================================================
     total_revenue = trading_profit + macse_revenue
     annual_profit = total_revenue
     roi_percent = (annual_profit / battery_investment) * 100 if battery_investment > 0 else 0
     payback_years = battery_investment / annual_profit if annual_profit > 0 else float('inf')
 
+    # ========================================================================
+    # CONFRONTO CON BASELINE
+    # ========================================================================
+    if baseline_scenario:
+        battery_benefit = total_revenue - baseline_scenario['net_balance']
+        benefit_percent = (battery_benefit / abs(baseline_scenario['net_balance']) * 100) if baseline_scenario[
+                                                                                                 'net_balance'] != 0 else 0
+
+        autosufficienza_with_bess = 100 - load_stats['grid_dependency_percent']
+        delta_autosufficienza = autosufficienza_with_bess - baseline_scenario['autosufficienza_percent']
+        delta_grid_dependency = baseline_scenario['total_load_from_grid'] - load_stats['energy_from_grid_mwh']
+    else:
+        battery_benefit = 0
+        benefit_percent = 0
+        delta_autosufficienza = 0
+        delta_grid_dependency = 0
+
+    # ========================================================================
+    # COSTRUZIONE JSON
+    # ========================================================================
     results_json = {
         "simulation_info": {
-            "version": "2.5.0-CORRECTED",
-            "accounting_method": "REAL_ONLY (no virtual revenues)",
+            "version": "2.7.0-AUTONOMOUS-MULTIDIM",
+            "feature": "Fully Autonomous Multi-Dimensional PSO - Zero Hardcoded Logic",
+            "description": "PSO decides all allocations: [p_batt_trading, alpha_pv_load, p_batt_load]",
             "technology": battery.technology,
             "simulation_time_seconds": simulation_time,
             "total_hours": len(actions),
             "timestamp": datetime.now().isoformat()
         },
+
         "battery_parameters": {
             "nominal_capacity_mwh": battery.nominal_capacity,
             "max_power_mw": battery.max_power,
@@ -971,6 +1316,7 @@ def export_results_to_json(results_df, battery, pv_system, load_profile, trading
             "discharge_efficiency": battery.discharge_efficiency,
             "roundtrip_efficiency": battery.efficiency
         },
+
         "battery_state": {
             "final_soc": float(battery.get_soc()),
             "final_soh_percent": float(battery.get_soh()),
@@ -980,6 +1326,7 @@ def export_results_to_json(results_df, battery, pv_system, load_profile, trading
             "energy_from_grid_mwh": float(battery.energy_from_grid_mwh),
             "energy_from_pv_mwh": float(battery.energy_from_pv_mwh)
         },
+
         "trading_operations": {
             "charge_hours": int(charge_hours),
             "discharge_hours": int(discharge_hours),
@@ -988,9 +1335,9 @@ def export_results_to_json(results_df, battery, pv_system, load_profile, trading
             "total_energy_discharged_mwh": float(total_energy_discharged),
             "utilization_factor": float((charge_hours + discharge_hours) / len(actions)) if len(actions) > 0 else 0
         },
+
         "photovoltaic_system": {
             "enabled": PV_ENABLED,
-            "nominal_power_kwp": PV_NOMINAL_POWER_KWP if PV_ENABLED else 0,
             "total_production_mwh": pv_stats['total_production_mwh'],
             "energy_to_battery_mwh": pv_stats['energy_to_battery_mwh'],
             "energy_to_grid_mwh": pv_stats['energy_to_grid_mwh'],
@@ -1001,6 +1348,7 @@ def export_results_to_json(results_df, battery, pv_system, load_profile, trading
             "load_service_percent": pv_stats['load_service_percent'],
             "curtailment_percent": pv_stats['curtailment_percent']
         },
+
         "load_profile": {
             "enabled": LOAD_ENABLED,
             "total_energy_required_mwh": load_stats['total_energy_required_mwh'],
@@ -1009,8 +1357,16 @@ def export_results_to_json(results_df, battery, pv_system, load_profile, trading
             "energy_from_grid_mwh": load_stats['energy_from_grid_mwh'],
             "pv_coverage_percent": load_stats['pv_coverage_percent'],
             "battery_coverage_percent": load_stats['battery_coverage_percent'],
-            "grid_dependency_percent": load_stats['grid_dependency_percent']
+            "grid_dependency_percent": load_stats['grid_dependency_percent'],
+            "autonomous_decisions": {
+                "battery_served_load_percent": load_stats['battery_served_decisions_percent'],
+                "grid_served_load_percent": load_stats['grid_served_decisions_percent'],
+                "battery_served_count": load_stats['battery_served_count'],
+                "grid_served_count": load_stats['grid_served_count'],
+                "total_decision_hours": load_stats['total_decisions']
+            }
         },
+
         "macse": {
             "enabled": MACSE_ENABLED,
             "capacity_mwh": battery.macse_capacity if MACSE_ENABLED else 0,
@@ -1021,6 +1377,7 @@ def export_results_to_json(results_df, battery, pv_system, load_profile, trading
             "bonus_euro": float(macse_bonus),
             "total_revenue_euro": float(macse_revenue)
         },
+
         "economic_results": {
             "trading_profit_euro": float(trading_profit),
             "macse_revenue_euro": float(macse_revenue),
@@ -1030,14 +1387,96 @@ def export_results_to_json(results_df, battery, pv_system, load_profile, trading
             "payback_years": float(payback_years) if payback_years != float('inf') else None,
             "avg_price_sell_euro_mwh": float(np.mean(prices_sell)),
             "avg_price_buy_euro_mwh": float(np.mean(prices_buy)),
-            "price_markup_percent": PRICE_MARKUP_PERCENT
+
+        },
+
+        # ====================================================================
+        # NUOVO: SEZIONE CONFRONTO CON BASELINE
+        # ====================================================================
+        "baseline_comparison": {
+            "scenario_without_battery": {
+                "description": "Scenario base senza sistema di accumulo",
+                "net_balance_euro": float(baseline_scenario['net_balance']) if baseline_scenario else 0,
+                "total_costs_euro": float(baseline_scenario['total_cost_buy']) if baseline_scenario else 0,
+                "total_revenues_euro": float(baseline_scenario['total_revenue_sell']) if baseline_scenario else 0,
+                "energy_allocation": {
+                    "pv_to_load_mwh": float(baseline_scenario['total_pv_to_load']) if baseline_scenario else 0,
+                    "pv_to_grid_mwh": float(baseline_scenario['total_pv_to_grid']) if baseline_scenario else 0,
+                    "load_from_grid_mwh": float(baseline_scenario['total_load_from_grid']) if baseline_scenario else 0,
+                    "total_load_mwh": float(baseline_scenario['total_load_required']) if baseline_scenario else 0
+                },
+                "autosufficienza_percent": float(baseline_scenario['autosufficienza_percent']) if baseline_scenario else 0
+            },
+
+            "scenario_with_battery": {
+                "description": "Scenario ottimizzato con sistema di accumulo",
+                "net_balance_euro": float(total_revenue),
+                "autosufficienza_percent": float(100 - load_stats['grid_dependency_percent']) if load_stats[
+                                                                                                     'total_energy_required_mwh'] > 0 else 0
+            },
+
+            "battery_benefits": {
+                "economic_benefit_euro": float(battery_benefit),
+                "benefit_percent": float(benefit_percent),
+                "is_profitable": bool(battery_benefit > 0),
+                "autosufficienza_improvement_points": float(delta_autosufficienza),
+                "grid_dependency_reduction_mwh": float(delta_grid_dependency),
+                "interpretation": {
+                    "economic": "Profitable" if battery_benefit > 0 else "Not profitable",
+                    "energy": "Increased self-sufficiency" if delta_autosufficienza > 0 else "No change in self-sufficiency"
+                }
+            },
+
+            "key_metrics": {
+                "break_even_point_years": float(payback_years) if payback_years != float('inf') else None,
+                "annual_savings_euro": float(battery_benefit),
+                "energy_independence_gain_percent": float(delta_autosufficienza),
+                "load_served_by_battery_percent": float(load_stats['battery_coverage_percent']) if load_stats[
+                                                                                                       'total_energy_required_mwh'] > 0 else 0
+            }
+        },
+
+        # ====================================================================
+        # METADATI DECISIONI PSO
+        # ====================================================================
+        "pso_decision_space": {
+            "dimensions": 3,
+            "decision_variables": [
+                {
+                    "name": "p_batt_trading",
+                    "description": "Battery power for trading (MW)",
+                    "range": [-battery.max_power, battery.max_power],
+                    "unit": "MW"
+                },
+                {
+                    "name": "alpha_pv_load",
+                    "description": "Fraction of PV allocated to load",
+                    "range": [0, 1],
+                    "unit": "fraction"
+                },
+                {
+                    "name": "p_batt_load",
+                    "description": "Battery power for load service (MW)",
+                    "range": [0, battery.max_power],
+                    "unit": "MW"
+                }
+            ],
+            "optimization_objective": "Maximize: (revenues - costs - degradation - load_penalty)",
+            "hardcoded_logic": "None - fully autonomous decision making"
         }
     }
 
-    json_file = os.path.join('results', f'simulation_results_{battery.technology.lower().replace("-", "_")}_v250_corrected.json')
+    # ========================================================================
+    # SALVATAGGIO JSON
+    # ========================================================================
+    json_file = os.path.join('results',
+                             f'simulation_results_{battery.technology.lower().replace("-", "_")}_v270_autonomous.json')
     with open(json_file, 'w', encoding='utf-8') as f:
         json.dump(results_json, f, indent=2, ensure_ascii=False)
+
     print(f"✓ JSON salvato: {json_file}")
+
+    return results_json
 
 
 # ========================================================================================================
@@ -1046,7 +1485,7 @@ def export_results_to_json(results_df, battery, pv_system, load_profile, trading
 def create_detailed_monthly_pv_plots(results_df, battery, pv_system):
     """
     Lorenzo Giannuzzo: GRAFICI DETTAGLIATI MENSILI con IMPATTO PV
-    Mostra chiaramente quando batteria carica da PV vs rete
+    VERSIONE CORRETTA v3.2 - Usa colonne DataFrame corrette
     """
     if not SAVE_PLOTS or not PV_ENABLED or pv_system is None:
         return
@@ -1060,7 +1499,7 @@ def create_detailed_monthly_pv_plots(results_df, battery, pv_system):
         os.makedirs(monthly_pv_folder)
 
     print("\n" + "=" * 80)
-    print("GENERAZIONE GRAFICI MENSILI DETTAGLIATI CON IMPATTO PV")
+    print("GENERAZIONE GRAFICI MENSILI DETTAGLIATI CON IMPATTO PV v3.2")
     print("=" * 80)
 
     if not pd.api.types.is_datetime64_any_dtype(results_df['Data']):
@@ -1133,12 +1572,10 @@ def create_detailed_monthly_pv_plots(results_df, battery, pv_system):
         ax2 = fig.add_subplot(gs[1, 0])
 
         # USA PV_to_Battery per coerenza con grafico sopra
-        # STESSA soglia del subplot 3 per coerenza
         charge_from_grid = []
         charge_from_pv = []
         for idx, row in df_giorno.iterrows():
-            if row['Azione_MW'] > 0.01:  # STESSA soglia subplot 3: 10 kW
-                # Usa allocazione PV, non consumo
+            if row['Azione_Trading_MW'] > 0.01:  # Usa colonna corretta
                 charge_from_pv.append(row.get('PV_to_Battery_MWh', 0))
                 charge_from_grid.append(row.get('Energy_from_Grid_MWh', 0))
             else:
@@ -1162,45 +1599,75 @@ def create_detailed_monthly_pv_plots(results_df, battery, pv_system):
         ax2.set_xticks(range(0, 24, 2))
         ax2.axhline(y=0, color='black', linewidth=1, linestyle='-')
 
-        # Subplot 3: AZIONI BATTERIA CON FONTI ENERGIA (STACKED) + PREZZO
+        # Subplot 3: AZIONI BATTERIA (CORRETTO v3.2)
         ax3 = fig.add_subplot(gs[1, 1])
         ax3_twin = ax3.twinx()
 
-        # LORENZO: Barre STACKED come subplot 2 - energia da PV sopra energia da rete
-        # Colori: Verde (PV), Arancione (rete), Rosso (scarica)
-
+        # ✅ USA DIRETTAMENTE LE COLONNE CORRETTE DAL DATAFRAME
         charge_pv_bars = []
         charge_grid_bars = []
-        discharge_bars = []
+        discharge_load_bars = []
+        discharge_trading_bars = []
 
         for idx, row in df_giorno.iterrows():
-            action = row['Azione_MW']
+            # ✅ Usa Azione_Trading_MW che contiene già l'azione trading corretta
+            trading_action = row['Azione_Trading_MW']  # Positivo=carica, Negativo=scarica trading
 
-            if action > 0.01:  # CARICA
-                pv_to_batt = row.get('PV_to_Battery_MWh', 0)
-                grid_to_batt = row.get('Energy_from_Grid_MWh', 0)
+            # ✅ Usa le colonne dedicate già presenti nel DataFrame
+            load_discharge = row.get('Load_Discharge_MW', 0.0)
+            trading_discharge = row.get('Trading_Discharge_MW', 0.0)
 
-                # Converte MWh in MW (azione in MW per dt=1h)
+            # Carica (trading_action positivo)
+            if trading_action > 0.001:
+                # Recupera fonti di carica
+                pv_to_batt = row.get('PV_to_Battery_MWh', 0.0)
+                grid_to_batt = row.get('Energy_from_Grid_MWh', 0.0)
+
                 charge_pv_bars.append(pv_to_batt)
                 charge_grid_bars.append(grid_to_batt)
-                discharge_bars.append(0.0)
+                discharge_load_bars.append(0.0)
+                discharge_trading_bars.append(0.0)
 
-            elif action < -0.01:  # SCARICA
+            # Scarica trading (trading_action negativo)
+            elif trading_action < -0.001:
                 charge_pv_bars.append(0.0)
                 charge_grid_bars.append(0.0)
-                discharge_bars.append(action)  # Negativo
 
-            else:  # IDLE
+                # Scarica trading (già registrata correttamente)
+                discharge_trading_bars.append(-trading_discharge)  # Negativo per grafico
+
+                # Scarica carico (può coesistere con trading se erano entrambi richiesti)
+                if load_discharge > 0.001:
+                    discharge_load_bars.append(-load_discharge)
+                else:
+                    discharge_load_bars.append(0.0)
+
+            # Solo scarica per carico (nessun trading)
+            elif load_discharge > 0.001:
                 charge_pv_bars.append(0.0)
                 charge_grid_bars.append(0.0)
-                discharge_bars.append(0.0)
+                discharge_trading_bars.append(0.0)
+                discharge_load_bars.append(-load_discharge)
+
+            # IDLE
+            else:
+                charge_pv_bars.append(0.0)
+                charge_grid_bars.append(0.0)
+                discharge_load_bars.append(0.0)
+                discharge_trading_bars.append(0.0)
 
         width = 0.8
 
-        # Plotta SCARICA (rosso)
-        ax3.bar(df_giorno['Ora'], discharge_bars, width=width,
+        # Plotta SCARICA per TRADING (viola/rosso)
+        ax3.bar(df_giorno['Ora'], discharge_trading_bars, width=width,
                 color='#E63946', alpha=0.8, edgecolor='black', linewidth=1,
-                label='Scarica')
+                label='Scarica Trading')
+
+        # Plotta SCARICA per CARICO (magenta)
+        ax3.bar(df_giorno['Ora'], discharge_load_bars, width=width,
+                bottom=discharge_trading_bars,
+                color='#9D4EDD', alpha=0.8, edgecolor='black', linewidth=1,
+                label='Scarica Carico')
 
         # Plotta CARICA da RETE (arancione, base)
         ax3.bar(df_giorno['Ora'], charge_grid_bars, width=width,
@@ -1226,7 +1693,7 @@ def create_detailed_monthly_pv_plots(results_df, battery, pv_system):
         ax3_twin.set_ylabel('Prezzo (€/MWh)', fontsize=12, fontweight='bold', color='#457B9D')
         ax3_twin.tick_params(axis='y', labelcolor='#457B9D')
         ax3.set_xlabel('Ora', fontsize=11)
-        ax3.set_title('Azioni Batteria (Fonti Energia) vs Prezzo', fontsize=13, fontweight='bold')
+        ax3.set_title('Azioni Batteria (Carico vs Trading) vs Prezzo', fontsize=13, fontweight='bold')
 
         # Legends
         ax3.legend(fontsize=9, loc='upper left', framealpha=0.95)
@@ -1237,16 +1704,12 @@ def create_detailed_monthly_pv_plots(results_df, battery, pv_system):
         ax3.set_xlim(-0.5, 23.5)
         ax3.set_xticks(range(0, 24, 2))
 
-        # IMPORTANTE: Forza limiti corretti asse Y
-        # Trova min/max delle azioni per settare limiti sensati
-        all_actions = discharge_bars + [sum(x) for x in zip(charge_pv_bars, charge_grid_bars)]
+        # Forza limiti corretti asse Y
+        all_actions = (discharge_trading_bars + discharge_load_bars +
+                       [sum(x) for x in zip(charge_pv_bars, charge_grid_bars)])
         if any(x != 0 for x in all_actions):
             y_max = max(abs(min(all_actions)), max(all_actions)) * 1.1
             ax3.set_ylim(-y_max, y_max)
-
-        ax3.grid(True, alpha=0.3, linestyle='--', axis='y')
-        ax3.set_xlim(-0.5, 23.5)
-        ax3.set_xticks(range(0, 24, 2))
 
         # Subplot 4: SOC E IMPATTO PV
         ax4 = fig.add_subplot(gs[2, 0])
@@ -1277,22 +1740,20 @@ def create_detailed_monthly_pv_plots(results_df, battery, pv_system):
         profitto_orario = []
         for idx, row in df_giorno.iterrows():
             profit_hour = 0
+            # Costi: acquisto da rete
             if row['Energy_from_Grid_MWh'] > 0:
-                profit_hour -= row['Energy_from_Grid_MWh'] * row['€/MWh']
-            if row['Azione_MW'] < -0.01:
-                energy_discharged = abs(row['Azione_MW']) * 1.0 * battery.discharge_efficiency
-                profit_hour += energy_discharged * row['€/MWh']
-            if row['PV_to_Grid_MWh'] > 0:
-                profit_hour += row['PV_to_Grid_MWh'] * row['€/MWh']
-            if row['Energy_from_PV_MWh'] > 0:
-                profit_hour += row['Energy_from_PV_MWh'] * row['€/MWh'] * 0.5
-            if 'Load_from_PV_MWh' in row and row['Load_from_PV_MWh'] > 0:
-                profit_hour += row['Load_from_PV_MWh'] * row.get('Prezzo_Acquisto_€/MWh', row['€/MWh'])
-            if 'Load_from_Battery_MWh' in row and row['Load_from_Battery_MWh'] > 0:
-                profit_hour += row['Load_from_Battery_MWh'] * row.get('Prezzo_Acquisto_€/MWh', row['€/MWh'])
+                profit_hour -= row['Energy_from_Grid_MWh'] * row.get('Prezzo_Acquisto_€/MWh', row['€/MWh'])
             if 'Load_from_Grid_MWh' in row and row['Load_from_Grid_MWh'] > 0:
                 profit_hour -= row['Load_from_Grid_MWh'] * row.get('Prezzo_Acquisto_€/MWh', row['€/MWh'])
+
+            # Ricavi: vendite a rete
+            if row.get('Trading_Discharge_MW', 0) > 0:
+                profit_hour += row['Trading_Discharge_MW'] * row['€/MWh']
+            if row['PV_to_Grid_MWh'] > 0:
+                profit_hour += row['PV_to_Grid_MWh'] * row['€/MWh']
+
             profitto_orario.append(profit_hour)
+
         colors_profit = ['#06A77D' if p >= 0 else '#E63946' for p in profitto_orario]
         ax5.bar(df_giorno['Ora'], profitto_orario, color=colors_profit,
                 alpha=0.8, width=0.8, edgecolor='black', linewidth=1)
@@ -1320,6 +1781,7 @@ def create_detailed_monthly_pv_plots(results_df, battery, pv_system):
         load_from_grid = df_giorno['Load_from_Grid_MWh'].sum() if 'Load_from_Grid_MWh' in df_giorno.columns else 0
         profit_day = sum(profitto_orario)
         avg_price = df_giorno['€/MWh'].mean()
+
         stats_text = f"""
 STATISTICHE GIORNALIERE {mesi_nomi[mese - 1].upper()} - {data_str}
 
@@ -1882,11 +2344,74 @@ Strategia Ottimizzazione:
     print(f"✓ Salvato: {filename}")
     print("=" * 80)
 
+
+def calculate_baseline_scenario(prices_sell, prices_buy, pv_production, load_demand):
+    """
+    Calcola scenario BASELINE senza batteria:
+    - PV copre carico direttamente (priorità massima)
+    - PV in eccesso venduto a rete
+    - Carico residuo comprato da rete
+
+    Returns:
+        dict con bilancio economico e statistiche energetiche
+    """
+    total_cost_buy = 0.0  # Costi acquisto da rete
+    total_revenue_sell = 0.0  # Ricavi vendita PV
+
+    total_pv_to_load = 0.0
+    total_pv_to_grid = 0.0
+    total_load_from_grid = 0.0
+    total_load_required = 0.0
+
+    n_hours = len(prices_sell)
+
+    for h in range(n_hours):
+        pv_available = pv_production[h] if PV_ENABLED else 0.0
+        load_required = load_demand[h] if LOAD_ENABLED else 0.0
+        price_sell = prices_sell[h]
+        price_buy = prices_buy[h]
+
+        total_load_required += load_required
+
+        # LOGICA BASELINE: PV al carico prima, poi eccesso venduto
+        pv_to_load = min(pv_available, load_required)
+        pv_remaining = pv_available - pv_to_load
+        load_remaining = load_required - pv_to_load
+
+        total_pv_to_load += pv_to_load
+
+        # PV eccesso venduto
+        if pv_remaining > 0.001:
+            total_pv_to_grid += pv_remaining
+            total_revenue_sell += pv_remaining * price_sell
+
+        # Carico residuo comprato da rete
+        if load_remaining > 0.001:
+            total_load_from_grid += load_remaining
+            total_cost_buy += load_remaining * price_buy
+
+    net_balance = total_revenue_sell - total_cost_buy
+
+    # Calcola autosufficienza
+    autosufficienza = (total_pv_to_load / total_load_required * 100) if total_load_required > 0 else 0
+
+    return {
+        'net_balance': net_balance,
+        'total_cost_buy': total_cost_buy,
+        'total_revenue_sell': total_revenue_sell,
+        'total_pv_to_load': total_pv_to_load,
+        'total_pv_to_grid': total_pv_to_grid,
+        'total_load_from_grid': total_load_from_grid,
+        'total_load_required': total_load_required,
+        'autosufficienza_percent': autosufficienza
+    }
+
 # ========================================================================================================
 # FUNZIONE MAIN
 # ========================================================================================================
-def main(file_name, pv_file_name=None, load_file_name=None):
+def main(file_name, file_name2, pv_file_name=None, load_file_name=None):
     file_path = os.path.join('data', file_name)
+    file_path2 = os.path.join('data', file_name2)
 
     print("=" * 80)
     print("BESS OPTIMIZATION v2.5.0 CORRECTED")
@@ -1901,7 +2426,15 @@ def main(file_name, pv_file_name=None, load_file_name=None):
         print(f"❌ Errore caricamento prezzi: {e}")
         return
 
-    print(f"✓ Prezzi acquisto calcolati con mark-up {PRICE_MARKUP_PERCENT}%")
+    try:
+        df2 = pd.read_excel(file_path2)
+        if df2['€/MWh'].dtype == 'object':
+            df2['€/MWh'] = df2['€/MWh'].astype(str).str.replace(',', '.').astype(float)
+        print(f"✓ Prezzi vendita: {len(df2)} righe, media {df2['€/MWh'].mean():.2f} €/MWh")
+    except Exception as e:
+        print(f"❌ Errore caricamento prezzi: {e}")
+        return
+
 
     pv_df = None
     pv_system = None
@@ -1910,7 +2443,6 @@ def main(file_name, pv_file_name=None, load_file_name=None):
             pv_file_path = os.path.join('data', pv_file_name)
             pv_df = pd.read_csv(pv_file_path, sep=';')
             pv_system = PhotovoltaicSystem()
-            print(f"✓ PV caricato: {PV_NOMINAL_POWER_KWP:.0f} kWp, media {pv_df['P'].mean():.2f} kW")
         except Exception as e:
             print(f"❌ Errore PV: {e}")
             pv_df = None
@@ -1956,44 +2488,159 @@ def main(file_name, pv_file_name=None, load_file_name=None):
     simulator = RollingHorizonSimulator(battery, optimizer, pv_system=pv_system, load_profile=load_profile)
 
     start_time = datetime.now()
-    results_df, trading_profit = simulator.simulate(df, pv_df, load_df)
+    results_df, trading_profit = simulator.simulate(df, df2, pv_df, load_df)
     end_time = datetime.now()
 
     macse_revenue, macse_base, macse_penalty, macse_bonus = calculate_macse_revenue(battery)
     total_system_profit = trading_profit + macse_revenue
 
+    # ========================================================================
+    # NUOVO: CALCOLO SCENARIO BASELINE (SENZA BATTERIA)
+    # ========================================================================
+    prices_sell = df['€/MWh'].values
+    prices_buy = df2['€/MWh'].values
+
+    if PV_ENABLED and pv_df is not None:
+        pv_production = pv_df['P'].values / 1000.0  # kW → MWh
+        if len(pv_production) < len(prices_sell):
+            pv_production = np.pad(pv_production, (0, len(prices_sell) - len(pv_production)), 'constant')
+        elif len(pv_production) > len(prices_sell):
+            pv_production = pv_production[:len(prices_sell)]
+    else:
+        pv_production = np.zeros(len(prices_sell))
+
+    if LOAD_ENABLED and load_df is not None:
+        load_demand = load_df['value'].values / 1000.0  # kW → MWh
+        if len(load_demand) < len(prices_sell):
+            load_demand = np.pad(load_demand, (0, len(prices_sell) - len(load_demand)), 'constant')
+        elif len(load_demand) > len(prices_sell):
+            load_demand = load_demand[:len(prices_sell)]
+    else:
+        load_demand = np.zeros(len(prices_sell))
+
+    baseline_scenario = calculate_baseline_scenario(prices_sell, prices_buy, pv_production, load_demand)
+
     print("\n" + "=" * 80)
-    print("RISULTATI v2.5.0")
+    print("RISULTATI FINALI - CONFRONTO ECONOMICO")
     print("=" * 80)
+
+    # ========================================================================
+    # PRINT 1: SCENARIO SENZA BATTERIA (BASELINE)
+    # ========================================================================
+    print("\n" + "🔵 " * 40)
+    print("SCENARIO 1: SENZA BATTERIA (BASELINE)")
+    print("🔵 " * 40)
+    print(f"\n📊 BILANCIO ENERGETICO:")
+    print(f"  • Carico totale richiesto:        {baseline_scenario['total_load_required']:>10.2f} MWh")
+    print(
+        f"  • PV copre carico direttamente:   {baseline_scenario['total_pv_to_load']:>10.2f} MWh ({baseline_scenario['autosufficienza_percent']:.1f}%)")
+    print(
+        f"  • Carico coperto da rete:         {baseline_scenario['total_load_from_grid']:>10.2f} MWh ({baseline_scenario['total_load_from_grid'] / baseline_scenario['total_load_required'] * 100 if baseline_scenario['total_load_required'] > 0 else 0:.1f}%)")
+    print(f"  • PV venduto a rete:              {baseline_scenario['total_pv_to_grid']:>10.2f} MWh")
+
+    print(f"\n💰 BILANCIO ECONOMICO:")
+    print(f"  • Costi acquisto energia:         {baseline_scenario['total_cost_buy']:>10,.2f} €  ❌")
+    print(f"  • Ricavi vendita PV:              {baseline_scenario['total_revenue_sell']:>10,.2f} €  ✅")
+    print(f"  • {'─' * 60}")
+
+    baseline_sign = "✅" if baseline_scenario['net_balance'] >= 0 else "❌"
+    print(f"  • BILANCIO NETTO (senza batteria): {baseline_scenario['net_balance']:>10,.2f} €  {baseline_sign}")
+    print(f"  • Autosufficienza energetica:     {baseline_scenario['autosufficienza_percent']:>10.1f} %")
+
+    # ========================================================================
+    # PRINT 2: SCENARIO CON BATTERIA (SISTEMA OTTIMIZZATO)
+    # ========================================================================
+    print("\n" + "🟢 " * 40)
+    print("SCENARIO 2: CON BATTERIA (SISTEMA OTTIMIZZATO)")
+    print("🟢 " * 40)
 
     if LOAD_ENABLED and load_profile:
         load_stats = load_profile.get_statistics()
-        print(f"\nCARICO:")
-        print(f"  Totale: {load_stats['total_energy_required_mwh']:.2f} MWh")
-        print(f"  Da PV: {load_stats['energy_from_pv_mwh']:.2f} MWh ({load_stats['pv_coverage_percent']:.1f}%)")
-        print(f"  Da Batteria: {load_stats['energy_from_battery_mwh']:.2f} MWh ({load_stats['battery_coverage_percent']:.1f}%)")
-        print(f"  Da Rete: {load_stats['energy_from_grid_mwh']:.2f} MWh ({load_stats['grid_dependency_percent']:.1f}%)")
+        print(f"\n📊 BILANCIO ENERGETICO:")
+        print(f"  • Carico totale richiesto:        {load_stats['total_energy_required_mwh']:>10.2f} MWh")
+        print(
+            f"  • Carico da PV diretto:           {load_stats['energy_from_pv_mwh']:>10.2f} MWh ({load_stats['pv_coverage_percent']:.1f}%)")
+        print(
+            f"  • Carico da BATTERIA:             {load_stats['energy_from_battery_mwh']:>10.2f} MWh ({load_stats['battery_coverage_percent']:.1f}%)")
+        print(
+            f"  • Carico da rete:                 {load_stats['energy_from_grid_mwh']:>10.2f} MWh ({load_stats['grid_dependency_percent']:.1f}%)")
+        autosufficienza_with_bess = 100 - load_stats['grid_dependency_percent']
+        print(f"  • Autosufficienza energetica:     {autosufficienza_with_bess:>10.1f} %")
 
     if PV_ENABLED and pv_system:
         pv_stats = pv_system.get_statistics()
-        print(f"\nPV:")
-        print(f"  Produzione: {pv_stats['total_production_mwh']:.2f} MWh")
-        print(f"  → Carico: {pv_stats['energy_to_load_mwh']:.2f} MWh ({pv_stats['load_service_percent']:.1f}%)")
-        print(f"  → Batteria: {pv_stats['energy_to_battery_mwh']:.2f} MWh ({pv_stats['battery_utilization_percent']:.1f}%)")
-        print(f"  → Rete: {pv_stats['energy_to_grid_mwh']:.2f} MWh ({pv_stats['grid_sale_percent']:.1f}%)")
+        print(f"\n☀️ UTILIZZO PV:")
+        print(f"  • Produzione totale:              {pv_stats['total_production_mwh']:>10.2f} MWh")
+        print(
+            f"  • PV → Carico diretto:            {pv_stats['energy_to_load_mwh']:>10.2f} MWh ({pv_stats['load_service_percent']:.1f}%)")
+        print(
+            f"  • PV → Batteria (storage):        {pv_stats['energy_to_battery_mwh']:>10.2f} MWh ({pv_stats['battery_utilization_percent']:.1f}%)")
+        print(
+            f"  • PV → Vendita diretta:           {pv_stats['energy_to_grid_mwh']:>10.2f} MWh ({pv_stats['grid_sale_percent']:.1f}%)")
 
-    print(f"\nBATTERIA:")
-    print(f"  SOH: {battery.get_soh():.2f}%")
-    print(f"  Cicli: {battery.equivalent_cycles:.2f}")
-    print(f"  Throughput: {battery.throughput_kwh:.2f} kWh")
+    print(f"\n🔋 STATO BATTERIA:")
+    print(f"  • SOH finale:                     {battery.get_soh():>10.2f} %")
+    print(f"  • Cicli equivalenti:              {battery.equivalent_cycles:>10.2f}")
+    print(f"  • Throughput totale:              {battery.throughput_kwh:>10,.0f} kWh")
+    print(f"  • Energia da rete → batteria:     {battery.energy_from_grid_mwh:>10.2f} MWh")
+    print(f"  • Energia da PV → batteria:       {battery.energy_from_pv_mwh:>10.2f} MWh")
 
-    print(f"\nECONOMIA (REALE):")
-    print(f"  Profitto trading: {trading_profit:,.2f} €")
+    print(f"\n💰 BILANCIO ECONOMICO:")
+    print(f"  • Profitto trading batteria:      {trading_profit:>10,.2f} €")
     if MACSE_ENABLED:
-        print(f"  Ricavi MACSE: {macse_revenue:,.2f} €")
-    print(f"  Profitto totale: {total_system_profit:,.2f} €")
-    print(f"  Tempo: {(end_time - start_time).total_seconds():.1f} s")
-    print("=" * 80)
+        print(f"  • Ricavi servizi MACSE:           {macse_revenue:>10,.2f} €")
+    print(f"  • {'─' * 60}")
+
+    system_sign = "✅" if total_system_profit >= 0 else "❌"
+    print(f"  • BILANCIO NETTO (con batteria):   {total_system_profit:>10,.2f} €  {system_sign}")
+
+    # ========================================================================
+    # CONFRONTO E DELTA
+    # ========================================================================
+    print("\n" + "⚡ " * 40)
+    print("CONFRONTO E BENEFICI BATTERIA")
+    print("⚡ " * 40)
+
+    delta_economic = total_system_profit - baseline_scenario['net_balance']
+    delta_percent = (delta_economic / abs(baseline_scenario['net_balance']) * 100) if baseline_scenario[
+                                                                                          'net_balance'] != 0 else float(
+        'inf')
+
+    if LOAD_ENABLED and load_profile:
+        delta_autosufficienza = autosufficienza_with_bess - baseline_scenario['autosufficienza_percent']
+        delta_grid_dependency = baseline_scenario['total_load_from_grid'] - load_stats['energy_from_grid_mwh']
+    else:
+        delta_autosufficienza = 0
+        delta_grid_dependency = 0
+
+    print(f"\n💵 IMPATTO ECONOMICO:")
+    print(f"  • Bilancio SENZA batteria:        {baseline_scenario['net_balance']:>10,.2f} €")
+    print(f"  • Bilancio CON batteria:          {total_system_profit:>10,.2f} €")
+    print(f"  • {'─' * 60}")
+
+    delta_sign = "✅ MIGLIORAMENTO" if delta_economic > 0 else "❌ PEGGIORAMENTO"
+    delta_arrow = "📈" if delta_economic > 0 else "📉"
+    print(f"  • DELTA (beneficio batteria):     {delta_economic:>10,.2f} €  {delta_arrow} {delta_sign}")
+
+    if baseline_scenario['net_balance'] != 0:
+        print(f"  • Variazione percentuale:         {delta_percent:>10.1f} %")
+
+    print(f"\n⚡ IMPATTO ENERGETICO:")
+    print(f"  • Autosufficienza SENZA batteria: {baseline_scenario['autosufficienza_percent']:>10.1f} %")
+    if LOAD_ENABLED and load_profile:
+        print(f"  • Autosufficienza CON batteria:   {autosufficienza_with_bess:>10.1f} %")
+        print(
+            f"  • Incremento autosufficienza:     {delta_autosufficienza:>10.1f} punti %  {'✅' if delta_autosufficienza > 0 else '➖'}")
+        print(
+            f"  • Riduzione dipendenza rete:      {delta_grid_dependency:>10.2f} MWh  {'✅' if delta_grid_dependency > 0 else '❌'}")
+
+    print(f"\n⏱️ PRESTAZIONI:")
+    print(f"  • Tempo simulazione:              {(end_time - start_time).total_seconds():>10.1f} s")
+    print(f"  • Ore simulate:                   {len(prices_sell):>10.0f} h")
+    print(
+        f"  • Velocità:                       {len(prices_sell) / (end_time - start_time).total_seconds():>10.1f} ore/s")
+
+    print("\n" + "=" * 80)
 
     results_folder = 'results'
     if not os.path.exists(results_folder):
@@ -2024,4 +2671,4 @@ def main(file_name, pv_file_name=None, load_file_name=None):
 if __name__ == "__main__":
     pv_file = pv_production_file if PV_ENABLED else None
     load_file_input = load_file if LOAD_ENABLED else None
-    main(energy_selling_price_name, pv_file, load_file_input)
+    main(energy_selling_price_name,energy_buying_price_name, pv_file, load_file_input)

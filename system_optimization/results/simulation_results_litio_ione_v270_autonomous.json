@@ -4,9 +4,9 @@
     "feature": "Fully Autonomous Multi-Dimensional PSO - Zero Hardcoded Logic",
     "description": "PSO decides all allocations: [p_batt_trading, alpha_pv_load, p_batt_load]",
     "technology": "LITIO-IONE",
-    "simulation_time_seconds": 3384.322074,
+    "simulation_time_seconds": 3305.98549,
     "total_hours": 8760,
-    "timestamp": "2025-11-24T19:43:01.016425"
+    "timestamp": "2025-11-24T23:15:16.058206"
   },
   "battery_parameters": {
     "nominal_capacity_mwh": 1.0,

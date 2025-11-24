@@ -906,7 +906,7 @@ class RollingHorizonSimulator:
         # ========================================================================
         while current_hour < n_hours:
             progress = int((current_hour / n_hours) * 100)
-            if progress >= last_progress + 20 or progress == 0:
+            if progress >= last_progress + 20:
                 print(
                     f"Progresso: {progress}% - SOH: {self.battery.get_soh():.2f}% - SOC: {self.battery.get_soc() * 100:.1f}%")
                 last_progress = progress
@@ -2799,7 +2799,7 @@ def main(file_name, file_name2, pv_file_name=None, load_file_name=None):
         create_load_analysis_plots(results_df, battery, load_profile)
 
     print("\n" + "=" * 80)
-    print("✓ SIMULAZIONE COMPLETATA v2.5.0 CORRECTED")
+    print("✓ SIMULAZIONE COMPLETATA")
     print("=" * 80)
 
 

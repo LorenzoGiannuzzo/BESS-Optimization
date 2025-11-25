@@ -470,7 +470,7 @@ class PSOOptimizer:
     L'AUTOCONSUMO NON GENERA RICAVI - riduce solo il carico che deve essere servito dalla rete
     """
 
-    def __init__(self, n_particles=150, n_iterations=350, w_start=0.95, w_end=0.1, c1=2.0, c2=2.0):
+    def __init__(self, n_particles=120, n_iterations=300, w_start=0.95, w_end=0.2, c1=2.0, c2=2.0):
         self.n_particles = n_particles
         self.n_iterations = n_iterations
         self.w_start = w_start

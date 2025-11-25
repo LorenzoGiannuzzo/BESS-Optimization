@@ -61,6 +61,7 @@ PV_SYSTEM_LOSSES = 0.0
 LOAD_ENABLED = True
 LOAD_SHEET_NAME = None  # None = primo sheet disponibile
 
+
 # ---------------------------------- PARAMETRI SPECIFICI PER TECNOLOGIA -----------------------------------
 LITHIUM_ION_SOC_MIN = 0.1
 LITHIUM_ION_SOC_MAX = 0.9

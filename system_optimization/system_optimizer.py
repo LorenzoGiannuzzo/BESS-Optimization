@@ -40,7 +40,7 @@ pv_production_file = 'PV_formattato.csv'
 load_file = 'Consumo.xlsx'
 
 # ---------------------------------- PARAMETRI POINT OF DELIVERY (POD) --------------------------------
-POD_POWER_MW = 1.5  # Potenza massima scambio con rete [MW]
+POD_POWER_MW = 0.8  # Potenza massima scambio con rete [MW]
 
 # ---------------------------------- SCELTA TECNOLOGIA BATTERIA -------------------------------------------
 BATTERY_TECHNOLOGY = "LITIO-IONE"
@@ -49,7 +49,7 @@ BATTERY_TECHNOLOGY = "LITIO-IONE"
 BATTERY_CAPACITY_MWH = 1.0
 BATTERY_MAX_POWER_MW = 1.0
 BATTERY_MAX_C_RATE = 1.0
-BATTERY_BASE_EFFICIENCY = 0.95
+BATTERY_BASE_EFFICIENCY = 0.95 #todo dare come input
 
 # ---------------------------------- PARAMETRI FOTOVOLTAICO -----------------------------------------------
 PV_ENABLED = True

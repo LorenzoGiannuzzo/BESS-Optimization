@@ -40,7 +40,7 @@ pv_production_file = 'PV_formattato.csv'
 load_file = 'Consumo.xlsx'
 
 # ---------------------------------- PARAMETRI POINT OF DELIVERY (POD) --------------------------------
-POD_POWER_MW = 0.8  # Potenza massima scambio con rete [MW]
+POD_POWER_MW = 1.5  # Potenza massima scambio con rete [MW]
 
 # ---------------------------------- SCELTA TECNOLOGIA BATTERIA -------------------------------------------
 BATTERY_TECHNOLOGY = "LITIO-IONE"
@@ -75,7 +75,7 @@ GRAPHENE_EOL_CYCLES = 500000
 
 # ---------------------------------- PARAMETRI GENERALI ---------------------------------------------------
 SAVE_PLOTS = True
-DEGRADATION_COST_PER_MWH = 20
+DEGRADATION_COST_PER_MWH = 0.0
 
 # ---------------------------------- PARAMETRI MACSE ------------------------------------------------------
 MACSE_ENABLED = False
@@ -1102,7 +1102,7 @@ class RollingHorizonSimulator:
                 load_unserved_this_hour = load_remaining - load_from_grid_allowed
                 if load_unserved_this_hour > 0.001:
                     # PENALITÀ PESANTE: Carico non servito
-                    penalty = load_unserved_this_hour * price_buy * 100.0
+                    penalty = load_unserved_this_hour * price_buy * 000.0
                     cumulative_profit -= penalty
                     print(f"⚠️  Ora {current_hour}: Carico non servito {load_unserved_this_hour:.3f} MWh (POD limit)")
 

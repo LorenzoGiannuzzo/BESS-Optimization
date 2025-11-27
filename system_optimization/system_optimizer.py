@@ -1,4 +1,4 @@
-""""
+"""
 ------------------------------------------------------------------------------------------------------------------------
 BATTERY ENERGY STORAGE SYSTEM (BESS) OPTIMIZATION - AUTONOMOUS LOAD DECISIONS
 Particle Swarm Optimization with Rolling Horizon, MACSE, Autonomous PV and AUTONOMOUS Load Management
@@ -40,10 +40,10 @@ pv_production_file = 'PV_formattato.csv'
 load_file = 'Consumo.xlsx'
 
 # ---------------------------------- PARAMETRI POINT OF DELIVERY (POD) --------------------------------
-POD_POWER_MW = 1.5  # Potenza massima scambio con rete [MW]
+POD_POWER_MW = 0.8  # Potenza massima scambio con rete [MW]
 
 # ---------------------------------- SCELTA TECNOLOGIA BATTERIA -------------------------------------------
-BATTERY_TECHNOLOGY = "LITIO-IONE"
+BATTERY_TECHNOLOGY = "GRAFENE"
 
 # ---------------------------------- PARAMETRI BATTERIA ---------------------------------------------------
 BATTERY_CAPACITY_MWH = 1.0
@@ -1130,7 +1130,7 @@ class RollingHorizonSimulator:
                 pv_curtailed_this_hour = pv_remaining - pv_to_grid_allowed
                 if pv_curtailed_this_hour > 0.001:
                     # Penalità leggera: energia persa ma non costo diretto
-                    penalty = pv_curtailed_this_hour * price_sell * 0.5
+                    penalty = pv_curtailed_this_hour * price_sell * 0.0
                     cumulative_profit -= penalty
                     if pv_curtailed_this_hour > 0.1:  # Log solo se significativo
                         print(f"⚠️  Ora {current_hour}: PV curtailed {pv_curtailed_this_hour:.3f} MWh (POD limit)")
@@ -2478,7 +2478,7 @@ def calculate_baseline_scenario(prices_sell, prices_buy, pv_production, load_dem
             if pv_curtailed > 0.001:
                 total_pv_curtailed_baseline += pv_curtailed
                 # Penalità leggera per PV perso
-                total_cost_buy += pv_curtailed * price_sell * 0.5
+                total_cost_buy += pv_curtailed * price_sell * 0.0
 
         # Carico residuo comprato da rete CON VINCOLO POD
         if load_remaining > 0.001:
@@ -2491,7 +2491,7 @@ def calculate_baseline_scenario(prices_sell, prices_buy, pv_production, load_dem
             if load_unserved > 0.001:
                 total_load_unserved_baseline += load_unserved
                 # Penalità pesante per carico non servito
-                total_cost_buy += load_unserved * price_buy * 100.0
+                total_cost_buy += load_unserved * price_buy * 000.0
 
     net_balance = total_revenue_sell - total_cost_buy
     autosufficienza = (total_pv_to_load / total_load_required * 100) if total_load_required > 0 else 0

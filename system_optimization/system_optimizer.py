@@ -220,7 +220,6 @@ class PhotovoltaicSystem:
 class LoadProfile:
     """
     Lorenzo Giannuzzo: Modello carico elettrico utente con tracking decisioni autonome
-    NUOVO v2.6.0: Traccia quando batteria SCEGLIE di servire carico vs lasciare a rete
     """
     def __init__(self):
         self.total_energy_required_mwh = 0.0
@@ -2517,7 +2516,7 @@ def main(file_name, file_name2, pv_file_name=None, load_file_name=None):
     file_path2 = os.path.join('data', file_name2)
 
     print("=" * 80)
-    print("BESS OPTIMIZATION v2.5.0 CORRECTED")
+    print("BESS OPTIMIZATION")
     print("=" * 80)
 
     try:

@@ -8,6 +8,7 @@ Author: Lorenzo Giannuzzo (Modified)
 Affiliation: Politecnico di Torino
              Dipartimento Energia (DENERG)
              Energy Center Lab
+
 Description:
     Sistema di ottimizzazione per Battery Energy Storage System (BESS) che
     implementa l'algoritmo Particle Swarm Optimization (PSO) con Rolling

@@ -106,15 +106,6 @@ Esempi:
     battery_group.add_argument('--battery-c-rate', type=float, default=1.0,
                                help='C-rate massimo batteria (default: 1.0)')
 
-    battery_group.add_argument('--custom-efficiency', action='store_true',
-                               help='Usa efficienza custom invece dati sperimentali')
-    battery_group.add_argument('--charge-efficiency', type=float, default=None,
-                               help='Efficienza carica custom [0-1] (es: 0.95)')
-    battery_group.add_argument('--discharge-efficiency', type=float, default=None,
-                               help='Efficienza scarica custom [0-1] (es: 0.95)')
-    battery_group.add_argument('--roundtrip-efficiency', type=float, default=None,
-                               help='Efficienza roundtrip custom [0-1] (es: 0.90)')
-
     # ========================================================================
     # Lorenzo Giannuzzo: SOC LIMITS
     # ========================================================================
@@ -178,8 +169,7 @@ Esempi:
                               help='Salva grafici visualizzazione')
     output_group.add_argument('--output-dir', type=str, default='results',
                               help='Directory output risultati (default: results)')
-    output_group.add_argument('--output-filename', type=str, default=None,
-                              help='Nome base file output (senza estensione). Se non specificato, usa nome automatico')
+
     args = parser.parse_args()
 
     # ========================================================================
@@ -217,23 +207,6 @@ Esempi:
     # Lorenzo Giannuzzo: Verifica MACSE
     if args.macse_enabled and args.macse_capacity > args.battery_capacity:
         parser.error(f"Capacità MACSE ({args.macse_capacity}) > capacità batteria ({args.battery_capacity})")
-
-    # Lorenzo Giannuzzo: Validazione efficienza custom
-    if args.custom_efficiency:
-        if args.charge_efficiency is None and args.discharge_efficiency is None and args.roundtrip_efficiency is None:
-            parser.error("--custom-efficiency richiede almeno un parametro efficienza")
-
-        if args.charge_efficiency is not None:
-            if not (0 < args.charge_efficiency <= 1):
-                parser.error(f"Charge efficiency deve essere tra 0 e 1: {args.charge_efficiency}")
-
-        if args.discharge_efficiency is not None:
-            if not (0 < args.discharge_efficiency <= 1):
-                parser.error(f"Discharge efficiency deve essere tra 0 e 1: {args.discharge_efficiency}")
-
-        if args.roundtrip_efficiency is not None:
-            if not (0 < args.roundtrip_efficiency <= 1):
-                parser.error(f"Roundtrip efficiency deve essere tra 0 e 1: {args.roundtrip_efficiency}")
 
     # Lorenzo Giannuzzo: Auto-calcola particelle se non specificato
     if args.n_particles is None:
@@ -348,77 +321,31 @@ GRAPHENE_1C_DATA = {
 # Lorenzo Giannuzzo: SEZIONE 3: CLASSI
 # ========================================================================================================
 class BatteryEfficiencyModel:
-    def __init__(self, technology, c_rate, custom_efficiency=None):
+    def __init__(self, technology, c_rate):
         self.technology = technology
         self.c_rate = c_rate
-        self.custom_mode = custom_efficiency is not None
-
-        if self.custom_mode:
-            print(f"   ⚙️  Usando efficienza CUSTOM (ignoro dati sperimentali)")
-
-            charge_eff = custom_efficiency.get('charge_efficiency')
-            discharge_eff = custom_efficiency.get('discharge_efficiency')
-            roundtrip_eff = custom_efficiency.get('roundtrip_efficiency')
-
-            if roundtrip_eff is not None:
-                if charge_eff is None and discharge_eff is None:
-                    charge_eff = discharge_eff = np.sqrt(roundtrip_eff)
-                elif charge_eff is not None and discharge_eff is None:
-                    discharge_eff = roundtrip_eff / charge_eff
-                elif discharge_eff is not None and charge_eff is None:
-                    charge_eff = roundtrip_eff / discharge_eff
+        if technology == "LITIO-IONE":
+            if c_rate <= 0.5:
+                self.data = LITHIUM_ION_05C_DATA
             else:
-                if charge_eff is not None and discharge_eff is not None:
-                    roundtrip_eff = charge_eff * discharge_eff
-                else:
-                    raise ValueError("Devi fornire almeno roundtrip_efficiency o entrambi charge/discharge")
-
-            self.avg_charge_efficiency = charge_eff
-            self.avg_discharge_efficiency = discharge_eff
-            self.avg_energy_efficiency = roundtrip_eff
-            self.avg_coulombic_efficiency = 0.99
-
-            self.data = {
-                'charge_energy_kwh': [10.0],
-                'discharge_energy_kwh': [10.0 * roundtrip_eff],
-                'energy_efficiency': [roundtrip_eff],
-                'coulombic_efficiency': [0.99]
-            }
-
-            print(
-                f"      • Efficienza carica:     {self.avg_charge_efficiency:.4f} ({self.avg_charge_efficiency * 100:.2f}%)")
-            print(
-                f"      • Efficienza scarica:    {self.avg_discharge_efficiency:.4f} ({self.avg_discharge_efficiency * 100:.2f}%)")
-            print(
-                f"      • Efficienza roundtrip:  {self.avg_energy_efficiency:.4f} ({self.avg_energy_efficiency * 100:.2f}%)")
-
+                self.data = LITHIUM_ION_1C_DATA
+        elif technology == "GRAFENE":
+            if c_rate <= 0.5:
+                self.data = GRAPHENE_05C_DATA
+            else:
+                self.data = GRAPHENE_1C_DATA
         else:
-            if technology == "LITIO-IONE":
-                if c_rate <= 0.5:
-                    self.data = LITHIUM_ION_05C_DATA
-                else:
-                    self.data = LITHIUM_ION_1C_DATA
-            elif technology == "GRAFENE":
-                if c_rate <= 0.5:
-                    self.data = GRAPHENE_05C_DATA
-                else:
-                    self.data = GRAPHENE_1C_DATA
-            else:
-                raise ValueError(f"Tecnologia non supportata: {technology}")
-
-            self.avg_energy_efficiency = np.mean(self.data['energy_efficiency'])
-            self.avg_coulombic_efficiency = np.mean(self.data['coulombic_efficiency'])
-            self.avg_charge_energy = np.mean(self.data['charge_energy_kwh'])
-            self.avg_discharge_energy = np.mean(self.data['discharge_energy_kwh'])
-
-            self.avg_charge_efficiency = np.sqrt(self.avg_energy_efficiency)
-            self.avg_discharge_efficiency = np.sqrt(self.avg_energy_efficiency)
+            raise ValueError(f"Tecnologia non supportata: {technology}")
+        self.avg_energy_efficiency = np.mean(self.data['energy_efficiency'])
+        self.avg_coulombic_efficiency = np.mean(self.data['coulombic_efficiency'])
+        self.avg_charge_energy = np.mean(self.data['charge_energy_kwh'])
+        self.avg_discharge_energy = np.mean(self.data['discharge_energy_kwh'])
 
     def get_charge_efficiency(self):
-        return self.avg_charge_efficiency
+        return np.sqrt(self.avg_energy_efficiency)
 
     def get_discharge_efficiency(self):
-        return self.avg_discharge_efficiency
+        return np.sqrt(self.avg_energy_efficiency)
 
     def get_roundtrip_efficiency(self):
         return self.avg_energy_efficiency
@@ -568,12 +495,10 @@ class Battery:
     """
     Lorenzo Giannuzzo: Modello batteria con tracking separato carica da rete vs PV
     """
-
     def __init__(self, technology=BATTERY_TECHNOLOGY,
                  capacity_mwh=BATTERY_CAPACITY_MWH,
                  max_power_mw=BATTERY_MAX_POWER_MW,
-                 max_c_rate=BATTERY_MAX_C_RATE,
-                 custom_efficiency=None):
+                 max_c_rate=BATTERY_MAX_C_RATE):
         self.technology = technology
         self.nominal_capacity = capacity_mwh
         self.capacity = capacity_mwh
@@ -594,7 +519,7 @@ class Battery:
             raise ValueError(f"Tecnologia non supportata: {technology}")
 
         self.soc = (self.soc_min + self.soc_max) / 2
-        self.efficiency_model = BatteryEfficiencyModel(technology, max_c_rate, custom_efficiency=custom_efficiency)
+        self.efficiency_model = BatteryEfficiencyModel(technology, max_c_rate)
         self.efficiency = self.efficiency_model.get_roundtrip_efficiency()
         self.charge_efficiency = self.efficiency_model.get_charge_efficiency()
         self.discharge_efficiency = self.efficiency_model.get_discharge_efficiency()
@@ -1253,6 +1178,8 @@ class RollingHorizonSimulator:
         load_from_battery_history = []
         load_from_grid_history = []
         load_unserved_history = []
+        equivalent_cycles_history = []
+        throughput_mwh_history = []
 
         energy_from_grid_to_battery_history = []
         energy_from_pv_to_battery_history = []
@@ -1587,7 +1514,9 @@ class RollingHorizonSimulator:
             pod_violated = (grid_withdrawal_this_hour > POD_POWER_MW + 0.001) or (
                         grid_injection_this_hour > POD_POWER_MW + 0.001)
             pod_violation_history.append(1 if pod_violated else 0)
-
+            # Lorenzo Giannuzzo: Tracking cicli equivalenti
+            equivalent_cycles_history.append(self.battery.equivalent_cycles)
+            throughput_mwh_history.append(self.battery.throughput_kwh / 1000.0)  # Converti kWh -> MWh
             current_hour += self.step_hours
 
         # ========================================================================
@@ -1626,6 +1555,8 @@ class RollingHorizonSimulator:
         results_df['SOC'] = soc_history + [soc_history[-1]] * pad_length
         results_df['Capacita_MWh'] = capacity_history + [capacity_history[-1]] * pad_length
         results_df['SOH_%'] = soh_history + [soh_history[-1]] * pad_length
+        results_df['Equivalent_Cycles'] = equivalent_cycles_history + [equivalent_cycles_history[-1]] * pad_length
+        results_df['Throughput_MWh'] = throughput_mwh_history + [throughput_mwh_history[-1]] * pad_length
 
         # Lorenzo Giannuzzo: Economia
         results_df['Profitto_Euro'] = profits_history + [profits_history[-1]] * pad_length
@@ -1684,8 +1615,7 @@ def calculate_macse_revenue(battery):
     return annual_revenue, base_revenue * (365 * 24), penalty, bonus
 
 def export_results_to_json(results_df, battery, pv_system, load_profile, trading_profit, macse_revenue, macse_base,
-                       macse_penalty, macse_bonus, battery_investment, simulation_time, baseline_scenario=None,
-                       output_dir='results', output_filename=None):
+                       macse_penalty, macse_bonus, battery_investment, simulation_time, baseline_scenario=None, output_dir='results'):
     """
     Lorenzo Giannuzzo: Esporta risultati simulazione in formato JSON con confronto baseline
     """
@@ -1953,16 +1883,11 @@ def export_results_to_json(results_df, battery, pv_system, load_profile, trading
     # ========================================================================
     # Lorenzo Giannuzzo: SALVATAGGIO JSON
     # ========================================================================
+    # Crea directory output se non esiste
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
 
-    # Lorenzo Giannuzzo: Usa nome custom se fornito
-    if output_filename:
-        json_file = os.path.join(output_dir, f'{output_filename}.json')
-    else:
-        json_file = os.path.join(output_dir,
-                                 f'simulation_results_{battery.technology.lower().replace("-", "_")}_v270_autonomous.json')
-
+    json_file = os.path.join(output_dir,f'simulation_results_{battery.technology.lower().replace("-", "_")}_v270_autonomous.json')
     with open(json_file, 'w', encoding='utf-8') as f:
         json.dump(results_json, f, indent=2, ensure_ascii=False)
 
@@ -1970,6 +1895,71 @@ def export_results_to_json(results_df, battery, pv_system, load_profile, trading
 
     return results_json
 
+
+def export_complete_results_to_json(results_df, battery, output_dir='results'):
+    """
+    Lorenzo Giannuzzo: Esporta DataFrame completo in JSON (equivalente Excel)
+    """
+    print("\n📄 Esportazione JSON completo...")
+
+    # Converti DataFrame in formato JSON-friendly
+    results_dict = results_df.to_dict(orient='records')
+
+    # Converti datetime in stringhe
+    for record in results_dict:
+        if 'Data' in record and pd.notna(record['Data']):
+            if isinstance(record['Data'], pd.Timestamp):
+                record['Data'] = record['Data'].strftime('%Y-%m-%d %H:%M:%S')
+
+        # Converti NaN in None per JSON valido
+        for key, value in record.items():
+            if pd.isna(value):
+                record[key] = None
+            elif isinstance(value, (np.int64, np.int32)):
+                record[key] = int(value)
+            elif isinstance(value, (np.float64, np.float32)):
+                record[key] = float(value)
+
+    # Crea JSON completo con metadati
+    complete_json = {
+        "metadata": {
+            "version": "3.8.0-COMPLETE-DATA",
+            "description": "Complete hourly simulation data - equivalent to Excel export",
+            "technology": battery.technology,
+            "total_hours": len(results_df),
+            "timestamp": datetime.now().isoformat(),
+            "columns": list(results_df.columns)
+        },
+
+        "battery_info": {
+            "technology": battery.technology,
+            "nominal_capacity_mwh": float(battery.nominal_capacity),
+            "final_capacity_mwh": float(battery.capacity),
+            "final_soc": float(battery.get_soc()),
+            "final_soh_percent": float(battery.get_soh()),
+            "equivalent_cycles": float(battery.equivalent_cycles),
+            "throughput_kwh": float(battery.throughput_kwh)
+        },
+
+        "hourly_data": results_dict
+    }
+
+    # Salva JSON
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
+
+    json_file = os.path.join(output_dir,
+                             f'complete_data_{battery.technology.lower().replace("-", "_")}_v380.json')
+
+    with open(json_file, 'w', encoding='utf-8') as f:
+        json.dump(complete_json, f, indent=2, ensure_ascii=False)
+
+    print(f"✓ JSON completo salvato: {json_file}")
+    print(f"  • Record totali: {len(results_dict)}")
+    print(f"  • Colonne: {len(results_df.columns)}")
+    print(f"  • Dimensione file: {os.path.getsize(json_file) / 1024 / 1024:.2f} MB")
+
+    return json_file
 
 # ========================================================================================================
 # Lorenzo Giannuzzo: SEZIONE 9: GRAFICI (placeholder - implementa come vuoi)
@@ -2912,92 +2902,6 @@ def calculate_baseline_scenario(prices_sell, prices_buy, pv_production, load_dem
         'load_unserved_baseline': total_load_unserved_baseline  # NUOVO
     }
 
-def export_complete_results_to_json(results_df, battery, output_dir='results', output_filename=None):
-    """
-    Lorenzo Giannuzzo: Esporta DataFrame completo in JSON (equivalente Excel)
-    UNICO JSON NECESSARIO - Contiene tutti i dati orari
-    """
-    print("\n📄 Esportazione JSON completo...")
-
-    # Converti DataFrame in formato JSON-friendly
-    results_dict = results_df.to_dict(orient='records')
-
-    # Converti datetime e NaN in formati JSON validi
-    for record in results_dict:
-        if 'Data' in record and pd.notna(record['Data']):
-            if isinstance(record['Data'], pd.Timestamp):
-                record['Data'] = record['Data'].strftime('%Y-%m-%d %H:%M:%S')
-
-        # Converti NaN in None e numpy types in Python types
-        for key, value in record.items():
-            if pd.isna(value):
-                record[key] = None
-            elif isinstance(value, (np.int64, np.int32)):
-                record[key] = int(value)
-            elif isinstance(value, (np.float64, np.float32)):
-                record[key] = float(value)
-
-    # Crea JSON completo con metadati
-    complete_json = {
-        "metadata": {
-            "version": "3.8.0-COMPLETE-DATA-POD",
-            "description": "Complete hourly simulation data - equivalent to Excel export",
-            "technology": battery.technology,
-            "total_hours": len(results_df),
-            "timestamp": datetime.now().isoformat(),
-            "columns": list(results_df.columns),
-            "pod_power_mw": POD_POWER_MW,
-            "features": [
-                "Custom efficiency support",
-                "POD limit enforcement",
-                "Autonomous load decisions",
-                "PV integration",
-                "Load profile management"
-            ]
-        },
-
-        "battery_info": {
-            "technology": battery.technology,
-            "nominal_capacity_mwh": float(battery.nominal_capacity),
-            "final_capacity_mwh": float(battery.capacity),
-            "max_power_mw": float(battery.max_power),
-            "max_c_rate": float(battery.max_c_rate),
-            "final_soc": float(battery.get_soc()),
-            "final_soh_percent": float(battery.get_soh()),
-            "equivalent_cycles": float(battery.equivalent_cycles),
-            "throughput_kwh": float(battery.throughput_kwh),
-            "energy_from_grid_mwh": float(battery.energy_from_grid_mwh),
-            "energy_from_pv_mwh": float(battery.energy_from_pv_mwh),
-            "efficiency": {
-                "charge": float(battery.charge_efficiency),
-                "discharge": float(battery.discharge_efficiency),
-                "roundtrip": float(battery.efficiency)
-            }
-        },
-
-        "hourly_data": results_dict
-    }
-
-    # Salva JSON
-    if not os.path.exists(output_dir):
-        os.makedirs(output_dir)
-
-    # Usa nome custom se fornito, altrimenti automatico
-    if output_filename:
-        json_file = os.path.join(output_dir, f'{output_filename}.json')
-    else:
-        json_file = os.path.join(output_dir, f'complete_data_{battery.technology.lower().replace("-", "_")}_v380.json')
-
-    with open(json_file, 'w', encoding='utf-8') as f:
-        json.dump(complete_json, f, indent=2, ensure_ascii=False)
-
-    print(f"✓ JSON completo salvato: {json_file}")
-    print(f"  • Record totali: {len(results_dict)}")
-    print(f"  • Colonne: {len(results_df.columns)}")
-    print(f"  • Dimensione file: {os.path.getsize(json_file) / 1024 / 1024:.2f} MB")
-
-    return json_file
-
 # ========================================================================================================
 # Lorenzo Giannuzzo: FUNZIONE MAIN
 # ========================================================================================================
@@ -3043,22 +2947,6 @@ def main():
 
     ENABLE_MULTIPROCESSING = not args.no_parallel
     MULTIPROCESSING_CORES = args.n_cores
-
-    # ========================================================================
-    # Lorenzo Giannuzzo: SETUP EFFICIENZA CUSTOM
-    # ========================================================================
-    custom_efficiency_dict = None
-    if args.custom_efficiency:
-        custom_efficiency_dict = {}
-
-        if args.charge_efficiency is not None:
-            custom_efficiency_dict['charge_efficiency'] = args.charge_efficiency
-
-        if args.discharge_efficiency is not None:
-            custom_efficiency_dict['discharge_efficiency'] = args.discharge_efficiency
-
-        if args.roundtrip_efficiency is not None:
-            custom_efficiency_dict['roundtrip_efficiency'] = args.roundtrip_efficiency
 
     # ========================================================================
     # Lorenzo Giannuzzo: PRINT CONFIGURAZIONE
@@ -3176,8 +3064,7 @@ def main():
         technology=BATTERY_TECHNOLOGY,
         capacity_mwh=BATTERY_CAPACITY_MWH,
         max_power_mw=BATTERY_MAX_POWER_MW,
-        max_c_rate=BATTERY_MAX_C_RATE,
-        custom_efficiency=custom_efficiency_dict
+        max_c_rate=BATTERY_MAX_C_RATE
     )
 
     optimizer = PSOOptimizer(
@@ -3228,51 +3115,34 @@ def main():
 
     baseline_scenario = calculate_baseline_scenario(prices_sell, prices_buy, pv_production, load_demand)
 
+
     # ========================================================================
     # Lorenzo Giannuzzo: STAMPA RISULTATI (usa la tua funzione print esistente)
     # ========================================================================
     print("\n" + "=" * 80)
     print("RISULTATI FINALI - CONFRONTO ECONOMICO")
     print("=" * 80)
+    # ... (tutto il tuo codice di stampa esistente) ...
 
     # ========================================================================
-    # Lorenzo Giannuzzo: SALVATAGGIO RISULTATI - SOLO EXCEL + JSON COMPLETO
+    # Lorenzo Giannuzzo: SALVATAGGIO RISULTATI
     # ========================================================================
     if not os.path.exists(args.output_dir):
         os.makedirs(args.output_dir)
 
-    # Determina nome file base
-    if args.output_filename:
-        base_filename = args.output_filename
-    else:
-        base_filename = f'risultati_{battery.technology.lower().replace("-", "_")}_cli'
-
-    print("\n" + "=" * 80)
-    print("💾 SALVATAGGIO RISULTATI")
-    print("=" * 80)
-
-    # ========================================================================
-    # 1. SALVA EXCEL
-    # ========================================================================
-    output_file_excel = os.path.join(args.output_dir, f'{base_filename}.xlsx')
-    with pd.ExcelWriter(output_file_excel, engine='openpyxl') as writer:
+    output_file = os.path.join(args.output_dir,
+                               f'risultati_{battery.technology.lower().replace("-", "_")}_cli.xlsx')
+    with pd.ExcelWriter(output_file, engine='openpyxl') as writer:
         results_df.to_excel(writer, sheet_name='Risultati', index=False)
-    print(f"✓ Excel salvato: {output_file_excel}")
+    print(f"\n✓ Excel salvato: {output_file}")
 
-    # ========================================================================
-    # 2. SALVA JSON COMPLETO (equivalente Excel)
-    # ========================================================================
-    export_complete_results_to_json(
-        results_df,
-        battery,
-        output_dir=args.output_dir,
-        output_filename=base_filename
-    )
+    export_results_to_json(results_df, battery, pv_system, load_profile, trading_profit, macse_revenue,
+                           macse_base, macse_penalty, macse_bonus, 600000,
+                           (end_time - start_time).total_seconds(), baseline_scenario,
+                           output_dir=args.output_dir)
 
-    print("\n✅ File di output creati:")
-    print(f"  1. {base_filename}.xlsx   (Excel con tutti i dati)")
-    print(f"  2. {base_filename}.json   (JSON con tutti i dati)")
-    print("=" * 80)
+    export_complete_results_to_json(results_df, battery, output_dir=args.output_dir)
+
     # ========================================================================
     # Lorenzo Giannuzzo: GRAFICI BASE (SEMPRE GENERATI se SAVE_PLOTS=True)
     # ========================================================================

@@ -817,16 +817,21 @@ def evaluate_particle_numba(
                 new_soc = soc - (energy_consumed / capacity)
                 soc = max(new_soc, soc_min)
 
-                # Lorenzo Giannuzzo: Profitti scarica trading
+                # ============================================================
+                # ✅ FIX: VALORIZZAZIONE CORRETTA AUTOCONSUMO
+                # ============================================================
+
+                # Lorenzo Giannuzzo: Profitti scarica trading (vendita a rete)
                 if discharge_for_trading > 0.001:
-                    profit += discharge_for_trading * price_sell
-                    profit -= discharge_for_trading * degradation_cost_per_mwh / (2 * eol_cycles)
+                    profit += discharge_for_trading * price_sell  # Ricavo vendita
+                    profit -= discharge_for_trading * degradation_cost_per_mwh / (2 * eol_cycles)  # Costo degrado
                     grid_injection += discharge_for_trading
 
-                # Lorenzo Giannuzzo: Costo scarica load
+                # Lorenzo Giannuzzo: RISPARMIO scarica per carico (evito acquisto da rete!)
                 if discharge_for_load > 0.001:
+                    profit += discharge_for_load * price_buy  # ✅ RISPARMIO: evito di comprare dalla rete
+                    profit -= discharge_for_load * degradation_cost_per_mwh / (2 * eol_cycles)  # Costo degrado
                     load_remaining -= discharge_for_load
-                    profit -= discharge_for_load * degradation_cost_per_mwh / (2 * eol_cycles)
 
         # ====================================================================
         # Lorenzo Giannuzzo: FASE 4: CARICO DALLA RETE

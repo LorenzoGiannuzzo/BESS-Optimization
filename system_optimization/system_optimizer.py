@@ -1178,6 +1178,8 @@ class RollingHorizonSimulator:
         load_from_battery_history = []
         load_from_grid_history = []
         load_unserved_history = []
+        equivalent_cycles_history = []
+        throughput_mwh_history = []
 
         energy_from_grid_to_battery_history = []
         energy_from_pv_to_battery_history = []
@@ -1512,7 +1514,9 @@ class RollingHorizonSimulator:
             pod_violated = (grid_withdrawal_this_hour > POD_POWER_MW + 0.001) or (
                         grid_injection_this_hour > POD_POWER_MW + 0.001)
             pod_violation_history.append(1 if pod_violated else 0)
-
+            # Lorenzo Giannuzzo: Tracking cicli equivalenti
+            equivalent_cycles_history.append(self.battery.equivalent_cycles)
+            throughput_mwh_history.append(self.battery.throughput_kwh / 1000.0)  # Converti kWh -> MWh
             current_hour += self.step_hours
 
         # ========================================================================
@@ -1551,6 +1555,8 @@ class RollingHorizonSimulator:
         results_df['SOC'] = soc_history + [soc_history[-1]] * pad_length
         results_df['Capacita_MWh'] = capacity_history + [capacity_history[-1]] * pad_length
         results_df['SOH_%'] = soh_history + [soh_history[-1]] * pad_length
+        results_df['Equivalent_Cycles'] = equivalent_cycles_history + [equivalent_cycles_history[-1]] * pad_length
+        results_df['Throughput_MWh'] = throughput_mwh_history + [throughput_mwh_history[-1]] * pad_length
 
         # Lorenzo Giannuzzo: Economia
         results_df['Profitto_Euro'] = profits_history + [profits_history[-1]] * pad_length
@@ -1889,6 +1895,71 @@ def export_results_to_json(results_df, battery, pv_system, load_profile, trading
 
     return results_json
 
+
+def export_complete_results_to_json(results_df, battery, output_dir='results'):
+    """
+    Lorenzo Giannuzzo: Esporta DataFrame completo in JSON (equivalente Excel)
+    """
+    print("\n📄 Esportazione JSON completo...")
+
+    # Converti DataFrame in formato JSON-friendly
+    results_dict = results_df.to_dict(orient='records')
+
+    # Converti datetime in stringhe
+    for record in results_dict:
+        if 'Data' in record and pd.notna(record['Data']):
+            if isinstance(record['Data'], pd.Timestamp):
+                record['Data'] = record['Data'].strftime('%Y-%m-%d %H:%M:%S')
+
+        # Converti NaN in None per JSON valido
+        for key, value in record.items():
+            if pd.isna(value):
+                record[key] = None
+            elif isinstance(value, (np.int64, np.int32)):
+                record[key] = int(value)
+            elif isinstance(value, (np.float64, np.float32)):
+                record[key] = float(value)
+
+    # Crea JSON completo con metadati
+    complete_json = {
+        "metadata": {
+            "version": "3.8.0-COMPLETE-DATA",
+            "description": "Complete hourly simulation data - equivalent to Excel export",
+            "technology": battery.technology,
+            "total_hours": len(results_df),
+            "timestamp": datetime.now().isoformat(),
+            "columns": list(results_df.columns)
+        },
+
+        "battery_info": {
+            "technology": battery.technology,
+            "nominal_capacity_mwh": float(battery.nominal_capacity),
+            "final_capacity_mwh": float(battery.capacity),
+            "final_soc": float(battery.get_soc()),
+            "final_soh_percent": float(battery.get_soh()),
+            "equivalent_cycles": float(battery.equivalent_cycles),
+            "throughput_kwh": float(battery.throughput_kwh)
+        },
+
+        "hourly_data": results_dict
+    }
+
+    # Salva JSON
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
+
+    json_file = os.path.join(output_dir,
+                             f'complete_data_{battery.technology.lower().replace("-", "_")}_v380.json')
+
+    with open(json_file, 'w', encoding='utf-8') as f:
+        json.dump(complete_json, f, indent=2, ensure_ascii=False)
+
+    print(f"✓ JSON completo salvato: {json_file}")
+    print(f"  • Record totali: {len(results_dict)}")
+    print(f"  • Colonne: {len(results_df.columns)}")
+    print(f"  • Dimensione file: {os.path.getsize(json_file) / 1024 / 1024:.2f} MB")
+
+    return json_file
 
 # ========================================================================================================
 # Lorenzo Giannuzzo: SEZIONE 9: GRAFICI (placeholder - implementa come vuoi)
@@ -3044,6 +3115,7 @@ def main():
 
     baseline_scenario = calculate_baseline_scenario(prices_sell, prices_buy, pv_production, load_demand)
 
+
     # ========================================================================
     # Lorenzo Giannuzzo: STAMPA RISULTATI (usa la tua funzione print esistente)
     # ========================================================================
@@ -3068,6 +3140,9 @@ def main():
                            macse_base, macse_penalty, macse_bonus, 600000,
                            (end_time - start_time).total_seconds(), baseline_scenario,
                            output_dir=args.output_dir)
+
+    export_complete_results_to_json(results_df, battery, output_dir=args.output_dir)
+
     # ========================================================================
     # Lorenzo Giannuzzo: GRAFICI BASE (SEMPRE GENERATI se SAVE_PLOTS=True)
     # ========================================================================

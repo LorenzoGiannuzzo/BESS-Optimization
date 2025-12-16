@@ -1,267 +1,324 @@
-# BESS Optimization - Guida Command Line Interface (CLI)
-
-## Informazioni Generali
-
-**Nome Progetto:** Battery Energy Storage System (BESS) Optimization CLI  
-**Versione:** 3.8.0  
-**Autore:** Lorenzo Giannuzzo  
-**Affiliazione:** Politecnico di Torino - DENERG - Energy Center Lab  
-**Data:** 28 Novembre 2025  
+# Battery Energy Storage System (BESS) Optimization
+## Advanced PSO-based Energy Trading and Load Management System
 
 ---
 
-## Novità Versione CLI
+## Project Information
 
-✅ **Supporto completo argomenti da linea di comando**  
-✅ **Configurazione parametri senza modificare codice**  
-✅ **Validazione automatica input**  
-✅ **Help integrato con esempi**  
-✅ **Ottimizzazione PSO con Numba JIT (50-200x più veloce)**  
-✅ **Parallelizzazione automatica**  
+**Version:** 3.8.0  
+**Release Date:** December 12, 2025  
+**Author:** Lorenzo Giannuzzo  
+**Affiliation:** Politecnico di Torino  
+**Department:** DENERG (Dipartimento Energia)  
+**Laboratory:** Energy Center Lab  
+**License:** MIT License  
+**Python Compatibility:** 3.8+  
 
 ---
 
-## Quick Start
+## Executive Summary
 
-### Esempio Base (Minimo)
+This software implements a sophisticated Battery Energy Storage System (BESS) optimization framework using Particle Swarm Optimization (PSO) with Numba JIT acceleration. The system is designed for energy trading arbitrage, photovoltaic (PV) integration, and autonomous load management with explicit economic accounting.
+
+### Key Capabilities
+
+- **Energy Arbitrage:** Optimized battery charging and discharging based on market price signals
+- **PV Integration:** Autonomous allocation of photovoltaic production to battery, grid, and load
+- **Load Management:** Intelligent decision-making for serving electrical loads from battery vs. grid
+- **MACSE Support:** Integration with Italian ancillary services market (Mercato dei Servizi Ancillari)
+- **POD Enforcement:** Point of Delivery power limit compliance with violation tracking
+- **Multi-Technology:** Support for Lithium-Ion and Graphene battery technologies
+- **High Performance:** Numba JIT parallelization achieving 50-200x speedup over pure Python
+
+---
+## Technical Architecture
+
+### Core Components
+
+**1. PSO Optimization Engine**
+- Numba JIT-compiled evaluation functions for maximum performance
+- Parallel particle evaluation across multiple CPU cores
+- Smart initialization based on price signals and system constraints
+- Adaptive particle reinitialization to prevent stagnation
+
+**2. Rolling Horizon Simulator**
+- Hour-by-hour execution of optimal strategies
+- Real-time SOC and SOH tracking
+- Degradation modeling based on equivalent cycles
+- Comprehensive energy flow accounting
+
+**3. Economic Model**
+- Explicit accounting of all costs and revenues
+- Trading revenues: battery discharge to grid
+- Savings: battery discharge to load (avoiding grid purchase)
+- Costs: grid purchases for battery charging and load service
+- Degradation costs integrated into optimization objective
+
+**4. Constraint Management**
+- POD power limits enforced on both injection and withdrawal
+- Battery SOC limits (technology-dependent)
+- C-rate limitations
+- Physical power constraints
+
+---
+
+## Installation and Setup
+
+### Prerequisites
 
 ```bash
-python bess_cli.py \
+pip install pandas numpy numba matplotlib openpyxl joblib
+```
+
+### Required Python Packages
+
+| Package | Version | Purpose |
+|---------|---------|---------|
+| numpy | ≥1.20.0 | Numerical computations |
+| pandas | ≥1.3.0 | Data manipulation |
+| numba | ≥0.54.0 | JIT compilation |
+| matplotlib | ≥3.4.0 | Visualization |
+| openpyxl | ≥3.0.0 | Excel file handling |
+| joblib | ≥1.0.0 | Parallel processing utilities |
+
+### Project Structure
+
+```
+project_root/
+├── system_optimizer.py          # Main executable script
+├── data/                         # Input data directory (required)
+│   ├── Prezzo_Vendita.xlsx      # Electricity selling prices (required)
+│   ├── Prezzo_Acquisto.xlsx     # Electricity purchase prices (required)
+│   ├── PV_formattato.csv        # PV production data (optional)
+│   └── Consumo.xlsx             # Load consumption data (optional)
+├── results/                      # Output directory (auto-created)
+│   ├── risultati_*.xlsx         # Simulation results
+│   └── risultati_*.json         # Complete data export
+└── visualization/                # Plots directory (if enabled)
+    ├── overview_*.png
+    ├── pod_tracking_*.png
+    └── dettaglio_mensile_pv/
+```
+
+---
+
+## Command Line Interface
+
+### Basic Syntax
+
+```bash
+python system_optimizer.py --price-sell <file> --price-buy <file> [OPTIONS]
+```
+
+### Minimal Working Example
+
+```bash
+python system_optimizer.py \
   --price-sell data/Prezzo_Vendita.xlsx \
   --price-buy data/Prezzo_Acquisto.xlsx
 ```
 
-### Esempio Completo (PV + Carico + Grafici)
+### Complete System Example
 
 ```bash
-python bess_cli.py \
+python system_optimizer.py \
   --price-sell data/Prezzo_Vendita.xlsx \
   --price-buy data/Prezzo_Acquisto.xlsx \
   --pv-file data/PV_formattato.csv \
   --pv-enabled \
   --load-file data/Consumo.xlsx \
   --load-enabled \
-  --save-plots \
-  --output-dir results
-```
-
-### Esempio Batteria Grafene Custom
-
-```bash
-python bess_cli.py \
-  --price-sell data/Prezzo_Vendita.xlsx \
-  --price-buy data/Prezzo_Acquisto.xlsx \
   --battery-tech GRAFENE \
   --battery-capacity 2.0 \
-  --battery-power 2.0 \
-  --pod-limit 2.5 \
-  --graphene-soc-min 0.0 \
-  --graphene-soc-max 1.0
+  --battery-power 1.5 \
+  --pod-limit 2.0 \
+  --n-particles 120 \
+  --n-iterations 300 \
+  --save-plots \
+  --output-dir results_production
 ```
 
 ---
 
-## Struttura Directory 
+## Parameter Reference
 
-```
-progetto/
-├── bess_cli.py                    # Script principale
-├── data/                          # ✅ CARTELLA OBBLIGATORIA
-│   ├── Prezzo_Vendita.xlsx       # ✅ OBBLIGATORIO
-│   ├── Prezzo_Acquisto.xlsx      # ✅ OBBLIGATORIO
-│   ├── PV_formattato.csv         # ⚠️  Se --pv-enabled
-│   └── Consumo.xlsx              # ⚠️  Se --load-enabled
-├── results/                       # Creata automaticamente
-└── visualization/                 # Se --save-plots
-```
+### Required Parameters
 
----
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `--price-sell` | string | Path to electricity selling prices file (.xlsx) |
+| `--price-buy` | string | Path to electricity purchase prices file (.xlsx) |
 
-## Parametri Command Line
+### Battery Configuration
 
-### **FILE PATHS (Obbligatori)**
-
-| Parametro | Tipo | Descrizione | Esempio |
-|-----------|------|-------------|---------|
-| `--price-sell` | **REQUIRED** | File prezzi vendita (.xlsx) | `data/vendita.xlsx` |
-| `--price-buy` | **REQUIRED** | File prezzi acquisto (.xlsx) | `data/acquisto.xlsx` |
-
-**⚠IMPORTANTE:** Questi due parametri sono SEMPRE obbligatori!
-
----
-
-### **FILE PATHS (Opzionali)**
-
-| Parametro | Tipo | Default | Descrizione |
-|-----------|------|---------|-------------|
-| `--pv-file` | string | `None` | File produzione PV (.csv) |
-| `--load-file` | string | `None` | File carico utente (.xlsx) |
-
----
-
-###  **POINT OF DELIVERY (POD)**
-
-| Parametro | Tipo | Default | Range | Descrizione |
+| Parameter | Type | Default | Range | Description |
 |-----------|------|---------|-------|-------------|
-| `--pod-limit` | float | `1.5` | > 0 | Potenza massima scambio rete [MW] |
+| `--battery-tech` | choice | LITIO-IONE | LITIO-IONE, GRAFENE | Battery technology |
+| `--battery-capacity` | float | 1.0 | >0 | Battery capacity (MWh) |
+| `--battery-power` | float | 1.0 | >0 | Maximum power (MW) |
+| `--battery-c-rate` | float | 1.0 | >0 | Maximum C-rate |
 
-**Valori Consigliati:**
-- `0.8` → Connessione domestica
-- `1.0` → Pari a potenza batteria
-- `1.5` → Senza limitazioni (default)
-- `>2.0` → Installazioni industriali
+### Custom Efficiency Parameters
 
----
-
-### **PARAMETRI BATTERIA**
-
-| Parametro | Tipo | Default | Range | Descrizione |
+| Parameter | Type | Default | Range | Description |
 |-----------|------|---------|-------|-------------|
-| `--battery-tech` | choice | `LITIO-IONE` | `LITIO-IONE`, `GRAFENE` | Tecnologia batteria |
-| `--battery-capacity` | float | `1.0` | > 0 | Capacità batteria [MWh] |
-| `--battery-power` | float | `1.0` | > 0 | Potenza massima [MW] |
-| `--battery-c-rate` | float | `1.0` | > 0 | C-rate massimo |
+| `--custom-efficiency` | flag | False | - | Enable custom efficiency mode |
+| `--charge-efficiency` | float | None | 0-1 | Charging efficiency |
+| `--discharge-efficiency` | float | None | 0-1 | Discharging efficiency |
+| `--roundtrip-efficiency` | float | None | 0-1 | Round-trip efficiency |
 
-**Esempio:**
-```bash
---battery-tech GRAFENE --battery-capacity 2.0 --battery-power 1.5
-```
+**Note:** With `--custom-efficiency`, provide at least `--roundtrip-efficiency` OR both `--charge-efficiency` and `--discharge-efficiency`.
 
----
+### SOC Limits
 
-### **SOC LIMITS**
-
-#### Litio-Ione
-
-| Parametro | Default | Range | Descrizione |
+#### Lithium-Ion
+| Parameter | Default | Range | Description |
 |-----------|---------|-------|-------------|
-| `--lithium-soc-min` | `0.1` | 0.0 - 1.0 | SOC minimo (10%) |
-| `--lithium-soc-max` | `0.9` | 0.0 - 1.0 | SOC massimo (90%) |
+| `--lithium-soc-min` | 0.1 | 0.0-1.0 | Minimum state of charge (10%) |
+| `--lithium-soc-max` | 0.9 | 0.0-1.0 | Maximum state of charge (90%) |
 
-#### Grafene
-
-| Parametro | Default | Range | Descrizione |
+#### Graphene
+| Parameter | Default | Range | Description |
 |-----------|---------|-------|-------------|
-| `--graphene-soc-min` | `0.0` | 0.0 - 1.0 | SOC minimo (0%) |
-| `--graphene-soc-max` | `1.0` | 0.0 - 1.0 | SOC massimo (100%) |
+| `--graphene-soc-min` | 0.0 | 0.0-1.0 | Minimum state of charge (0%) |
+| `--graphene-soc-max` | 1.0 | 0.0-1.0 | Maximum state of charge (100%) |
 
-** VALIDAZIONE:** `soc_min < soc_max` verificato automaticamente
+### Point of Delivery
 
----
-
-### **FOTOVOLTAICO**
-
-| Parametro | Tipo | Default | Descrizione |
-|-----------|------|---------|-------------|
-| `--pv-enabled` | flag | `False` | Abilita sistema fotovoltaico |
-| `--pv-nominal-power` | float | `1.0` | Potenza nominale [kWp] |
-
-** IMPORTANTE:** Non modificare `--pv-nominal-power` per evitare sbilanciamenti!
-
-**Esempio:**
-```bash
---pv-file data/pv.csv --pv-enabled
-```
-
----
-
-### **CARICO UTENTE**
-
-| Parametro | Tipo | Default | Descrizione |
-|-----------|------|---------|-------------|
-| `--load-enabled` | flag | `False` | Abilita carico utente |
-
-**Esempio:**
-```bash
---load-file data/load.xlsx --load-enabled
-```
-
----
-
-### **PSO OPTIMIZATION**
-
-| Parametro | Tipo | Default | Range | Descrizione |
+| Parameter | Type | Default | Range | Description |
 |-----------|------|---------|-------|-------------|
-| `--n-particles` | int | `50` | > 0 | Numero particelle PSO |
-| `--n-iterations` | int | `100` | > 0 | Numero iterazioni PSO |
+| `--pod-limit` | float | 1.5 | >0 | Maximum grid exchange power (MW) |
 
-** Bilanciamento Velocità vs Qualità:**
+**Recommended Values:**
+- 0.8 MW: Residential connection
+- 1.0 MW: Match battery power rating
+- 1.5 MW: Default (minimal constraints)
+- 2.0+ MW: Industrial installations
 
-| Config | Particles | Iterations | Tempo | Qualità |
-|--------|-----------|------------|-------|---------|
-| **Veloce** | 30 | 50 | ~2 min | Buona |
-| **Bilanciata** | 50 | 100 | ~5 min | Ottima |
-| **Accurata** | 120 | 300 | ~20 min | Eccellente |
+### Photovoltaic System
 
-**Esempio veloce:**
-```bash
---n-particles 30 --n-iterations 50
-```
-
-**Esempio accurato:**
-```bash
---n-particles 120 --n-iterations 300
-```
-
----
-
-### **PARALLELIZZAZIONE**
-
-| Parametro | Tipo | Default | Descrizione |
+| Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
-| `--no-parallel` | flag | `False` | Disabilita parallelizzazione |
-| `--n-cores` | int | `-2` | Numero cores (-1=tutti-1, -2=tutti, N=specifico) |
+| `--pv-enabled` | flag | False | Enable photovoltaic system |
+| `--pv-file` | string | None | Path to PV production file (.csv) |
+| `--pv-nominal-power` | float | 1.0 | Nominal PV power (kWp) |
 
-**Esempi:**
-```bash
---n-cores -2              # Usa tutti i core (massima velocità)
---n-cores -1              # Usa tutti i core meno uno
---n-cores 4               # Usa esattamente 4 core
---no-parallel             # Esecuzione sequenziale (debug)
-```
+**Warning:** Modifying `--pv-nominal-power` may cause data inconsistencies. Use default value.
 
-** TIP:** Usa `-2` per massima velocità, usa `--no-parallel` solo per debug
+### Load Management
 
----
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `--load-enabled` | flag | False | Enable load management |
+| `--load-file` | string | None | Path to load consumption file (.xlsx) |
 
-### **MACSE (Servizi Ancillari)**
+### PSO Optimization
 
-| Parametro | Tipo | Default | Range | Descrizione |
+| Parameter | Type | Default | Range | Description |
 |-----------|------|---------|-------|-------------|
-| `--macse-enabled` | flag | `False` | - | Abilita servizi MACSE |
-| `--macse-capacity` | float | `1.0` | > 0, < battery_capacity | Capacità riservata [MWh] |
-| `--macse-contract-years` | int | `1` | > 0 | Anni contratto |
-| `--macse-price-per-mw-year` | float | `50000` | > 0 | Prezzo [€/MW/anno] |
+| `--n-particles` | int | 50 | >0 | Number of PSO particles |
+| `--n-iterations` | int | 100 | >0 | Number of PSO iterations |
 
-** VALIDAZIONE:** `macse_capacity ≤ battery_capacity` verificato automaticamente
+**Performance vs. Quality Trade-offs:**
 
-**Esempio:**
-```bash
---macse-enabled --macse-capacity 0.5 --macse-contract-years 2
-```
+| Configuration | Particles | Iterations | Time                 | Quality |
+|---------------|-----------|------------|----------------------|---------|
+| Fast | 30 | 50 | very short (minutes) | Good |
+| Balanced | 50 | 100 | short (30 min)       | Excellent |
+| Accurate | 120 | 300 | long (30min >)       | Maximum |
 
----
+### Parallelization
 
-### 📤 **OUTPUT**
-
-| Parametro | Tipo | Default | Descrizione |
+| Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
-| `--save-plots` | flag | `False` | Salva grafici visualizzazione |
-| `--output-dir` | string | `results` | Directory output risultati |
+| `--no-parallel` | flag | False | Disable parallelization (debug mode) |
+| `--n-cores` | int | -2 | Number of CPU cores (-1: all-1, -2: all, N: specific) |
 
-**Esempio:**
-```bash
---save-plots --output-dir my_results
-```
+### MACSE Integration
+
+| Parameter | Type | Default | Range | Description |
+|-----------|------|---------|-------|-------------|
+| `--macse-enabled` | flag | False | - | Enable MACSE ancillary services |
+| `--macse-capacity` | float | 1.0 | >0, ≤battery_capacity | Reserved capacity (MWh) |
+| `--macse-contract-years` | int | 1 | >0 | Contract duration (years) |
+| `--macse-price-per-mw-year` | float | 50000 | >0 | Annual price (EUR/MW/year) |
+
+### Output Configuration
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `--save-plots` | flag | False | Generate visualization plots |
+| `--output-dir` | string | results | Output directory path |
+| `--output-filename` | string | None | Custom output filename (without extension) |
 
 ---
 
-## Esempi Completi
+## Input Data Formats
 
-### Scenario 1: Solo Arbitraggio (Senza PV/Carico)
+### Electricity Prices (Excel)
+
+**Files:** `Prezzo_Vendita.xlsx`, `Prezzo_Acquisto.xlsx`
+
+**Required Format:**
+| Data | €/MWh |
+|------|-------|
+| 01/01/2024 00:00 | 85.34 |
+| 01/01/2024 01:00 | 78.21 |
+| ... | ... |
+
+**Requirements:**
+- Column header: `€/MWh` (mandatory)
+- 8760 rows (one year, hourly resolution)
+- Numeric values or text with comma decimal separator
+- Date column optional (for reference only)
+
+### PV Production (CSV)
+
+**File:** `PV_formattato.csv`
+
+**Required Format:**
+```csv
+Data;P
+01/01/2024 00:00;0.0
+01/01/2024 01:00;0.0
+01/01/2024 08:00;150.5
+01/01/2024 12:00;890.2
+...
+```
+
+**Requirements:**
+- Separator: semicolon (`;`)
+- Column header: `P` (power in kW)
+- 8760 rows
+- Date column format: DD/MM/YYYY HH:MM
+
+### Load Consumption (Excel)
+
+**File:** `Consumo.xlsx`
+
+**Required Format:**
+| Data | value |
+|------|-------|
+| 01/01/2024 00:00 | 450.3 |
+| 01/01/2024 01:00 | 380.1 |
+| ... | ... |
+
+**Requirements:**
+- Column header: `value` (or `load`, `Load`, `power`, `Power`)
+- Power in kW
+- 8760 rows
+- First sheet of Excel file used by default
+
+---
+
+## Usage Scenarios
+
+### Scenario 1: Pure Arbitrage (No PV/Load)
+
+**Use Case:** Evaluate battery profitability through energy arbitrage alone.
 
 ```bash
-python bess_cli.py \
+python system_optimizer.py \
   --price-sell data/Prezzo_Vendita.xlsx \
   --price-buy data/Prezzo_Acquisto.xlsx \
   --battery-tech LITIO-IONE \
@@ -270,15 +327,18 @@ python bess_cli.py \
   --pod-limit 1.5
 ```
 
-**File Necessari:** Solo prezzi  
-**Tempo Esecuzione:** ~5 minuti  
+**Required Files:** Price files only  
+**Execution Time:** Approximately 5 minutes  
+**Output:** Excel + JSON results
 
 ---
 
-### Scenario 2: Sistema Completo (PV + Batteria + Carico)
+### Scenario 2: Complete System (PV + Battery + Load)
+
+**Use Case:** Full residential or commercial energy system optimization.
 
 ```bash
-python bess_cli.py \
+python system_optimizer.py \
   --price-sell data/Prezzo_Vendita.xlsx \
   --price-buy data/Prezzo_Acquisto.xlsx \
   --pv-file data/PV_formattato.csv \
@@ -288,37 +348,43 @@ python bess_cli.py \
   --battery-tech GRAFENE \
   --battery-capacity 1.0 \
   --battery-power 1.0 \
-  --pod-limit 0.8 \
+  --pod-limit 1.5 \
   --save-plots \
-  --output-dir results_completo
+  --output-dir results_complete
 ```
 
-**File Necessari:** Tutti e 4  
-**Tempo Esecuzione:** ~8 minuti  
-**Output:** Excel + JSON + Grafici
+**Required Files:** All four data files  
+**Execution Time:** Approximately 8 minutes  
+**Output:** Excel + JSON + Visualizations
 
 ---
 
-### Scenario 3: Ottimizzazione Veloce (Test)
+### Scenario 3: Custom Efficiency Battery
+
+**Use Case:** Evaluate system with specific battery efficiency characteristics.
 
 ```bash
-python bess_cli.py \
+python system_optimizer.py \
   --price-sell data/Prezzo_Vendita.xlsx \
   --price-buy data/Prezzo_Acquisto.xlsx \
-  --n-particles 30 \
-  --n-iterations 50 \
-  --output-dir test_rapido
+  --battery-tech LITIO-IONE \
+  --custom-efficiency \
+  --charge-efficiency 0.96 \
+  --discharge-efficiency 0.94 \
+  --battery-capacity 2.0 \
+  --battery-power 1.5
 ```
 
-**Tempo Esecuzione:** ~2 minuti  
-**Uso:** Test rapidi, debug  
+**Use Case:** Testing alternative battery technologies or accounting for degraded efficiency.
 
 ---
 
-### Scenario 4: Ottimizzazione Massima (Produzione)
+### Scenario 4: Maximum Accuracy Production Run
+
+**Use Case:** Final results for reports, publications, or decision-making.
 
 ```bash
-python bess_cli.py \
+python system_optimizer.py \
   --price-sell data/Prezzo_Vendita.xlsx \
   --price-buy data/Prezzo_Acquisto.xlsx \
   --pv-file data/PV_formattato.csv \
@@ -333,18 +399,20 @@ python bess_cli.py \
   --n-iterations 300 \
   --n-cores -2 \
   --save-plots \
-  --output-dir production_run
+  --output-dir production_results
 ```
 
-**Tempo Esecuzione:** ~20 minuti  
-**Uso:** Risultati finali, report  
+**Execution Time:** Approximately 20 minutes  
+**Quality:** Maximum accuracy and robustness
 
 ---
 
-### Scenario 5: Con MACSE
+### Scenario 5: MACSE Participation
+
+**Use Case:** Battery providing ancillary services to grid operator.
 
 ```bash
-python bess_cli.py \
+python system_optimizer.py \
   --price-sell data/Prezzo_Vendita.xlsx \
   --price-buy data/Prezzo_Acquisto.xlsx \
   --battery-capacity 2.0 \
@@ -354,14 +422,16 @@ python bess_cli.py \
   --macse-price-per-mw-year 60000
 ```
 
-**Nota:** 0.5 MWh riservati MACSE, 1.5 MWh per trading
+**Note:** 0.5 MWh reserved for MACSE, 1.5 MWh available for trading.
 
 ---
 
-### Scenario 6: POD Limitato (Connessione Debole)
+### Scenario 6: Constrained POD Connection
+
+**Use Case:** Limited grid connection capacity (e.g., rural area, legacy infrastructure).
 
 ```bash
-python bess_cli.py \
+python system_optimizer.py \
   --price-sell data/Prezzo_Vendita.xlsx \
   --price-buy data/Prezzo_Acquisto.xlsx \
   --pv-file data/PV_formattato.csv \
@@ -373,507 +443,233 @@ python bess_cli.py \
   --save-plots
 ```
 
-** Attenzione:** POD < potenza batteria → possibili limitazioni
+**Expected Outcome:** POD violations tracked; system optimizes within constraint.
 
 ---
 
-## Help Integrato
+### Scenario 7: Fast Testing
 
-### Visualizza Help Completo
+**Use Case:** Rapid validation of configuration or data integrity.
 
 ```bash
-python bess_cli.py --help
+python system_optimizer.py \
+  --price-sell data/Prezzo_Vendita.xlsx \
+  --price-buy data/Prezzo_Acquisto.xlsx \
+  --n-particles 30 \
+  --n-iterations 50 \
+  --output-dir test_run
 ```
 
-**Output:**
-```
-usage: bess_cli.py [-h] --price-sell PRICE_SELL --price-buy PRICE_BUY 
-                   [--pv-file PV_FILE] [--load-file LOAD_FILE]
-                   [--pod-limit POD_LIMIT]
-                   [--battery-tech {LITIO-IONE,GRAFENE}]
-                   [--battery-capacity BATTERY_CAPACITY]
-                   ...
-
-BESS Optimization with PSO - Command Line Interface
-
-optional arguments:
-  -h, --help            show this help message and exit
-
-File Paths (Obbligatori):
-  --price-sell PRICE_SELL
-                        Path assoluto file prezzi vendita (.xlsx)
-  --price-buy PRICE_BUY
-                        Path assoluto file prezzi acquisto (.xlsx)
-
-File Paths (Opzionali):
-  --pv-file PV_FILE     Path assoluto file produzione PV (.csv)
-  --load-file LOAD_FILE
-                        Path assoluto file carico (.xlsx)
-
-...
-
-Esempi:
-  # Simulazione base con batteria litio-ione
-  python script.py --price-sell data/vendita.xlsx --price-buy data/acquisto.xlsx
-
-  # Con PV e carico
-  python script.py --price-sell data/vendita.xlsx --price-buy data/acquisto.xlsx \
-                   --pv-file data/pv.csv --pv-enabled \
-                   --load-file data/load.xlsx --load-enabled
-```
+**Execution Time:** Approximately 2 minutes  
+**Purpose:** Configuration validation, debugging
 
 ---
 
-## Output Generati
+## Output Files
 
-### File Excel
+### Excel Results
 
-**Percorso:** `{output-dir}/risultati_{tecnologia}_cli.xlsx`
+**File:** `risultati_*.xlsx`
 
-**Colonne Principali:**
-- `Data`, `€/MWh`, `Prezzo_Acquisto_€/MWh`
-- `Azione_Trading_MW` → Azione batteria trading
-- `Azione_Alpha_PV_Load` → Frazione PV al carico
-- `Azione_P_Batt_Load_MW` → Potenza batteria per carico
-- `SOC`, `SOH_%`, `Profitto_Euro`
-- `PV_Production_MWh`, `PV_to_Battery_MWh`, `PV_to_Grid_MWh`, `PV_to_Load_MWh`
-- `Load_Demand_MWh`, `Load_from_PV_MWh`, `Load_from_Battery_MWh`, `Load_from_Grid_MWh`
-- `Grid_Withdrawal_MW`, `Grid_Injection_MW`, `POD_Violation`
+**Contents:**
+- Hourly simulation data (8760 rows)
+- Battery state variables (SOC, SOH, capacity)
+- Economic metrics (cumulative profit, hourly transactions)
+- PV allocation (to battery, grid, load)
+- Load service sources (PV, battery, grid)
+- Grid exchange data (withdrawal, injection)
+- POD violation flags
 
----
+### JSON Results
 
-###  File JSON
+**File:** `risultati_*.json`
 
-**Percorso:** `{output-dir}/simulation_results_{tecnologia}_v270_autonomous.json`
-
-**Sezioni:**
+**Structure:**
 ```json
 {
-  "simulation_info": { ... },
-  "battery_parameters": { ... },
-  "battery_state": { ... },
-  "trading_operations": { ... },
-  "photovoltaic_system": { ... },
-  "load_profile": {
-    "autonomous_decisions": {
-      "battery_served_load_percent": ...,
-      "grid_served_load_percent": ...
-    }
+  "metadata": {
+    "version": "3.8.0",
+    "technology": "...",
+    "timestamp": "..."
   },
-  "point_of_delivery": {
-    "pod_power_mw": ...,
-    "total_violations": ...,
-    "pv_curtailed_mwh": ...,
-    "load_unserved_mwh": ...
-  },
-  "baseline_comparison": {
-    "scenario_without_battery": { ... },
-    "scenario_with_battery": { ... },
-    "battery_benefits": { ... }
-  }
+  "battery_info": {...},
+  "hourly_data": [...]
 }
 ```
 
----
+**Contents:**
+- Complete simulation metadata
+- Battery specifications and final state
+- Hour-by-hour data (equivalent to Excel)
+- Programmatic access to all results
 
-### Grafici (se `--save-plots`)
+### Visualization Outputs
 
-**Cartella:** `visualization/`
+**Directory:** `visualization/`
 
-**Grafici Base:**
-- `overview_{tecnologia}.png` → Overview generale (SOC, profitto, azioni, SOH)
-- `pod_tracking_{tecnologia}.png` → Monitoraggio POD violations
-- `economic_analysis_{tecnologia}.png` → Analisi economica dettagliata
-
-**Grafici PV (se `--pv-enabled`):**
-- `pv_impact_comparison_{tecnologia}.png`
-- `pv_impact_summary_{tecnologia}.png`
-- `pv_analysis_{tecnologia}.png`
-- `dettaglio_mensile_pv/01_Gennaio_dettaglio_pv_{tecnologia}.png` (x12)
-
-**Grafici Carico (se `--load-enabled`):**
-- `load_analysis_{tecnologia}.png`
+**Generated Files (if `--save-plots` enabled):**
+- `overview_*.png`: System performance overview (4 subplots)
+- `pod_tracking_*.png`: POD compliance monitoring
+- `economic_analysis_*.png`: Cost/revenue breakdown
+- `pv_impact_*.png`: PV system contribution analysis
+- `load_analysis_*.png`: Load service statistics
+- `dettaglio_mensile_pv/`: Monthly detailed PV analysis
 
 ---
 
-## Output Console
+## Result Interpretation
 
-### Esempio Output Durante Esecuzione
+### Economic Viability
 
-```
-================================================================================
-BESS OPTIMIZATION v3.8 - COMMAND LINE MODE
-================================================================================
-
-CONFIGURAZIONE:
-  • Prezzi vendita:         data/Prezzo_Vendita.xlsx
-  • Prezzi acquisto:        data/Prezzo_Acquisto.xlsx
-  • POD Limit:              1.5 MW
-  • Tecnologia batteria:    GRAFENE
-  • Capacità:               1.0 MWh
-  • Potenza:                1.0 MW
-  • PV abilitato:           SÌ (1.0 kWp)
-  • Carico abilitato:       SÌ
-  • Parallelizzazione:      SÌ
-  • Particelle PSO:         50
-  • Iterazioni PSO:         100
-================================================================================
-
-✓ Prezzi vendita: 8760 righe, media 85.34 €/MWh
-✓ Prezzi acquisto: 8760 righe, media 92.15 €/MWh
-✓ PV: 8760 righe caricato
-✓ Carico: 8760 righe, media 0.45 kW
-
-PSO NUMBA JIT PARALLELIZZATO
-   • Particelle: 50
-   • Iterazioni: 100
-   • Numba parallel: TRUE
-   • Threads Numba: 16
-   • NOTA: Prima iterazione lenta (compilazione JIT), poi 50-200x più veloce
-
-================================================================================
-SIMULAZIONE BESS v3.8 NUMBA - CON VINCOLO POD
-================================================================================
-Progresso: 0% - SOH: 100.00% - SOC: 50.0%
-Progresso: 20% - SOH: 100.00% - SOC: 55.3%
-Progresso: 40% - SOH: 100.00% - SOC: 62.1%
-Progresso: 60% - SOH: 100.00% - SOC: 48.7%
-Progresso: 80% - SOH: 100.00% - SOC: 71.2%
-
-Simulazione completata!
-Profitto finale: 1234.56 €
-
-STATISTICHE POD:
-  • Violazioni POD: 42 ore su 8760
-  • PV curtailed: 1.23 MWh
-  • Carico non servito: 0.05 MWh
-
-✓ Excel salvato: results/risultati_grafene_cli.xlsx
-✓ JSON salvato: results/simulation_results_grafene_v270_autonomous.json
-
-Generazione grafici...
-  ✓ Salvato: visualization/overview_grafene.png
-  ✓ Salvato: visualization/pod_tracking_grafene.png
-  ✓ Salvato: visualization/economic_analysis_grafene.png
-  ...
-
-================================================================================
-✓ SIMULAZIONE COMPLETATA
-================================================================================
-
-RISULTATI FINALI - ANALISI COMPLETA
-================================================================================
-
-STATO FINALE BATTERIA:
-  • Tecnologia:              GRAFENE
-  • SOC finale:              65.3%
-  • SOH finale:              100.00%
-  • % carica da PV:          45.2%
-
-RISULTATI ECONOMICI:
-  • Profitto trading:        1,234.56 €
-  • Profitto TOTALE:         1,234.56 €
-  • Prezzo medio vendita:    85.34 €/MWh
-
-STATISTICHE FOTOVOLTAICO:
-  • Produzione totale:       3.45 MWh
-  • A batteria:              1.23 MWh (35.7%)
-  • A rete:                  1.89 MWh (54.8%)
-  • A carico:                0.33 MWh (9.5%)
-
-STATISTICHE CARICO:
-  • Energia richiesta:       3.94 MWh
-  • Da PV:                   0.33 MWh (8.4%)
-  • Da batteria:             1.45 MWh (36.8%)
-  • Da rete:                 2.16 MWh (54.8%)
-  • Autosufficienza:         45.2%
-
-CONFRONTO CON SCENARIO BASE (senza batteria):
-  • Bilancio senza BESS:     -234.56 €
-  • Bilancio con BESS:       +1,234.56 €
-  • Beneficio batteria:      +1,469.12 € (+626.3%)
-SISTEMA PROFITTEVOLE
-
-TEMPO SIMULAZIONE:
-  • Durata:                  312.5 secondi (5.2 minuti)
-  • Ore simulate:            8760
-  • Velocità:                28.0 ore/secondo
-```
-
----
-
-## estione Errori
-
-### Errore 1: File Non Trovato
-
-```bash
-$ python bess_cli.py --price-sell missing.xlsx --price-buy data/acquisto.xlsx
-```
-
-**Output:**
-```
-usage: bess_cli.py [-h] ...
-bess_cli.py: error: File prezzi vendita non trovato: missing.xlsx
-```
-
-**Soluzione:** Verifica path file e esistenza
-
----
-
-### Errore 2: SOC Invalido
-
-```bash
-$ python bess_cli.py ... --lithium-soc-min 0.9 --lithium-soc-max 0.1
-```
-
-**Output:**
-```
-bess_cli.py: error: SOC litio invalido: min=0.9, max=0.1
-```
-
-**Soluzione:** `soc_min < soc_max`
-
----
-
-### Errore 3: MACSE Capacity Troppo Grande
-
-```bash
-$ python bess_cli.py ... --battery-capacity 1.0 --macse-capacity 1.5
-```
-
-**Output:**
-```
-bess_cli.py: error: Capacità MACSE (1.5) > capacità batteria (1.0)
-```
-
-**Soluzione:** Riduci `--macse-capacity` o aumenta `--battery-capacity`
-
----
-
-### Errore 4: File PV Abilitato ma Non Fornito
-
-```bash
-$ python bess_cli.py ... --pv-enabled
-```
-
-**Output:**
-```
-Errore caricamento PV: [Errno 2] No such file or directory
-```
-
-**Soluzione:** Aggiungi `--pv-file data/pv.csv`
-
----
-
-## Ottimizzazione Performance
-
-### Esecuzione Veloce
-
-```bash
-python bess_cli.py \
-  --price-sell data/vendita.xlsx \
-  --price-buy data/acquisto.xlsx \
-  --n-particles 30 \
-  --n-iterations 50 \
-  --n-cores -2
-```
-
-**Tempo:** ~2 minuti  
-**Uso:** Test rapidi
-
----
-
-### Esecuzione Bilanciata
-
-```bash
-python bess_cli.py \
-  --price-sell data/vendita.xlsx \
-  --price-buy data/acquisto.xlsx \
-  --n-particles 50 \
-  --n-iterations 100 \
-  --n-cores -2
-```
-
-**Tempo:** ~5 minuti (default)  
-**Uso:** Uso quotidiano
-
----
-
-### Esecuzione Accurata
-
-```bash
-python bess_cli.py \
-  --price-sell data/vendita.xlsx \
-  --price-buy data/acquisto.xlsx \
-  --pv-file data/pv.csv --pv-enabled \
-  --load-file data/load.xlsx --load-enabled \
-  --n-particles 120 \
-  --n-iterations 300 \
-  --n-cores -2 \
-  --save-plots
-```
-
-**Tempo:** ~20 minuti  
-**Uso:** Risultati finali, report
-
----
-
-## Interpretazione Risultati
-
-### Sistema Profittevole
-
-**Indicatori:**
-- `Beneficio batteria > 0`
-- `Autosufficienza aumentata`
-- `POD violations < 5%`
-
-**Esempio Output:**
+**Profitable System:**
 ```
 CONFRONTO CON SCENARIO BASE:
-  • Beneficio batteria:      +1,469.12 € (+626.3%)
+  • Bilancio senza BESS:     -2,900.78 €
+  • Bilancio con BESS:       -1,431.66 €
+  • Beneficio batteria:      +1,469.12 € (+50.7%)
   SISTEMA PROFITTEVOLE
 ```
 
----
+**Indicators:**
+- Positive battery benefit
+- Reduced grid dependency
+- POD violations <5%
 
-### Sistema Non Profittevole
-
-**Indicatori:**
-- `Beneficio batteria < 0`
-- `Spread prezzi troppo basso`
-- `POD violations > 20%`
-
-**Esempio Output:**
+**Non-Profitable System:**
 ```
 CONFRONTO CON SCENARIO BASE:
-  • Beneficio batteria:      -234.56 € (-15.2%)
+  • Bilancio senza BESS:     -1,500.00 €
+  • Bilancio con BESS:       -1,734.56 €
+  • Beneficio batteria:      -234.56 € (-15.6%)
   SISTEMA NON PROFITTEVOLE
 ```
 
-**Azioni Correttive:**
-1. Aumenta `--battery-capacity`
-2. Aumenta `--pod-limit`
-3. Verifica spread prezzi
-4. Abilita PV/Carico
+**Corrective Actions:**
+1. Increase battery capacity
+2. Increase POD limit
+3. Enable PV/load integration
+4. Verify price spread adequacy
 
 ---
 
-### POD Violations Eccessive
+### POD Violation Analysis
 
-**Sintomo:**
+**Acceptable Performance:**
 ```
-STATISTICHE POD:
-  • Violazioni POD: 1842 ore su 8760 (21.0%)
-    ATTENZIONE: Considera aumentare POD limit!
+STATISTICHE POD (Limite: 1.5 MW):
+  • Violazioni totali:       42 ore (0.5%)
+  • Max prelievo:            1.523 MW
+  • Max immissione:          1.487 MW
+  • PV curtailed:            0.12 MWh
 ```
 
-**Soluzione:**
-```bash
---pod-limit 2.0  # Aumenta da 1.5 a 2.0
+**Problematic Performance:**
 ```
+STATISTICHE POD (Limite: 1.5 MW):
+  • Violazioni totali:       1,842 ore (21.0%)
+  • Max prelievo:            2.145 MW
+  • Max immissione:          1.987 MW
+  • PV curtailed:            15.67 MWh
+  • Carico non servito:      2.34 MWh
+```
+
+**Solution:** Increase `--pod-limit` or `--battery-capacity`
 
 ---
 
-### PV Curtailed Alto
+### PV Integration Assessment
 
-**Sintomo:**
+**Optimal Utilization:**
 ```
 STATISTICHE FOTOVOLTAICO:
-  • Curtailed (POD):         2.45 MWh (15.2%) ⚠️
+  • Produzione totale:       1,108.00 MWh
+  • A batteria:              325.40 MWh (29.4%)
+  • A rete (vendita):        445.20 MWh (40.2%)
+  • A carico:                335.80 MWh (30.3%)
+  • Curtailed:               1.60 MWh (0.1%)
 ```
 
-**Soluzioni:**
-1. Aumenta `--pod-limit`
-2. Aumenta `--battery-capacity`
-3. Abilita carico utente con `--load-enabled`
-
----
-
-### Carico Non Servito
-
-**Sintomo:**
+**Suboptimal Utilization (excessive curtailment):**
 ```
-STATISTICHE CARICO:
-  • Carico non servito:      0.85 MWh ⚠️
+STATISTICHE FOTOVOLTAICO:
+  • Produzione totale:       1,108.00 MWh
+  • A batteria:              120.00 MWh (10.8%)
+  • A rete (vendita):        850.00 MWh (76.7%)
+  • A carico:                50.00 MWh (4.5%)
+  • Curtailed:               88.00 MWh (7.9%)
 ```
 
-**Soluzioni (CRITICHE):**
-1. **Aumenta `--pod-limit` immediatamente**
-2. Aumenta `--battery-power`
-3. Verifica dati carico
+**Solution:** Increase battery capacity or POD limit
 
 ---
 
-## Formati File Input
+## Error Handling
 
-### Prezzi Energia (Excel)
+### Common Errors and Solutions
 
-**File:** `Prezzo_Vendita.xlsx`, `Prezzo_Acquisto.xlsx`
-
-**Formato:**
-| Data | €/MWh |
-|------|-------|
-| 01/01/2024 00:00 | 85.34 |
-| 01/01/2024 01:00 | 78.21 |
-| ... | ... |
-
-**Requisiti:**
-- Colonna `€/MWh` obbligatoria
-- Formato numerico o testo con virgola
-- 8760 righe (anno completo)
-
----
-
-###  Produzione PV (CSV)
-
-**File:** `PV_formattato.csv`
-
-**Formato:**
-```csv
-Data;P
-01/01/2024 00:00;0.0
-01/01/2024 01:00;0.0
-01/01/2024 08:00;150.5
-01/01/2024 12:00;890.2
-...
+**Error 1: Missing Required Files**
 ```
+bess_cli.py: error: File prezzi vendita non trovato: data/Prezzo_Vendita.xlsx
+```
+**Solution:** Verify file path and filename spelling.
 
-**Requisiti:**
-- Separatore: `;` (punto e virgola)
-- Colonna `P` in kW
-- 8760 righe
+**Error 2: Invalid SOC Range**
+```
+bess_cli.py: error: SOC litio invalido: min=0.9, max=0.1
+```
+**Solution:** Ensure `soc_min < soc_max`.
 
----
+**Error 3: MACSE Capacity Exceeds Battery Capacity**
+```
+bess_cli.py: error: Capacità MACSE (1.5) > capacità batteria (1.0)
+```
+**Solution:** Reduce `--macse-capacity` or increase `--battery-capacity`.
 
-### ⚡ Carico Utente (Excel)
-
-**File:** `Consumo.xlsx`
-
-**Formato:**
-| Data | value |
-|------|-------|
-| 01/01/2024 00:00 | 450.3 |
-| 01/01/2024 01:00 | 380.1 |
-| ... | ... |
-
-**Requisiti:**
-- Colonna `value` (o `load`, `power`) in kW
-- 8760 righe
-- Primo sheet Excel
+**Error 4: Custom Efficiency Without Values**
+```
+bess_cli.py: error: --custom-efficiency richiede almeno un parametro efficienza
+```
+**Solution:** Provide at least one efficiency parameter.
 
 ---
 
-## Script Batch per Automazione
+## Performance Optimization
 
-### Windows (`.bat`)
+### Execution Speed vs. Solution Quality
+
+**Fast Execution (Testing):**
+```bash
+--n-particles 30 --n-iterations 50 --n-cores -2
+```
+Time: ~2 minutes | Quality: Good
+
+**Balanced Execution (Daily Use):**
+```bash
+--n-particles 50 --n-iterations 100 --n-cores -2
+```
+Time: ~5 minutes | Quality: Excellent
+
+**High-Accuracy Execution (Production):**
+```bash
+--n-particles 120 --n-iterations 300 --n-cores -2
+```
+Time: ~20 minutes | Quality: Maximum
+
+---
+
+## Automation Scripts
+
+### Windows Batch Script
+
+**File:** `run_optimization.bat`
 
 ```batch
 @echo off
-REM BESS Optimization - Esecuzione Automatica
+REM BESS Optimization - Automated Execution
 REM Lorenzo Giannuzzo - Politecnico di Torino
 
 echo ========================================
-echo BESS Optimization Automation
+echo BESS Optimization - Starting
 echo ========================================
 
 python system_optimizer.py ^
@@ -893,27 +689,29 @@ python system_optimizer.py ^
 
 echo.
 echo ========================================
-echo Simulazione completata!
+echo Simulation Complete
 echo ========================================
 pause
 ```
 
-**Esecuzione:** Doppio click su file `.bat`
+**Execution:** Double-click the `.bat` file.
 
 ---
 
-### Linux/Mac (`.sh`)
+### Linux/macOS Shell Script
+
+**File:** `run_optimization.sh`
 
 ```bash
 #!/bin/bash
-# BESS Optimization - Esecuzione Automatica
+# BESS Optimization - Automated Execution
 # Lorenzo Giannuzzo - Politecnico di Torino
 
 echo "========================================"
-echo "BESS Optimization Automation"
+echo "BESS Optimization - Starting"
 echo "========================================"
 
-python3 bess_cli.py \
+python3 system_optimizer.py \
   --price-sell data/Prezzo_Vendita.xlsx \
   --price-buy data/Prezzo_Acquisto.xlsx \
   --pv-file data/PV_formattato.csv \
@@ -926,72 +724,248 @@ python3 bess_cli.py \
   --n-particles 50 \
   --n-iterations 100 \
   --save-plots \
-  --output-dir results_$(date +%Y%m%d)
+  --output-dir results_$(date +%Y%m%d_%H%M%S)
 
 echo ""
 echo "========================================"
-echo "Simulazione completata!"
+echo "Simulation Complete"
 echo "========================================"
 ```
 
-**Esecuzione:**
+**Execution:**
 ```bash
-chmod +x run_simulation.sh
-./run_simulation.sh
+chmod +x run_optimization.sh
+./run_optimization.sh
 ```
 
 ---
 
-## 🧪 Testing e Debug
+## Technical Background
 
-### Test Configurazione (Dry Run)
+### Particle Swarm Optimization
+
+PSO is a metaheuristic optimization algorithm inspired by social behavior of bird flocking or fish schooling. The algorithm maintains a population (swarm) of candidate solutions (particles) that move through the search space according to:
+
+1. **Personal best position:** Best solution found by individual particle
+2. **Global best position:** Best solution found by entire swarm
+3. **Velocity update:** Stochastic combination of inertia, cognitive, and social components
+
+**Advantages for BESS optimization:**
+- Handles non-linear, non-convex objective functions
+- Scales well to high-dimensional search spaces (24+ hours × 3 decision variables)
+- Robust to local optima through swarm diversity
+- Computationally efficient with Numba JIT compilation
+
+### Numba JIT Acceleration
+
+Numba translates Python functions to optimized machine code at runtime using LLVM compiler. Key performance benefits:
+
+- **50-200x speedup:** Particle evaluation in compiled C-speed loops
+- **Parallel execution:** Automatic threading across CPU cores
+- **Cache optimization:** Improved memory access patterns
+- **First compilation overhead:** Initial run compiles functions (~10s), subsequent runs immediate
+
+### Explicit Economic Accounting
+
+Version 3.8.0 implements explicit economic accounting to resolve the "invisible reward problem" in previous versions:
+
+**Problem (Previous Versions):**
+- PSO saw explicit revenue from trading: `+discharge × price_sell`
+- PSO saw zero immediate reward from serving load (savings were implicit)
+- Result: Optimizer biased toward trading even when serving load was economically superior
+
+**Solution (Version 3.8.0):**
+- Battery-to-load discharge: `+discharge × price_buy` (explicit savings)
+- Grid-to-load purchase: `-load_from_grid × price_buy` (explicit cost)
+- Net effect: PSO correctly values load service equal to avoided grid purchase
+
+**Mathematical Proof:**
+
+Consider: `price_sell = 50 EUR/MWh`, `price_buy = 200 EUR/MWh`, `load = 10 MWh`
+
+Option A (Trading): 
+```
+Revenue: +1 MWh × 50 = +50 EUR
+Grid load cost: -9 MWh × 200 = -1,800 EUR
+Total: -1,750 EUR
+```
+
+Option B (Serve Load):
+```
+Savings: +1 MWh × 200 = +200 EUR (explicit!)
+Grid load cost: -9 MWh × 200 = -1,800 EUR
+Total: -1,600 EUR (BETTER)
+```
+
+PSO now correctly chooses Option B.
+
+---
+
+## Validation and Testing
+
+### Unit Testing
+
+Run basic validation tests:
 
 ```bash
-python bess_cli.py \
-  --price-sell data/vendita.xlsx \
-  --price-buy data/acquisto.xlsx \
+python system_optimizer.py \
+  --price-sell data/Prezzo_Vendita.xlsx \
+  --price-buy data/Prezzo_Acquisto.xlsx \
   --n-particles 10 \
   --n-iterations 10 \
   --no-parallel
 ```
 
-**Tempo:** <1 minuto  
-**Uso:** Verifica setup
+Expected: Completes in <1 minute with valid output files.
 
----
+### Integration Testing
 
-### Debug Mode
+Test full system with minimal dataset:
 
 ```bash
-python bess_cli.py \
-  --price-sell data/vendita.xlsx \
-  --price-buy data/acquisto.xlsx \
-  --no-parallel \
-  --n-particles 20 \
-  --n-iterations 20
+python system_optimizer.py \
+  --price-sell data/Prezzo_Vendita.xlsx \
+  --price-buy data/Prezzo_Acquisto.xlsx \
+  --pv-file data/PV_formattato.csv \
+  --pv-enabled \
+  --load-file data/Consumo.xlsx \
+  --load-enabled \
+  --n-particles 30 \
+  --n-iterations 50
 ```
 
-**Uso:** Debugging PSO, no parallelizzazione
+Expected: Completes in ~2 minutes with all subsystems operational.
 
 ---
 
-## Supporto
+## Troubleshooting
 
-**Autore:** Lorenzo Giannuzzo  
-**Email:** lorenzo.giannuzzo@polito.it
-**Affiliazione:** Politecnico di Torino - DENERG - Energy Center Lab  
+### Performance Issues
+
+**Problem:** Simulation takes >30 minutes
+
+**Diagnostic Steps:**
+1. Check CPU usage (should be near 100% across all cores)
+2. Verify Numba is installed: `python -c "import numba; print(numba.__version__)"`
+3. Check particle/iteration counts
+
+**Solutions:**
+- Reduce `--n-particles` and `--n-iterations`
+- Ensure `--n-cores -2` (use all CPU cores)
+- Verify no background processes consuming CPU
 
 ---
 
-## Collegamenti Utili
+### Memory Issues
 
-- **Documentazione PSO:** https://en.wikipedia.org/wiki/Particle_swarm_optimization
-- **MACSE (Mercato Servizi Ancillari):** https://www.mercatoelettrico.org/
-- **Numba JIT:** https://numba.pydata.org/
-- **Politecnico Torino DENERG:** http://www.denerg.polito.it/
+**Problem:** Out of memory errors
+
+**Diagnostic:**
+- Large number of particles (>200)
+- Insufficient RAM for dataset size
+
+**Solutions:**
+- Reduce `--n-particles` to 50-100
+- Disable plotting: remove `--save-plots`
+- Close other applications
 
 ---
 
-**Ultima Modifica:** 28 Novembre 2025  
-**Versione Guida:** 2.0 CLI  
-**Compatibilità:** Python 3.8+
+### Numerical Instabilities
+
+**Problem:** NaN values in output or divergent results
+
+**Diagnostic:**
+- Extreme parameter values
+- Invalid input data (NaN, Inf)
+- SOC limit violations
+
+**Solutions:**
+- Validate input data files
+- Use realistic parameter ranges
+- Check SOC limits: `soc_min < soc_max`
+
+---
+
+## References and Resources
+
+### Academic Publications
+
+1. Kennedy, J., & Eberhart, R. (1995). Particle swarm optimization. IEEE International Conference on Neural Networks.
+
+2. Giannuzzo, L. (2025). Advanced PSO-based Optimization for Battery Energy Storage Systems. Politecnico di Torino, DENERG.
+
+### Technical Documentation
+
+- **Numba JIT Compiler:** https://numba.pydata.org/numba-doc/latest/index.html
+- **Particle Swarm Optimization:** https://en.wikipedia.org/wiki/Particle_swarm_optimization
+- **MACSE (Italian ASM):** https://www.mercatoelettrico.org/it/Mercati/MACSE/MACSE.aspx
+
+### Institutional Links
+
+- **Politecnico di Torino:** https://www.polito.it/
+- **DENERG Department:** http://www.denerg.polito.it/
+- **Energy Center Lab:** http://www.energycenter.polito.it/
+
+---
+
+## License
+
+Copyright (c) 2025 Lorenzo Giannuzzo - Politecnico di Torino
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+---
+
+## Contact Information
+
+**Author:** Lorenzo Giannuzzo  
+**Email:** lorenzo.giannuzzo@polito.it  
+**Institution:** Politecnico di Torino  
+**Department:** DENERG (Dipartimento Energia)  
+**Laboratory:** Energy Center Lab  
+
+For technical support, bug reports, or collaboration inquiries, please contact the author via email with subject line: "[BESS v3.8.0] Your Subject"
+
+---
+
+## Version History
+
+**v3.8.0** (December 12, 2025)
+- Explicit economic accounting implementation
+- Pure XOR battery operation logic
+- Enhanced POD compliance tracking
+- Custom efficiency support
+- Comprehensive output improvements
+
+**v3.7.0** (November 25, 2025)
+- Autonomous load decision framework
+- Multi-dimensional PSO (3D action space)
+- PV allocation optimization
+- Rolling horizon improvements
+
+**v3.0.0** (October 2025)
+- Numba JIT parallelization
+- Command-line interface
+- MACSE integration
+- Graphene battery support
+
+**v2.0.0** (September 2025)
+- PSO optimization engine
+- Multi-technology support
+- Basic PV integration
+
+**v1.0.0** (August 2025)
+- Initial release
+- Single-technology optimization
+- Basic arbitrage functionality
+
+---
+
+**Document Version:** 3.0  
+**Last Updated:** December 12, 2025  
+**Maintained By:** Lorenzo Giannuzzo - Politecnico di Torino DENERG

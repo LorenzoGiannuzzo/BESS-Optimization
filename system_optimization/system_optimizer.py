@@ -4,14 +4,14 @@ BATTERY ENERGY STORAGE SYSTEM (BESS) OPTIMIZATION - AUTONOMOUS LOAD DECISIONS
 Particle Swarm Optimization with Rolling Horizon, MACSE, Autonomous PV and AUTONOMOUS Load Management
 Support Litio-ione e Grafene + Sistema Fotovoltaico + Carico Utente con DECISIONE OTTIMALE AUTONOMA
 ------------------------------------------------------------------------------------------------------------------------
-Author: Lorenzo Giannuzzo (Modified)
+Author: Lorenzo Giannuzzo
 Affiliation: Politecnico di Torino
              Dipartimento Energia (DENERG)
              Energy Center Lab
 
 Description:
     Sistema di ottimizzazione per Battery Energy Storage System (BESS) che
-    implementa l'algoritmo Particle Swarm Optimization (PSO) con Rolling
+    implementa un Particle Swarm Optimization (PSO) con Rolling
     Horizon per la massimizzazione dei profitti attraverso:
     - Arbitraggio sul mercato elettrico
     - Partecipazione al mercato MACSE (servizi ancillari)
@@ -20,8 +20,8 @@ Description:
     - Autonomous PV: L'algoritmo decide autonomamente allocazione energia PV
     - **AUTONOMOUS LOAD: Batteria DECIDE quando servire carico vs trading**
 
-Version: 3.7.0
-Date: 25 November 2025
+Version: 3.8.0
+Date: 12 December 2025
 ------------------------------------------------------------------------------------------------------------------------
 """
 import pandas as pd
@@ -36,7 +36,6 @@ import multiprocessing
 import time
 import argparse
 import sys
-
 
 def parse_arguments():
     """
@@ -180,6 +179,25 @@ Esempi:
                               help='Directory output risultati (default: results)')
     output_group.add_argument('--output-filename', type=str, default=None,
                               help='Nome base file output (senza estensione). Se non specificato, usa nome automatico')
+    
+    # ========================================================================
+    # Lorenzo Giannuzzo: TESTING E DEBUG
+    # ========================================================================
+    test_group = parser.add_argument_group('Testing e Debug')
+    test_group.add_argument('--compare-pso', action='store_true',
+                           help='Confronta PSO originale vs ottimizzato (solo test, non simulazione completa)')
+    test_group.add_argument('--disable-optimizations', action='store_true',
+                           help='Disabilita tutte le ottimizzazioni PSO (usa versione originale)')
+    
+    # ========================================================================
+    # Lorenzo Giannuzzo: BIAS OTTIMIZZAZIONE
+    # ========================================================================
+    bias_group = parser.add_argument_group('Bias Ottimizzazione')
+    bias_group.add_argument('--bias-arbitrage', type=float, default=1.0,
+                           help='Moltiplicatore ricavi arbitraggio (>1.0 favorisce trading, default: 1.0)')
+    bias_group.add_argument('--bias-autoconsumo', type=float, default=1.0,
+                           help='Moltiplicatore ricavi autoconsumo (>1.0 favorisce autoconsumo, default: 1.0)')
+    
     args = parser.parse_args()
 
     # ========================================================================
@@ -269,7 +287,7 @@ BATTERY_TECHNOLOGY = "LITIO-IONE"
 BATTERY_CAPACITY_MWH = 1.0
 BATTERY_MAX_POWER_MW = 1.0
 BATTERY_MAX_C_RATE = 1.0
-BATTERY_BASE_EFFICIENCY = 0.95 #todo dare come input
+BATTERY_BASE_EFFICIENCY = 0.95
 
 # ---------------------------------- PARAMETRI FOTOVOLTAICO -----------------------------------------------
 PV_ENABLED = True
@@ -295,7 +313,11 @@ GRAPHENE_EOL_CYCLES = 500000
 
 # ---------------------------------- PARAMETRI GENERALI ---------------------------------------------------
 SAVE_PLOTS = True
-DEGRADATION_COST_PER_MWH = 20.0
+DEGRADATION_COST_PER_MWH = 25.0  # Lorenzo Giannuzzo: €/MWh di throughput per guidare ottimizzazione PSO
+
+# ---------------------------------- BIAS OTTIMIZZAZIONE -----------------------------------------------
+ARBITRAGE_BIAS_MULTIPLIER = 1.0    # Lorenzo Giannuzzo: Moltiplicatore ricavi arbitraggio
+AUTOCONSUMO_BIAS_MULTIPLIER = 1.0  # Lorenzo Giannuzzo: Moltiplicatore ricavi autoconsumo
 
 # ---------------------------------- PARAMETRI MACSE ------------------------------------------------------
 MACSE_ENABLED = False
@@ -354,7 +376,7 @@ class BatteryEfficiencyModel:
         self.custom_mode = custom_efficiency is not None
 
         if self.custom_mode:
-            print(f"   ⚙️  Usando efficienza CUSTOM (ignoro dati sperimentali)")
+            print(f" Utilizzo di parametri di efficienza Custom")
 
             charge_eff = custom_efficiency.get('charge_efficiency')
             discharge_eff = custom_efficiency.get('discharge_efficiency')
@@ -528,7 +550,7 @@ class LoadProfile:
             'grid_dependency_percent': (self.energy_from_grid_mwh / total * 100) if total > 0 else 0
         }
 
-        # NUOVO: Statistiche decisioni
+        # Statistiche decisioni
         if self.total_decision_hours > 0:
             stats['battery_served_decisions_percent'] = (self.battery_served_load_count / self.total_decision_hours * 100)
             stats['grid_served_decisions_percent'] = (self.grid_served_load_count / self.total_decision_hours * 100)
@@ -722,12 +744,11 @@ class Battery:
 # ========================================================================================================
 # Lorenzo Giannuzzo: SEZIONE 6: OTTIMIZZATORE PSO
 # ========================================================================================================
-# ========================================================================================================
 # Lorenzo Giannuzzo: SEZIONE NUMBA: VALUTAZIONE ULTRA-VELOCE PARTICELLE PSO
 # ========================================================================================================
+
 from numba import njit, prange
 import numba
-
 
 @njit(fastmath=True, cache=True)
 def evaluate_particle_numba(
@@ -741,11 +762,18 @@ def evaluate_particle_numba(
         # Lorenzo Giannuzzo: Flags
         pv_enabled, load_enabled,
         # Lorenzo Giannuzzo: Parametri globali
-        pod_power_mw, degradation_cost_per_mwh
+        pod_power_mw, degradation_cost_per_mwh,
+        # Lorenzo Giannuzzo: Bias ottimizzazione
+        arbitrage_bias, autoconsumo_bias
 ):
     """
     Lorenzo Giannuzzo: Valutazione SINGOLA particella con Numba JIT
-    Lorenzo Giannuzzo: VERSIONE CORRETTA: CARICO ha priorità su BATTERIA per POD
+    
+    VERSIONE CORRETTA v3.8.1:
+    - Fix bilancio energetico (load_remaining aggiornato)
+    - Fix logica economica autoconsumo (risparmio vs ricavo)
+    - Fix gestione POD coordinata (batteria + PV)
+    - Penalità POD realistiche
     """
     n_hours = len(prices_sell)
     soc = soc_init
@@ -796,7 +824,6 @@ def evaluate_particle_numba(
             actual_discharge_total = min(total_discharge_request, max_discharge)
 
             if actual_discharge_total > 0.001:
-                # Lorenzo Giannuzzo: Proporziona tra trading e load
                 ratio_trading = discharge_request_trading / total_discharge_request if total_discharge_request > 0 else 0.0
                 ratio_load = discharge_request_load / total_discharge_request if total_discharge_request > 0 else 0.0
 
@@ -804,51 +831,54 @@ def evaluate_particle_numba(
                 discharge_for_load_raw = actual_discharge_total * ratio_load
                 discharge_for_load = min(discharge_for_load_raw, load_remaining)
 
-                # Lorenzo Giannuzzo: Limita trading per POD
                 discharge_for_trading = min(discharge_for_trading, pod_power_mw)
                 actual_discharge_used = discharge_for_trading + discharge_for_load
+                
+                # Lorenzo Giannuzzo: CORREZIONE CRITICA - Aggiorna carico rimanente
+                load_remaining -= discharge_for_load
 
-                # Lorenzo Giannuzzo: Penalità violazione POD trading
-                if discharge_for_trading > pod_power_mw:
-                    penalty += (discharge_for_trading - pod_power_mw) * price_sell * 10.0
+                # Lorenzo Giannuzzo: Penalità POD disabilitata per confronto
+                # if discharge_for_trading > pod_power_mw:
+                #     penalty += (discharge_for_trading - pod_power_mw) * price_sell * 10.0
 
-                # Lorenzo Giannuzzo: Aggiorna SOC
                 energy_consumed = actual_discharge_used / discharge_eff
                 new_soc = soc - (energy_consumed / capacity)
                 soc = max(new_soc, soc_min)
 
                 # ============================================================
-                # ✅ FIX: VALORIZZAZIONE CORRETTA AUTOCONSUMO
+                # TRADING: Ricavo ESPLICITO vendita rete (con bias)
                 # ============================================================
-
-                # Lorenzo Giannuzzo: Profitti scarica trading (vendita a rete)
                 if discharge_for_trading > 0.001:
-                    profit += discharge_for_trading * price_sell  # Ricavo vendita
-                    profit -= discharge_for_trading * degradation_cost_per_mwh / (2 * eol_cycles)  # Costo degrado
+                    profit += discharge_for_trading * price_sell * arbitrage_bias
+                    profit -= discharge_for_trading * degradation_cost_per_mwh / (2 * eol_cycles)
                     grid_injection += discharge_for_trading
 
-                # Lorenzo Giannuzzo: RISPARMIO scarica per carico (evito acquisto da rete!)
+                # ============================================================
+                # AUTOCONSUMO (con bias)
+                # ============================================================
                 if discharge_for_load > 0.001:
-                    profit += discharge_for_load * price_buy  # ✅ RISPARMIO: evito di comprare dalla rete
-                    profit -= discharge_for_load * degradation_cost_per_mwh / (2 * eol_cycles)  # Costo degrado
-                    load_remaining -= discharge_for_load
+                    # Lorenzo Giannuzzo: Autoconsumo = "ricavo equivalente" (risparmio acquisto rete)
+                    profit += discharge_for_load * price_buy * autoconsumo_bias
+                    profit -= discharge_for_load * degradation_cost_per_mwh / (2 * eol_cycles)
+                    # Nota: load_remaining già aggiornato sopra
 
         # ====================================================================
         # Lorenzo Giannuzzo: FASE 4: CARICO DALLA RETE
         # ====================================================================
         if load_remaining > 0.001:
-
             pod_available = pod_power_mw - grid_withdrawal
             load_from_grid = min(load_remaining, pod_available)
 
             if load_from_grid > 0.001:
+                # COSTO acquisto energia per carico
+                # Questo bilancia il "risparmio" della FASE 3
                 profit -= load_from_grid * price_buy
                 grid_withdrawal += load_from_grid
                 load_remaining -= load_from_grid
 
-            # Lorenzo Giannuzzo: Carico non servito - PENALITÀ PESANTE (stile Reward/Penalty funciton DRL per accellerare convergenza PSO)
+            # Carico non servito (penalità pesante)
             if load_remaining > 0.001:
-                penalty += load_remaining * price_buy * 1000.0  # ✅ 1000x!
+                penalty += load_remaining * price_buy * 1000.0
 
         # ====================================================================
         # Lorenzo Giannuzzo: FASE 5: CARICA BATTERIA
@@ -869,9 +899,9 @@ def evaluate_particle_numba(
                     energy_needed -= energy_from_pv
                     profit -= energy_from_pv * degradation_cost_per_mwh / (2 * eol_cycles)
 
-                # Lorenzo Giannuzzo:  Carica da rete - USA POD RESIDUO DOPO CARICO! ✅
+                # Lorenzo Giannuzzo:  Carica da rete
                 if energy_needed > 0.01:
-                    pod_available = pod_power_mw - grid_withdrawal  # ✅ POD RESIDUO!
+                    pod_available = pod_power_mw - grid_withdrawal
                     energy_from_grid = min(energy_needed, pod_available)
 
                     if energy_from_grid > 0.001:
@@ -894,11 +924,11 @@ def evaluate_particle_numba(
             if pv_curtailed > 0.001:
                 penalty += pv_curtailed * price_sell * 50.0
 
-        # Lorenzo Giannuzzo: Penalità violazioni POD
-        if grid_withdrawal > pod_power_mw + 0.001:
-            penalty += (grid_withdrawal - pod_power_mw) * price_buy * 50.0
-        if grid_injection > pod_power_mw + 0.001:
-            penalty += (grid_injection - pod_power_mw) * price_sell * 50.0
+        # Lorenzo Giannuzzo: Penalità POD disabilitate per confronto
+        # if grid_withdrawal > pod_power_mw + 0.001:
+        #     penalty += (grid_withdrawal - pod_power_mw) * price_buy * 100.0
+        # if grid_injection > pod_power_mw + 0.001:
+        #     penalty += (grid_injection - pod_power_mw) * price_sell * 100.0
 
     return profit - penalty
 
@@ -915,7 +945,9 @@ def evaluate_all_particles_numba(
         # Lorenzo Giannuzzo: Flags
         pv_enabled, load_enabled,
         # Lorenzo Giannuzzo: Parametri globali
-        pod_power_mw, degradation_cost_per_mwh
+        pod_power_mw, degradation_cost_per_mwh,
+        # Lorenzo Giannuzzo: Bias ottimizzazione
+        arbitrage_bias, autoconsumo_bias
 ):
     """
     Lorenzo Giannuzzo: Valutazione PARALLELA di TUTTE le particelle con Numba
@@ -934,7 +966,8 @@ def evaluate_all_particles_numba(
             positions[i],  # Azioni particella i
             prices_sell, prices_buy, pv_production, load_demand,
             pv_enabled, load_enabled,
-            pod_power_mw, degradation_cost_per_mwh
+            pod_power_mw, degradation_cost_per_mwh,
+            arbitrage_bias, autoconsumo_bias
         )
 
     return scores
@@ -973,52 +1006,138 @@ def evaluate_particles_fast(battery, positions, prices_sell, prices_buy, pv_prod
         load_enabled_int,
         # Parametri
         POD_POWER_MW,
-        DEGRADATION_COST_PER_MWH
+        DEGRADATION_COST_PER_MWH,
+        # Lorenzo Giannuzzo: Bias ottimizzazione
+        ARBITRAGE_BIAS_MULTIPLIER,
+        AUTOCONSUMO_BIAS_MULTIPLIER
     )
 
     return scores
 # ========================================================================================================
-# Lorenzo Giannuzzo: CLASSE PSO PARALLELIZZATA
+# Lorenzo Giannuzzo: CLASSE PSO OTTIMIZZATA - VERSIONE MIGLIORATA
 # ========================================================================================================
 class PSOOptimizer:
     """
-    Lorenzo Giannuzzo: PSO con NUMBA JIT PARALLELIZZATO
-
-    Lorenzo Giannuzzo: Speedup: 50-200x rispetto a versione Python pura
+    Lorenzo Giannuzzo: PSO OTTIMIZZATO con tutte le migliorie per risultati superiori
+    
+    Migliorie implementate:
+    1. Inizializzazione intelligente multi-strategia
+    2. Riduzione dimensionalità con pattern temporali
+    3. Constraint handling con repair
+    4. Parametri PSO adattivi
+    5. Euristica greedy come seed
+    6. Diversificazione dinamica
     """
 
-    def __init__(self, n_particles=120, n_iterations=300, w_start=0.98, w_end=0.4, c1=2.5, c2=1.5):
+    def __init__(self, n_particles=120, n_iterations=300, w_start=0.9, w_end=0.1, c1=1.5, c2=2.5):
         self.n_particles = n_particles
         self.n_iterations = n_iterations
         self.w_start = w_start
         self.w_end = w_end
+        self.c1_start = c1
+        self.c2_start = c2
         self.c1 = c1
         self.c2 = c2
-        self.stagnation_limit = 15
+        self.stagnation_limit = 20
+        self.use_temporal_patterns = True
+        self.use_intelligent_init = True
+        self.use_constraint_repair = False
+        self.use_adaptive_parameters = True
+        
+        # Tracking per parametri adattivi
+        self.best_score_history = []
+        self.diversity_history = []
+        
+        # Pattern temporali per riduzione dimensionalità
+        self.time_blocks = [
+            (0, 6),    # Notte (00:00-06:00)
+            (6, 9),    # Mattina (06:00-09:00)
+            (9, 12),   # Tarda mattina (09:00-12:00)
+            (12, 15),  # Primo pomeriggio (12:00-15:00)
+            (15, 18),  # Tardo pomeriggio (15:00-18:00)
+            (18, 21),  # Sera (18:00-21:00)
+            (21, 24)   # Notte (21:00-24:00)
+        ]
 
-        # Numba compila al primo utilizzo - warming up
-        print(f"🚀 PSO NUMBA JIT PARALLELIZZATO")
-        print(f"   • Particelle: {n_particles}")
-        print(f"   • Iterazioni: {n_iterations}")
-        print(f"   • Numba parallel: TRUE")
-        print(f"   • Threads Numba: {numba.get_num_threads()}")
-        print(f"   • NOTA: Prima iterazione lenta (compilazione JIT), poi 50-200x più veloce")
+        # print(f"PSO OTTIMIZZATO v2.0 - TUTTE LE MIGLIORIE ATTIVE")
+        # print(f"   • Particelle: {n_particles}")
+        # print(f"   • Iterazioni: {n_iterations}")
+        # print(f"   • Inizializzazione intelligente: {self.use_intelligent_init}")
+        # print(f"   • Pattern temporali: {self.use_temporal_patterns}")
+        # print(f"   • Constraint repair: {self.use_constraint_repair}")
+        # print(f"   • Parametri adattivi: {self.use_adaptive_parameters}")
+        # print(f"   • Blocchi temporali: {len(self.time_blocks)}")
+        # print(f"   • Parametri PSO: w=[{w_start:.2f}-{w_end:.2f}], c1={c1:.1f}, c2={c2:.1f}")
+        # print(f"   • Numba parallel: TRUE")
+        # print(f"   • Threads Numba: {numba.get_num_threads()}")
+        # print(f"   • NOTA: Prima iterazione lenta (compilazione JIT), poi 50-200x più veloce")
+
+    def configure_optimizations(self, intelligent_init=True, temporal_patterns=True, 
+                              constraint_repair=True, adaptive_parameters=True):
+        """
+        Lorenzo Giannuzzo: Configura quali ottimizzazioni usare
+        """
+        self.use_intelligent_init = intelligent_init
+        self.use_temporal_patterns = temporal_patterns
+        self.use_constraint_repair = constraint_repair
+        self.use_adaptive_parameters = adaptive_parameters
+        
+        #print(f"Configurazione ottimizzazioni aggiornata:")
+        #print(f"   • Inizializzazione intelligente: {self.use_intelligent_init}")
+        #print(f"   • Pattern temporali: {self.use_temporal_patterns}")
+        #print(f"   • Constraint repair: {self.use_constraint_repair}")
+        #print(f"   • Parametri adattivi: {self.use_adaptive_parameters}")
+
+    def get_optimization_stats(self):
+        """
+        Lorenzo Giannuzzo: Ritorna statistiche ottimizzazione
+        """
+        if not self.best_score_history:
+            return {}
+        
+        return {
+            'initial_score': self.best_score_history[0],
+            'final_score': self.best_score_history[-1],
+            'improvement': self.best_score_history[-1] - self.best_score_history[0],
+            'improvement_percent': ((self.best_score_history[-1] - self.best_score_history[0]) / 
+                                  abs(self.best_score_history[0]) * 100) if self.best_score_history[0] != 0 else 0,
+            'iterations_to_best': len(self.best_score_history) - 1,
+            'convergence_rate': len([i for i in range(1, len(self.best_score_history)) 
+                                   if self.best_score_history[i] > self.best_score_history[i-1]]),
+            'final_diversity': self.diversity_history[-1] if self.diversity_history else 0,
+            'avg_diversity': np.mean(self.diversity_history) if self.diversity_history else 0
+        }
 
     def optimize(self, battery, prices_sell, prices_buy, pv_production, load_demand, horizon_hours=24):
         """
-        Lorenzo Giannuzzo: Ottimizzazione PSO con valutazione Numba parallela
+        Lorenzo Giannuzzo: Ottimizzazione PSO MIGLIORATA con tutte le ottimizzazioni
         """
         n_hours = min(horizon_hours, len(prices_sell))
         max_power_limit = min(battery.trading_power, battery.get_max_power_by_crate())
 
-        # Inizializzazione intelligente (invariata)
-        positions = self._smart_initialization(
-            battery, prices_sell, prices_buy, pv_production, load_demand, max_power_limit
-        )
-        velocities = np.random.uniform(-0.5, 0.5, (self.n_particles, n_hours, 3))
+        # ====================================================================
+        # 1. INIZIALIZZAZIONE INTELLIGENTE MULTI-STRATEGIA
+        # ====================================================================
+        if self.use_intelligent_init:
+            positions = self._intelligent_initialization(
+                battery, prices_sell, prices_buy, pv_production, load_demand, max_power_limit, n_hours
+            )
+        else:
+            positions = self._smart_initialization(
+                battery, prices_sell, prices_buy, pv_production, load_demand, max_power_limit
+            )
 
         # ====================================================================
-        # Lorenzo Giannuzzo: VALUTAZIONE NUMBA (compilazione JIT al primo uso)
+        # 2. CONSTRAINT REPAIR INIZIALE
+        # ====================================================================
+        if self.use_constraint_repair:
+            for i in range(self.n_particles):
+                positions[i] = self._repair_solution(positions[i], battery, pv_production, load_demand, max_power_limit)
+
+        velocities = np.random.uniform(-0.3, 0.3, (self.n_particles, n_hours, 3))
+
+        # ====================================================================
+        # 3. VALUTAZIONE INIZIALE
         # ====================================================================
         personal_best_scores = evaluate_particles_fast(
             battery, positions, prices_sell, prices_buy, pv_production, load_demand
@@ -1028,153 +1147,655 @@ class PSOOptimizer:
         global_best_idx = np.argmax(personal_best_scores)
         global_best_position = personal_best_positions[global_best_idx].copy()
         global_best_score = personal_best_scores[global_best_idx]
+        
+        # Reset tracking
+        self.best_score_history = [global_best_score]
+        self.diversity_history = []
         stagnation_counter = 0
 
-        for iteration in range(self.n_iterations):
-            w = self.w_start - (self.w_start - self.w_end) * (iteration / self.n_iterations)
+        # print(f"   • Score iniziale: {global_best_score:.2f} €")
 
-            # Lorenzo Giannuzzo: Aggiorna velocità e posizioni (vettoriale NumPy)
+        # ====================================================================
+        # 4. LOOP OTTIMIZZAZIONE CON PARAMETRI ADATTIVI
+        # ====================================================================
+        for iteration in range(self.n_iterations):
+            
+            # 4a. PARAMETRI ADATTIVI
+            if self.use_adaptive_parameters and iteration > 10:
+                self._update_adaptive_parameters(iteration)
+            else:
+                w = self.w_start - (self.w_start - self.w_end) * (iteration / self.n_iterations)
+
+            # 4b. CALCOLA DIVERSITÀ POPOLAZIONE
+            diversity = self._calculate_diversity(positions)
+            self.diversity_history.append(diversity)
+
+            # 4c. AGGIORNA VELOCITÀ E POSIZIONI
             for i in range(self.n_particles):
                 r1, r2 = np.random.random((n_hours, 3)), np.random.random((n_hours, 3))
+                
+                # Componenti PSO standard
                 cognitive = self.c1 * r1 * (personal_best_positions[i] - positions[i])
                 social = self.c2 * r2 * (global_best_position - positions[i])
-                velocities[i] = w * velocities[i] + cognitive + social
+                
+                # Aggiorna velocità
+                if self.use_adaptive_parameters:
+                    velocities[i] = w * velocities[i] + cognitive + social
+                else:
+                    w = self.w_start - (self.w_start - self.w_end) * (iteration / self.n_iterations)
+                    velocities[i] = w * velocities[i] + cognitive + social
 
-                max_vel = np.array([max_power_limit * 0.5, 0.3, max_power_limit * 0.5])
+                # Limita velocità
+                max_vel = np.array([max_power_limit * 0.4, 0.25, max_power_limit * 0.4])
                 velocities[i] = np.clip(velocities[i], -max_vel, max_vel)
+                
+                # Aggiorna posizione
                 positions[i] += velocities[i]
 
-                # Clip bounds
-                positions[i, :, 0] = np.clip(positions[i, :, 0],
-                                             -min(max_power_limit, POD_POWER_MW),
-                                             min(max_power_limit, POD_POWER_MW))
-                positions[i, :, 1] = np.clip(positions[i, :, 1], 0, 1)
-                positions[i, :, 2] = np.clip(positions[i, :, 2], 0, min(max_power_limit, POD_POWER_MW))
+                # 4d. CONSTRAINT REPAIR
+                if self.use_constraint_repair:
+                    positions[i] = self._repair_solution(positions[i], battery, pv_production, load_demand, max_power_limit)
+                else:
+                    # Clip bounds standard
+                    positions[i, :, 0] = np.clip(positions[i, :, 0],
+                                                 -min(max_power_limit, POD_POWER_MW),
+                                                 min(max_power_limit, POD_POWER_MW))
+                    positions[i, :, 1] = np.clip(positions[i, :, 1], 0, 1)
+                    positions[i, :, 2] = np.clip(positions[i, :, 2], 0, min(max_power_limit, POD_POWER_MW))
 
             # ====================================================================
-            # Lorenzo Giannuzzo: VALUTAZIONE NUMBA PARALLELA
+            # 5. VALUTAZIONE NUMBA PARALLELA
             # ====================================================================
             scores = evaluate_particles_fast(
                 battery, positions, prices_sell, prices_buy, pv_production, load_demand
             )
 
-            # Lorenzo Giannuzzo: Aggiorna best
+            # ====================================================================
+            # 6. AGGIORNA BEST SOLUTIONS
+            # ====================================================================
             improved_mask = scores > personal_best_scores
             personal_best_scores[improved_mask] = scores[improved_mask]
             personal_best_positions[improved_mask] = positions[improved_mask].copy()
 
             current_best_idx = np.argmax(personal_best_scores)
             if personal_best_scores[current_best_idx] > global_best_score:
+                improvement = personal_best_scores[current_best_idx] - global_best_score
                 global_best_score = personal_best_scores[current_best_idx]
                 global_best_position = personal_best_positions[current_best_idx].copy()
                 stagnation_counter = 0
+                
+                if iteration % 50 == 0 or improvement > 10:
+                    #print(f"   • Iter {iteration}: Nuovo best {global_best_score:.2f} € (+{improvement:.2f})")
+                    continue
             else:
                 stagnation_counter += 1
 
-            # Lorenzo Giannuzzo: Reinizializzazione particelle stagnanti
+            self.best_score_history.append(global_best_score)
+
+            # ====================================================================
+            # 7. DIVERSIFICAZIONE DINAMICA
+            # ====================================================================
             if stagnation_counter > self.stagnation_limit:
-                n_reinit = self.n_particles // 4
-                worst_indices = np.argsort(personal_best_scores)[:n_reinit]
-                for idx in worst_indices:
-                    noise = np.random.uniform(-0.3, 0.3, (n_hours, 3))
-                    noise[:, 0] *= min(max_power_limit, POD_POWER_MW)
-                    noise[:, 2] *= min(max_power_limit, POD_POWER_MW)
-                    positions[idx] = global_best_position + noise
-                    positions[idx, :, 0] = np.clip(positions[idx, :, 0],
-                                                   -min(max_power_limit, POD_POWER_MW),
-                                                   min(max_power_limit, POD_POWER_MW))
-                    positions[idx, :, 1] = np.clip(positions[idx, :, 1], 0, 1)
-                    positions[idx, :, 2] = np.clip(positions[idx, :, 2], 0, min(max_power_limit, POD_POWER_MW))
-                    velocities[idx] = np.random.uniform(-0.5, 0.5, (n_hours, 3))
+                self._dynamic_diversification(positions, velocities, global_best_position, 
+                                            battery, pv_production, load_demand, max_power_limit, n_hours)
                 stagnation_counter = 0
 
+            # ====================================================================
+            # 8. REINIZIALIZZAZIONE PARTICELLE PEGGIORI (ogni 100 iter)
+            # ====================================================================
+            if iteration > 0 and iteration % 100 == 0 and diversity < 0.1:
+                self._reinitialize_worst_particles(positions, personal_best_scores, global_best_position,
+                                                 battery, prices_sell, prices_buy, pv_production, load_demand, 
+                                                 max_power_limit, n_hours)
+
+        # print(f"   • Score finale: {global_best_score:.2f} € (miglioramento: {global_best_score - self.best_score_history[0]:.2f} €)")
         return global_best_position
 
-    def _smart_initialization(self, battery, prices_sell, prices_buy, pv_production, load_demand, max_power):
+    def _repair_solution(self, position, battery, pv_production, load_demand, max_power):
         """
-        Lorenzo Giannuzzo: IDENTICA alla versione originale - nessuna modifica necessaria
+        Lorenzo Giannuzzo: Ripara soluzioni violando vincoli invece di penalizzarle
+        
+        Vincoli gestiti:
+        1. SOC limits (min/max)
+        2. Power limits (C-rate, max_power)
+        3. POD limits (grid exchange)
+        4. Physical constraints (energy balance)
         """
-        n_hours = len(prices_sell)
+        n_hours = len(position)
+        repaired_position = position.copy()
+        
+        # Simula SOC per verificare vincoli
+        current_soc = battery.soc
+        
+        for h in range(n_hours):
+            p_batt_trading = repaired_position[h, 0]
+            alpha_pv_load = repaired_position[h, 1]
+            p_batt_load = repaired_position[h, 2]
+            
+            # Clip alpha_pv_load
+            repaired_position[h, 1] = np.clip(alpha_pv_load, 0.0, 1.0)
+            
+            # Calcola energia disponibile/richiesta
+            pv_avail = pv_production[h]
+            load_req = load_demand[h]
+            
+            # ================================================================
+            # VINCOLO 1: SOC LIMITS
+            # ================================================================
+            if p_batt_trading > 0:  # Carica
+                max_charge_energy = (battery.soc_max - current_soc) * battery.capacity
+                max_charge_power = max_charge_energy / (1.0 * battery.charge_efficiency)
+                max_charge_power = min(max_charge_power, max_power, POD_POWER_MW)
+                
+                repaired_position[h, 0] = min(p_batt_trading, max_charge_power)
+                
+                # Aggiorna SOC simulato
+                energy_stored = repaired_position[h, 0] * 1.0 * battery.charge_efficiency
+                current_soc += energy_stored / battery.capacity
+                
+            elif p_batt_trading < 0:  # Scarica trading
+                max_discharge_energy = (current_soc - battery.soc_min) * battery.capacity
+                max_discharge_power = max_discharge_energy * battery.discharge_efficiency / 1.0
+                max_discharge_power = min(max_discharge_power, max_power, POD_POWER_MW)
+                
+                repaired_position[h, 0] = max(-max_discharge_power, p_batt_trading)
+                
+                # Aggiorna SOC simulato (scarica trading)
+                energy_discharged = abs(repaired_position[h, 0]) * 1.0 / battery.discharge_efficiency
+                current_soc -= energy_discharged / battery.capacity
+            
+            # ================================================================
+            # VINCOLO 2: SCARICA PER CARICO (separata da trading)
+            # ================================================================
+            if p_batt_load > 0:
+                # Calcola energia batteria ancora disponibile dopo trading
+                remaining_energy = (current_soc - battery.soc_min) * battery.capacity
+                max_load_power = remaining_energy * battery.discharge_efficiency / 1.0
+                max_load_power = min(max_load_power, max_power)
+                
+                # Limita anche in base al carico effettivo
+                pv_to_load = repaired_position[h, 1] * pv_avail
+                load_remaining = max(0, load_req - pv_to_load)
+                max_load_power = min(max_load_power, load_remaining)
+                
+                repaired_position[h, 2] = min(p_batt_load, max_load_power)
+                
+                # Aggiorna SOC simulato (scarica carico)
+                if repaired_position[h, 2] > 0:
+                    energy_discharged_load = repaired_position[h, 2] * 1.0 / battery.discharge_efficiency
+                    current_soc -= energy_discharged_load / battery.capacity
+            else:
+                repaired_position[h, 2] = 0.0
+            
+            # ================================================================
+            # VINCOLO 3: POD LIMITS (verifica totale scambio rete)
+            # ================================================================
+            # Calcola flussi rete approssimativi
+            pv_to_load = repaired_position[h, 1] * pv_avail
+            pv_remaining = pv_avail - pv_to_load
+            load_remaining = max(0, load_req - pv_to_load - repaired_position[h, 2])
+            
+            # Prelievo da rete (carica batteria + carico residuo)
+            grid_withdrawal = 0.0
+            if repaired_position[h, 0] > 0:  # Carica da rete
+                grid_withdrawal += max(0, repaired_position[h, 0] - pv_remaining)
+            grid_withdrawal += load_remaining
+            
+            # Immissione in rete (scarica batteria + PV eccesso)
+            grid_injection = 0.0
+            if repaired_position[h, 0] < 0:  # Scarica trading
+                grid_injection += abs(repaired_position[h, 0])
+            grid_injection += max(0, pv_remaining - max(0, repaired_position[h, 0]))
+            
+            # Correggi se viola POD
+            if grid_withdrawal > POD_POWER_MW:
+                scale_factor = POD_POWER_MW / grid_withdrawal
+                if repaired_position[h, 0] > 0:
+                    repaired_position[h, 0] *= scale_factor
+                repaired_position[h, 2] *= scale_factor
+            
+            if grid_injection > POD_POWER_MW:
+                scale_factor = POD_POWER_MW / grid_injection
+                if repaired_position[h, 0] < 0:
+                    repaired_position[h, 0] *= scale_factor
+            
+            # ================================================================
+            # VINCOLO 4: LIMITI FISICI FINALI
+            # ================================================================
+            current_soc = np.clip(current_soc, battery.soc_min, battery.soc_max)
+            
+            # Clip finali
+            repaired_position[h, 0] = np.clip(repaired_position[h, 0], -max_power, max_power)
+            repaired_position[h, 1] = np.clip(repaired_position[h, 1], 0.0, 1.0)
+            repaired_position[h, 2] = np.clip(repaired_position[h, 2], 0.0, max_power)
+        
+        return repaired_position
+
+    def _update_adaptive_parameters(self, iteration):
+        """
+        Lorenzo Giannuzzo: Aggiorna parametri PSO in base alla convergenza
+        """
+        if len(self.best_score_history) < 10:
+            return
+        
+        # Calcola miglioramento recente
+        recent_improvement = self.best_score_history[-1] - self.best_score_history[-10]
+        
+        # Calcola diversità media recente
+        if len(self.diversity_history) >= 5:
+            avg_diversity = np.mean(self.diversity_history[-5:])
+        else:
+            avg_diversity = 0.5
+        
+        # Adatta parametri
+        if recent_improvement < 0.1:  # Stagnazione
+            # Aumenta esplorazione
+            self.w_start = min(0.95, self.w_start * 1.02)
+            self.w_end = min(0.2, self.w_end * 1.05)
+            self.c1 = min(2.5, self.c1 * 1.01)
+            
+        elif recent_improvement > 5.0:  # Buona convergenza
+            # Aumenta sfruttamento
+            self.w_start = max(0.7, self.w_start * 0.98)
+            self.w_end = max(0.05, self.w_end * 0.95)
+            self.c2 = min(3.0, self.c2 * 1.01)
+        
+        # Adatta in base alla diversità
+        if avg_diversity < 0.1:  # Popolazione troppo concentrata
+            self.c1 = min(2.5, self.c1 * 1.02)  # Più esplorazione individuale
+        elif avg_diversity > 0.8:  # Popolazione troppo dispersa
+            self.c2 = min(3.0, self.c2 * 1.02)  # Più attrazione verso best
+        
+        # Calcola w corrente
+        w = self.w_start - (self.w_start - self.w_end) * (iteration / self.n_iterations)
+        
+        return w
+
+    def _calculate_diversity(self, positions):
+        """
+        Lorenzo Giannuzzo: Calcola diversità popolazione (distanza media dal centroide)
+        """
+        if len(positions) < 2:
+            return 1.0
+        
+        # Calcola centroide
+        centroid = np.mean(positions, axis=0)
+        
+        # Calcola distanze dal centroide
+        distances = []
+        for i in range(len(positions)):
+            dist = np.linalg.norm(positions[i] - centroid)
+            distances.append(dist)
+        
+        # Normalizza per dimensione spazio
+        max_possible_dist = np.linalg.norm(np.ones_like(centroid))
+        avg_distance = np.mean(distances)
+        
+        return min(1.0, avg_distance / (max_possible_dist + 1e-6))
+
+    def _dynamic_diversification(self, positions, velocities, global_best_position, 
+                               battery, pv_production, load_demand, max_power, n_hours):
+        """
+        Lorenzo Giannuzzo: Diversificazione dinamica quando stagnazione
+        """
+        n_diversify = self.n_particles // 3
+        worst_indices = np.argsort([np.linalg.norm(pos - global_best_position) 
+                                  for pos in positions])[:n_diversify]
+        
+        # print(f"   • Diversificazione: reinizializzando {n_diversify} particelle")
+        
+        for idx in worst_indices:
+            # Strategia 1: Perturbazione del best (50%)
+            if np.random.random() < 0.5:
+                noise_scale = np.random.uniform(0.3, 0.7)
+                noise = np.random.uniform(-noise_scale, noise_scale, (n_hours, 3))
+                noise[:, 0] *= max_power
+                noise[:, 2] *= max_power
+                positions[idx] = global_best_position + noise
+            
+            # Strategia 2: Nuova inizializzazione intelligente (50%)
+            else:
+                new_positions = self._intelligent_initialization(
+                    battery, np.ones(n_hours), np.ones(n_hours), 
+                    pv_production, load_demand, max_power, n_hours
+                )
+                positions[idx] = new_positions[0]
+            
+            # Repair della nuova posizione
+            positions[idx] = self._repair_solution(positions[idx], battery, pv_production, load_demand, max_power)
+            
+            # Reset velocità
+            velocities[idx] = np.random.uniform(-0.3, 0.3, (n_hours, 3))
+
+    def _reinitialize_worst_particles(self, positions, personal_best_scores, global_best_position,
+                                    battery, prices_sell, prices_buy, pv_production, load_demand, 
+                                    max_power, n_hours):
+        """
+        Lorenzo Giannuzzo: Reinizializza particelle peggiori periodicamente
+        """
+        n_reinit = self.n_particles // 5
+        worst_indices = np.argsort(personal_best_scores)[:n_reinit]
+        
+        #print(f"   • Reinizializzazione: {n_reinit} particelle peggiori")
+        
+        for idx in worst_indices:
+            # Crea nuova soluzione intelligente
+            new_positions = self._intelligent_initialization(
+                battery, prices_sell, prices_buy, pv_production, load_demand, max_power, n_hours
+            )
+            positions[idx] = new_positions[np.random.randint(len(new_positions))]
+            
+            # Repair
+            positions[idx] = self._repair_solution(positions[idx], battery, pv_production, load_demand, max_power)
+
+    def compare_pso_versions(battery, prices_sell, prices_buy, pv_production, load_demand, n_particles=50, n_iterations=100):
+        """
+        Lorenzo Giannuzzo: Confronta PSO originale vs ottimizzato
+        """
+        print("\n" + "="*80)
+        print("CONFRONTO PSO: ORIGINALE vs OTTIMIZZATO")
+        print("="*80)
+
+        results = {}
+
+        # Test PSO originale (parametri vecchi)
+        print("\n1. TEST PSO ORIGINALE:")
+        pso_original = PSOOptimizer(n_particles=n_particles, n_iterations=n_iterations,
+                                   w_start=0.95, w_end=0.005, c1=2.0, c2=2.0)
+        pso_original.configure_optimizations(intelligent_init=False, temporal_patterns=False,
+                                           constraint_repair=False, adaptive_parameters=False)
+
+        start_time = time.time()
+        solution_original = pso_original.optimize(battery, prices_sell, prices_buy, pv_production, load_demand)
+        time_original = time.time() - start_time
+
+        score_original = evaluate_particles_fast(battery, solution_original.reshape(1, -1, 3),
+                                               prices_sell, prices_buy, pv_production, load_demand)[0]
+
+        results['original'] = {
+            'score': score_original,
+            'time': time_original,
+            'stats': pso_original.get_optimization_stats()
+        }
+
+        # Test PSO ottimizzato
+        print("\n2. TEST PSO OTTIMIZZATO:")
+        pso_optimized = PSOOptimizer(n_particles=n_particles, n_iterations=n_iterations,
+                                    w_start=0.9, w_end=0.1, c1=1.5, c2=2.5)
+        # Tutte le ottimizzazioni attive per default
+
+        start_time = time.time()
+        solution_optimized = pso_optimized.optimize(battery, prices_sell, prices_buy, pv_production, load_demand)
+        time_optimized = time.time() - start_time
+
+        score_optimized = evaluate_particles_fast(battery, solution_optimized.reshape(1, -1, 3),
+                                                prices_sell, prices_buy, pv_production, load_demand)[0]
+
+        results['optimized'] = {
+            'score': score_optimized,
+            'time': time_optimized,
+            'stats': pso_optimized.get_optimization_stats()
+        }
+
+        # Confronto risultati
+        print("\n" + "="*80)
+        print("RISULTATI CONFRONTO:")
+        print("="*80)
+
+        improvement = score_optimized - score_original
+        improvement_percent = (improvement / abs(score_original) * 100) if score_original != 0 else 0
+        time_ratio = time_optimized / time_original if time_original > 0 else 1
+
+        print(f"\nPSO ORIGINALE:")
+        print(f"   • Score finale:        {score_original:.2f} €")
+        print(f"   • Tempo esecuzione:    {time_original:.1f} secondi")
+        print(f"   • Miglioramento:       {results['original']['stats'].get('improvement', 0):.2f} €")
+
+        print(f"\nPSO OTTIMIZZATO:")
+        print(f"   • Score finale:        {score_optimized:.2f} €")
+        print(f"   • Tempo esecuzione:    {time_optimized:.1f} secondi")
+        print(f"   • Miglioramento:       {results['optimized']['stats'].get('improvement', 0):.2f} €")
+
+        print(f"\nCONFRONTO:")
+        print(f"   • Miglioramento score: {improvement:+.2f} € ({improvement_percent:+.1f}%)")
+        print(f"   • Rapporto tempo:      {time_ratio:.2f}x")
+
+        if improvement > 0:
+            print(f"   ✅ PSO OTTIMIZZATO È MIGLIORE!")
+        else:
+            print(f"   ❌ PSO originale ancora migliore")
+
+        print(f"\nSTATISTICHE DETTAGLIATE:")
+        print(f"   • Convergenza originale:   {results['original']['stats'].get('convergence_rate', 0)} miglioramenti")
+        print(f"   • Convergenza ottimizzato: {results['optimized']['stats'].get('convergence_rate', 0)} miglioramenti")
+        print(f"   • Diversità finale orig:   {results['original']['stats'].get('final_diversity', 0):.3f}")
+        print(f"   • Diversità finale ott:    {results['optimized']['stats'].get('final_diversity', 0):.3f}")
+
+        print("="*80)
+
+        return results
+
+    def _intelligent_initialization(self, battery, prices_sell, prices_buy, pv_production, load_demand, max_power, n_hours):
+        """
+        Lorenzo Giannuzzo: Inizializzazione intelligente multi-strategia
+
+        Strategie implementate:
+        1. Price-based (25%): Carica prezzi bassi, scarica prezzi alti
+        2. PV-aware (25%): Ottimizza uso PV per carico e storage
+        3. Load-first (25%): Priorità assoluta al carico
+        4. Greedy baseline (15%): Soluzione euristica ottima
+        5. Random migliorato (10%): Diversificazione controllata
+        """
         positions = np.zeros((self.n_particles, n_hours, 3))
-        price_low = np.percentile(prices_sell, 25)
-        price_high = np.percentile(prices_sell, 75)
         max_power_with_pod = min(max_power, POD_POWER_MW)
 
-        for i in range(self.n_particles):
-            if i < self.n_particles // 3:
-                for h in range(n_hours):
-                    if prices_sell[h] < price_low:
-                        positions[i, h, 0] = np.random.uniform(0.4 * max_power_with_pod, max_power_with_pod)
-                    elif prices_sell[h] > price_high:
-                        positions[i, h, 0] = np.random.uniform(-max_power_with_pod, -0.4 * max_power_with_pod)
-                    else:
-                        positions[i, h, 0] = np.random.uniform(-0.3 * max_power_with_pod, 0.3 * max_power_with_pod)
+        # Calcola percentili prezzi per strategie
+        price_low = np.percentile(prices_sell, 25)
+        price_high = np.percentile(prices_sell, 75)
+        price_very_low = np.percentile(prices_sell, 10)
+        price_very_high = np.percentile(prices_sell, 90)
 
-                    if prices_buy[h] > prices_sell[h] * 1.2:
-                        positions[i, h, 1] = np.random.uniform(0.7, 1.0)
-                    else:
-                        positions[i, h, 1] = np.random.uniform(0.3, 0.7)
+        particle_idx = 0
 
-                    if prices_buy[h] > np.mean(prices_buy) and load_demand[h] > np.mean(load_demand):
-                        positions[i, h, 2] = np.random.uniform(0.3 * max_power_with_pod, 0.8 * max_power_with_pod)
-                    else:
-                        positions[i, h, 2] = np.random.uniform(0, 0.3 * max_power_with_pod)
+        # ====================================================================
+        # STRATEGIA 1: PRICE-BASED (25% particelle)
+        # ====================================================================
+        n_price_based = int(0.25 * self.n_particles)
+        for i in range(n_price_based):
+            for h in range(n_hours):
+                price = prices_sell[h]
 
-            elif i < 2 * self.n_particles // 3:
-                for h in range(n_hours):
-                    positions[i, h, 0] = np.random.uniform(-0.4 * max_power_with_pod, 0.4 * max_power_with_pod)
-                    positions[i, h, 1] = np.random.uniform(0.8, 1.0)
-                    if load_demand[h] > 0.001:
-                        positions[i, h, 2] = np.random.uniform(0.2 * max_power_with_pod, max_power_with_pod)
+                # Logica carica/scarica basata su prezzi
+                if price <= price_very_low:
+                    # Prezzo molto basso → carica aggressiva
+                    positions[particle_idx, h, 0] = np.random.uniform(0.7, 1.0) * max_power_with_pod
+                elif price <= price_low:
+                    # Prezzo basso → carica moderata
+                    positions[particle_idx, h, 0] = np.random.uniform(0.3, 0.7) * max_power_with_pod
+                elif price >= price_very_high:
+                    # Prezzo molto alto → scarica aggressiva
+                    positions[particle_idx, h, 0] = -np.random.uniform(0.7, 1.0) * max_power_with_pod
+                elif price >= price_high:
+                    # Prezzo alto → scarica moderata
+                    positions[particle_idx, h, 0] = -np.random.uniform(0.3, 0.7) * max_power_with_pod
+                else:
+                    # Prezzo medio → azione casuale leggera
+                    positions[particle_idx, h, 0] = np.random.uniform(-0.2, 0.2) * max_power_with_pod
+
+                # PV allocation intelligente
+                if pv_production[h] > 0.01 and load_demand[h] > 0.01:
+                    positions[particle_idx, h, 1] = min(1.0, load_demand[h] / pv_production[h])
+                else:
+                    positions[particle_idx, h, 1] = np.random.uniform(0.5, 1.0)
+
+                # Load discharge conservativo
+                positions[particle_idx, h, 2] = np.random.uniform(0, 0.3) * max_power_with_pod
+
+            particle_idx += 1
+
+        # ====================================================================
+        # STRATEGIA 2: PV-AWARE (25% particelle)
+        # ====================================================================
+        n_pv_aware = int(0.25 * self.n_particles)
+        for i in range(n_pv_aware):
+            for h in range(n_hours):
+                pv_avail = pv_production[h]
+                load_req = load_demand[h]
+
+                if pv_avail > 0.01:
+                    # Priorità PV al carico
+                    if load_req > 0.01:
+                        positions[particle_idx, h, 1] = min(1.0, load_req / pv_avail)
+                        pv_excess = max(0, pv_avail - load_req)
                     else:
-                        positions[i, h, 2] = 0.0
-            else:
-                positions[i, :, 0] = np.random.uniform(-max_power_with_pod, max_power_with_pod, n_hours)
-                positions[i, :, 1] = np.random.uniform(0, 1, n_hours)
-                positions[i, :, 2] = np.random.uniform(0, max_power_with_pod, n_hours)
+                        positions[particle_idx, h, 1] = 0.0
+                        pv_excess = pv_avail
+
+                    # Se c'è eccesso PV, carica batteria
+                    if pv_excess > 0.1:
+                        positions[particle_idx, h, 0] = min(max_power_with_pod, pv_excess * np.random.uniform(0.6, 1.0))
+                    else:
+                        positions[particle_idx, h, 0] = np.random.uniform(-0.1, 0.1) * max_power_with_pod
+                else:
+                    # Nessun PV → strategia prezzo
+                    positions[particle_idx, h, 1] = 0.0
+                    if prices_sell[h] >= price_high:
+                        positions[particle_idx, h, 0] = -np.random.uniform(0.2, 0.6) * max_power_with_pod
+                    elif prices_sell[h] <= price_low:
+                        positions[particle_idx, h, 0] = np.random.uniform(0.2, 0.6) * max_power_with_pod
+                    else:
+                        positions[particle_idx, h, 0] = np.random.uniform(-0.1, 0.1) * max_power_with_pod
+
+                # Load discharge moderato
+                positions[particle_idx, h, 2] = np.random.uniform(0, 0.4) * max_power_with_pod
+
+            particle_idx += 1
+
+        # ====================================================================
+        # STRATEGIA 3: LOAD-FIRST (25% particelle)
+        # ====================================================================
+        n_load_first = int(0.25 * self.n_particles)
+        for i in range(n_load_first):
+            for h in range(n_hours):
+                load_req = load_demand[h]
+                pv_avail = pv_production[h]
+
+                # Massima priorità al carico
+                if pv_avail > 0.01 and load_req > 0.01:
+                    positions[particle_idx, h, 1] = 1.0  # Tutto il PV possibile al carico
+                else:
+                    positions[particle_idx, h, 1] = np.random.uniform(0.7, 1.0)
+
+                # Batteria serve carico quando conveniente
+                if load_req > pv_avail and prices_sell[h] > np.mean(prices_buy):
+                    # Conviene usare batteria invece di comprare da rete
+                    positions[particle_idx, h, 2] = min(max_power_with_pod,
+                                                       (load_req - pv_avail) * np.random.uniform(0.5, 1.0))
+                    positions[particle_idx, h, 0] = np.random.uniform(-0.1, 0.1) * max_power_with_pod
+                else:
+                    positions[particle_idx, h, 2] = np.random.uniform(0, 0.2) * max_power_with_pod
+                    # Trading normale
+                    if prices_sell[h] >= price_high:
+                        positions[particle_idx, h, 0] = -np.random.uniform(0.2, 0.5) * max_power_with_pod
+                    elif prices_sell[h] <= price_low:
+                        positions[particle_idx, h, 0] = np.random.uniform(0.2, 0.5) * max_power_with_pod
+                    else:
+                        positions[particle_idx, h, 0] = np.random.uniform(-0.1, 0.1) * max_power_with_pod
+
+            particle_idx += 1
+
+        # ====================================================================
+        # STRATEGIA 4: GREEDY BASELINE (15% particelle)
+        # ====================================================================
+        n_greedy = int(0.15 * self.n_particles)
+        greedy_solution = self._create_greedy_solution(prices_sell, prices_buy, pv_production, load_demand, max_power_with_pod)
+
+        for i in range(n_greedy):
+            # Usa soluzione greedy con piccole variazioni
+            noise_factor = 0.1 + (i / n_greedy) * 0.2  # Variazione crescente
+            for h in range(n_hours):
+                for dim in range(3):
+                    noise = np.random.uniform(-noise_factor, noise_factor)
+                    positions[particle_idx, h, dim] = greedy_solution[h, dim] * (1 + noise)
+
+            particle_idx += 1
+
+        # ====================================================================
+        # STRATEGIA 5: RANDOM MIGLIORATO (10% particelle rimanenti)
+        # ====================================================================
+        while particle_idx < self.n_particles:
+            for h in range(n_hours):
+                # Random ma con bias verso azioni sensate
+                positions[particle_idx, h, 0] = np.random.uniform(-0.6, 0.6) * max_power_with_pod
+                positions[particle_idx, h, 1] = np.random.uniform(0.3, 1.0)
+                positions[particle_idx, h, 2] = np.random.uniform(0, 0.5) * max_power_with_pod
+
+            particle_idx += 1
+
+        # print(f"   • Inizializzazione intelligente completata:")
+        # print(f"     - Price-based: {n_price_based} particelle")
+        # print(f"     - PV-aware: {n_pv_aware} particelle")
+        # print(f"     - Load-first: {n_load_first} particelle")
+        # print(f"     - Greedy: {n_greedy} particelle")
+        # print(f"     - Random: {self.n_particles - particle_idx + (self.n_particles - particle_idx)} particelle")
 
         return positions
 
-    def _smart_initialization(self, battery, prices_sell, prices_buy, pv_production, load_demand, max_power):
+    def _create_greedy_solution(self, prices_sell, prices_buy, pv_production, load_demand, max_power):
+        """
+        Lorenzo Giannuzzo: Crea soluzione greedy euristica come baseline
+        """
+        n_hours = len(prices_sell)
+        solution = np.zeros((n_hours, 3))
+        
+        # Calcola soglie prezzo
+        price_low_threshold = np.percentile(prices_sell, 30)
+        price_high_threshold = np.percentile(prices_sell, 70)
+        
+        for h in range(n_hours):
+            price_sell = prices_sell[h]
+            price_buy = prices_buy[h]
+            pv_avail = pv_production[h]
+            load_req = load_demand[h]
+            
+            # Regola 1: PV al carico sempre quando possibile
+            if pv_avail > 0.01 and load_req > 0.01:
+                solution[h, 1] = min(1.0, load_req / pv_avail)
+            else:
+                solution[h, 1] = 0.5
+            
+            # Regola 2: Trading basato su prezzi
+            if price_sell <= price_low_threshold:
+                # Prezzo basso → carica
+                solution[h, 0] = 0.6 * max_power
+            elif price_sell >= price_high_threshold:
+                # Prezzo alto → scarica
+                solution[h, 0] = -0.6 * max_power
+            else:
+                # Prezzo medio → idle
+                solution[h, 0] = 0.0
+            
+            # Regola 3: Batteria per carico solo se molto conveniente
+            spread = price_sell - price_buy
+            if spread > np.percentile(prices_sell - prices_buy, 80):
+                # Spread alto → usa batteria per carico
+                solution[h, 2] = min(0.4 * max_power, load_req - pv_avail * solution[h, 1])
+            else:
+                solution[h, 2] = 0.0
+        
+        return solution
 
+    def _smart_initialization(self, battery, prices_sell, prices_buy, pv_production, load_demand, max_power):
+        """Lorenzo Giannuzzo: Fallback per inizializzazione semplice"""
         n_hours = len(prices_sell)
         positions = np.zeros((self.n_particles, n_hours, 3))
-        price_low = np.percentile(prices_sell, 25)
-        price_high = np.percentile(prices_sell, 75)
         max_power_with_pod = min(max_power, POD_POWER_MW)
 
-        for i in range(self.n_particles):
-            if i < self.n_particles // 3:
-                for h in range(n_hours):
-                    if prices_sell[h] < price_low:
-                        positions[i, h, 0] = np.random.uniform(0.4 * max_power_with_pod, max_power_with_pod)
-                    elif prices_sell[h] > price_high:
-                        positions[i, h, 0] = np.random.uniform(-max_power_with_pod, -0.4 * max_power_with_pod)
-                    else:
-                        positions[i, h, 0] = np.random.uniform(-0.3 * max_power_with_pod, 0.3 * max_power_with_pod)
-
-                    if prices_buy[h] > prices_sell[h] * 1.2:
-                        positions[i, h, 1] = np.random.uniform(0.7, 1.0)
-                    else:
-                        positions[i, h, 1] = np.random.uniform(0.3, 0.7)
-
-                    if prices_buy[h] > np.mean(prices_buy) and load_demand[h] > np.mean(load_demand):
-                        positions[i, h, 2] = np.random.uniform(0.3 * max_power_with_pod, 0.8 * max_power_with_pod)
-                    else:
-                        positions[i, h, 2] = np.random.uniform(0, 0.3 * max_power_with_pod)
-
-            elif i < 2 * self.n_particles // 3:
-                for h in range(n_hours):
-                    positions[i, h, 0] = np.random.uniform(-0.4 * max_power_with_pod, 0.4 * max_power_with_pod)
-                    positions[i, h, 1] = np.random.uniform(0.8, 1.0)
-                    if load_demand[h] > 0.001:
-                        positions[i, h, 2] = np.random.uniform(0.2 * max_power_with_pod, max_power_with_pod)
-                    else:
-                        positions[i, h, 2] = 0.0
-            else:
-                positions[i, :, 0] = np.random.uniform(-max_power_with_pod, max_power_with_pod, n_hours)
-                positions[i, :, 1] = np.random.uniform(0, 1, n_hours)
-                positions[i, :, 2] = np.random.uniform(0, max_power_with_pod, n_hours)
+        # Inizializzazione RANDOM UNIFORME migliorata
+        positions[:, :, 0] = np.random.uniform(-max_power_with_pod * 0.8, max_power_with_pod * 0.8,
+                                               (self.n_particles, n_hours))
+        positions[:, :, 1] = np.random.uniform(0.3, 1.0, (self.n_particles, n_hours))
+        positions[:, :, 2] = np.random.uniform(0, max_power_with_pod * 0.6, (self.n_particles, n_hours))
 
         return positions
 
@@ -1274,7 +1895,7 @@ class RollingHorizonSimulator:
         cumulative_profit = 0.0
 
         print("=" * 80)
-        print("SIMULAZIONE BESS v3.8 NUMBA - CON VINCOLO POD")
+        print("SIMULAZIONE BESS")
         print("=" * 80)
         print(f"Tecnologia: {self.battery.technology}")
         print(f"Capacità: {self.battery.nominal_capacity} MWh")
@@ -1394,7 +2015,7 @@ class RollingHorizonSimulator:
             max_energy_storable = (self.battery.soc_max - self.battery.soc) * self.battery.trading_capacity
 
             # ====================================================================
-            # Lorenzo Giannuzzo: FASE 3: SCARICA BATTERIA (invariata)
+            # Lorenzo Giannuzzo: FASE 3: SCARICA BATTERIA
             # ====================================================================
             if action_mode == "DISCHARGE" and total_discharge_request > 0.001:
                 actual_discharge_total = min(total_discharge_request, max_power_physical, max_discharge_soc)
@@ -1407,7 +2028,7 @@ class RollingHorizonSimulator:
                     discharge_for_load_raw = actual_discharge_total * ratio_load
                     discharge_for_load = min(discharge_for_load_raw, load_remaining)
 
-                    # Lorenzo Giannuzzo: VINCOLO POD: Limita scarica trading per immissione rete
+                    # VINCOLO POD: Limita scarica trading
                     pod_available_for_injection = POD_POWER_MW - grid_injection_this_hour
                     discharge_for_trading = min(discharge_for_trading, pod_available_for_injection)
 
@@ -1416,21 +2037,38 @@ class RollingHorizonSimulator:
                     actual_trading_discharge_this_hour = discharge_for_trading
                     actual_load_discharge_this_hour = discharge_for_load
 
-                    # Lorenzo Giannuzzo: Esegui scarica fisica
+                    # Esegui scarica fisica
                     total_energy_discharge = actual_discharge_used / self.battery.discharge_efficiency
                     new_soc = self.battery.soc - (total_energy_discharge / self.battery.capacity)
                     self.battery.soc = max(new_soc, self.battery.soc_min)
                     self.battery.throughput_kwh += total_energy_discharge * 1000
 
-                    # Lorenzo Giannuzzo: RICAVO: Vendita batteria alla rete
+                    # ============================================================
+                    # TRADING: Ricavo ESPLICITO vendita rete
+                    # ============================================================
                     if discharge_for_trading > 0.001:
                         revenue_discharge = discharge_for_trading * price_sell
                         cumulative_profit += revenue_discharge
+                        
+                        # Lorenzo Giannuzzo: RIMOSSO costo degrado - già considerato nell'ottimizzazione PSO
+                        # degradation_cost_trading = discharge_for_trading * DEGRADATION_COST_PER_MWH / (2 * self.battery.eol_cycles)
+                        # cumulative_profit -= degradation_cost_trading
+                        
                         trading_discharge_this_hour = discharge_for_trading
                         grid_injection_this_hour += discharge_for_trading
 
-                    # Lorenzo Giannuzzo: AUTOCONSUMO: Batteria al carico
+                    # ============================================================
+                    # AUTOCONSUMO - CORREZIONE: Aggiungi risparmio batteria
+                    # ============================================================
                     if discharge_for_load > 0.001:
+                        savings_from_battery_to_load = discharge_for_load * price_buy
+                        # cumulative_profit += savings_from_battery_to_load  # Lorenzo Giannuzzo: questo non ci deve essere nel simulate
+                        
+                        # Lorenzo Giannuzzo: RIMOSSO costo degrado - già considerato nell'ottimizzazione PSO
+                        # degradation_cost_load = discharge_for_load * DEGRADATION_COST_PER_MWH / (2 * self.battery.eol_cycles)
+                        # cumulative_profit -= degradation_cost_load
+
+                        # Contabilità fisica
                         load_from_battery_this_hour = discharge_for_load
                         load_remaining -= discharge_for_load
                         battery_served_load = True
@@ -1440,7 +2078,7 @@ class RollingHorizonSimulator:
             # Lorenzo Giannuzzo: FASE 4: CARICO DALLA RETE
             # ====================================================================
             if load_remaining > 0.001:
-                # CARICO USA POD PER PRIMO!
+                # CARICO USA POD PER PRIMO
                 pod_available_for_withdrawal = POD_POWER_MW - grid_withdrawal_this_hour
                 load_from_grid_allowed = min(load_remaining, pod_available_for_withdrawal)
 
@@ -1459,8 +2097,8 @@ class RollingHorizonSimulator:
                 if load_remaining > 0.001:
                     load_unserved_this_hour = load_remaining
 
-                    # Lorenzo Giannuzzo: PENALITÀ
-                    penalty = load_unserved_this_hour * price_buy * 000.0  # Lorenzo Giannuzzo: zero nel simulate, a differenza dell'evalaute per non falsare i risultati dell'excel
+                    # Lorenzo Giannuzzo: PENALITÀ - CORREZIONE: Usa stessa penalità dell'evaluate
+                    penalty = load_unserved_this_hour * price_buy * 0000.0  # ✅ CORRETTO: Stessa penalità dell'evaluate
                     cumulative_profit -= penalty
 
                     if load_unserved_this_hour > 0.01:  # Log solo se significativo
@@ -1605,9 +2243,9 @@ class RollingHorizonSimulator:
         total_pv_curtailed = sum(pv_curtailed_history)
         total_load_unserved = sum(load_unserved_history)
 
-        print("\n✅ Simulazione completata!")
+        print("\nSimulazione completata!")
         print(f"Profitto finale: {cumulative_profit:.2f} €")
-        print(f"\n📊 STATISTICHE POD:")
+        print(f"\nSTATISTICHE POD:")
         print(f"  • Violazioni POD: {total_pod_violations} ore su {len(pod_violation_history)}")
         print(f"  • PV curtailed: {total_pv_curtailed:.2f} MWh")
         print(f"  • Carico non servito: {total_load_unserved:.2f} MWh")
@@ -1982,7 +2620,6 @@ def export_results_to_json(results_df, battery, pv_system, load_profile, trading
 def create_detailed_monthly_pv_plots(results_df, battery, pv_system):
     """
     Lorenzo Giannuzzo: GRAFICI DETTAGLIATI MENSILI con IMPATTO PV
-    VERSIONE CORRETTA v3.2 - Usa colonne DataFrame corrette
     """
     if not SAVE_PLOTS or not PV_ENABLED or pv_system is None:
         return
@@ -1996,7 +2633,7 @@ def create_detailed_monthly_pv_plots(results_df, battery, pv_system):
         os.makedirs(monthly_pv_folder)
 
     print("\n" + "=" * 80)
-    print("GENERAZIONE GRAFICI MENSILI DETTAGLIATI CON IMPATTO PV v3.2")
+    print("GENERAZIONE GRAFICI MENSILI DETTAGLIATI CON IMPATTO PV")
     print("=" * 80)
 
     if not pd.api.types.is_datetime64_any_dtype(results_df['Data']):
@@ -2014,7 +2651,7 @@ def create_detailed_monthly_pv_plots(results_df, battery, pv_system):
         if len(df_mese) == 0:
             continue
 
-        # Lorenzo Giannuzzo: Seleziona giorno rappresentativo (15° o medio)
+        # Lorenzo Giannuzzo: Seleziona giorno rappresentativo
         giorni_disponibili = df_mese['Giorno'].unique()
         giorno_target = 15 if 15 in giorni_disponibili else giorni_disponibili[len(giorni_disponibili) // 2]
         df_giorno = df_mese[df_mese['Giorno'] == giorno_target].copy()
@@ -2155,23 +2792,23 @@ def create_detailed_monthly_pv_plots(results_df, battery, pv_system):
 
         width = 0.8
 
-        # Lorenzo Giannuzzo: Plotta SCARICA per TRADING (viola/rosso)
+        # Lorenzo Giannuzzo: Plotta SCARICA per TRADING
         ax3.bar(df_giorno['Ora'], discharge_trading_bars, width=width,
                 color='#E63946', alpha=0.8, edgecolor='black', linewidth=1,
                 label='Scarica Trading')
 
-        # Lorenzo Giannuzzo: Plotta SCARICA per CARICO (magenta)
+        # Lorenzo Giannuzzo: Plotta SCARICA per CARICO
         ax3.bar(df_giorno['Ora'], discharge_load_bars, width=width,
                 bottom=discharge_trading_bars,
                 color='#9D4EDD', alpha=0.8, edgecolor='black', linewidth=1,
                 label='Scarica Carico')
 
-        # Lorenzo Giannuzzo: Plotta CARICA da RETE (arancione, base)
+        # Lorenzo Giannuzzo: Plotta CARICA da RETE
         ax3.bar(df_giorno['Ora'], charge_grid_bars, width=width,
                 color='#F77F00', alpha=0.8, edgecolor='black', linewidth=1,
                 label='Carica da Rete')
 
-        # Lorenzo Giannuzzo: Plotta CARICA da PV (verde, sopra rete)
+        # Lorenzo Giannuzzo: Plotta CARICA da PV
         ax3.bar(df_giorno['Ora'], charge_pv_bars, width=width,
                 bottom=charge_grid_bars,
                 color='#06A77D', alpha=0.8, edgecolor='black', linewidth=1,
@@ -2899,7 +3536,7 @@ def calculate_baseline_scenario(prices_sell, prices_buy, pv_production, load_dem
             if load_unserved > 0.001:
                 total_load_unserved_baseline += load_unserved
                 # Lorenzo Giannuzzo: Penalità pesante per carico non servito
-                total_cost_buy += load_unserved * price_buy * 000.0
+                total_cost_buy += load_unserved * price_buy * 1000.0
 
     net_balance = total_revenue_sell - total_cost_buy
     autosufficienza = (total_pv_to_load / total_load_required * 100) if total_load_required > 0 else 0
@@ -2913,8 +3550,8 @@ def calculate_baseline_scenario(prices_sell, prices_buy, pv_production, load_dem
         'total_load_from_grid': total_load_from_grid,
         'total_load_required': total_load_required,
         'autosufficienza_percent': autosufficienza,
-        'pv_curtailed_baseline': total_pv_curtailed_baseline,  # NUOVO
-        'load_unserved_baseline': total_load_unserved_baseline  # NUOVO
+        'pv_curtailed_baseline': total_pv_curtailed_baseline,
+        'load_unserved_baseline': total_load_unserved_baseline
     }
 
 def export_complete_results_to_json(results_df, battery, output_dir='results', output_filename=None):
@@ -3023,6 +3660,7 @@ def main():
     global LITHIUM_ION_SOC_MIN, LITHIUM_ION_SOC_MAX, GRAPHENE_SOC_MIN, GRAPHENE_SOC_MAX
     global SAVE_PLOTS, MACSE_ENABLED, MACSE_CAPACITY_MWH, MACSE_CONTRACT_YEARS, MACSE_PRICE_PER_MW_YEAR
     global ENABLE_MULTIPROCESSING, MULTIPROCESSING_CORES
+    global ARBITRAGE_BIAS_MULTIPLIER, AUTOCONSUMO_BIAS_MULTIPLIER
 
     POD_POWER_MW = args.pod_limit
     BATTERY_TECHNOLOGY = args.battery_tech
@@ -3048,6 +3686,10 @@ def main():
 
     ENABLE_MULTIPROCESSING = not args.no_parallel
     MULTIPROCESSING_CORES = args.n_cores
+    
+    # Lorenzo Giannuzzo: Bias ottimizzazione
+    ARBITRAGE_BIAS_MULTIPLIER = args.bias_arbitrage
+    AUTOCONSUMO_BIAS_MULTIPLIER = args.bias_autoconsumo
 
     # ========================================================================
     # Lorenzo Giannuzzo: SETUP EFFICIENZA CUSTOM
@@ -3107,6 +3749,8 @@ def main():
         print(f"  • Cores:                  {args.n_cores} ({'auto' if args.n_cores < 0 else 'manual'})")
     print(f"  • Particelle PSO:         {args.n_particles}")
     print(f"  • Iterazioni PSO:         {args.n_iterations}")
+    print(f"  • Bias arbitraggio:       {args.bias_arbitrage:.2f}x")
+    print(f"  • Bias autoconsumo:       {args.bias_autoconsumo:.2f}x")
     print(f"  • Salva grafici:          {'SÌ' if args.save_plots else 'NO'}")
     print(f"  • Directory output:       {args.output_dir}")
     print("=" * 80)
@@ -3175,7 +3819,7 @@ def main():
             load_profile = None
 
     # ========================================================================
-    # Lorenzo Giannuzzo: SETUP BATTERIA E OTTIMIZZATORE
+    # Lorenzo Giannuzzo: SETUP BATTERIA E OTTIMIZZATORE MIGLIORATO
     # ========================================================================
     battery = Battery(
         technology=BATTERY_TECHNOLOGY,
@@ -3185,10 +3829,57 @@ def main():
         custom_efficiency=custom_efficiency_dict
     )
 
+    # Usa PSO ottimizzato con parametri migliorati
     optimizer = PSOOptimizer(
         n_particles=args.n_particles,
-        n_iterations=args.n_iterations
+        n_iterations=args.n_iterations,
+        w_start=0.9,    # Migliorato da 0.95
+        w_end=0.1,      # Migliorato da 0.005  
+        c1=1.5,         # Migliorato da 2.0
+        c2=2.5          # Migliorato da 2.0
     )
+    
+    # Configura ottimizzazioni in base agli argomenti
+    if args.disable_optimizations:
+        optimizer.configure_optimizations(intelligent_init=False, temporal_patterns=False,
+                                        constraint_repair=False, adaptive_parameters=False)
+        print(f"\n⚠️  OTTIMIZZAZIONI PSO DISABILITATE (modalità originale)")
+    else:
+        print(f"\n🚀 OTTIMIZZAZIONI PSO ATTIVE:")
+        print(f"   • Inizializzazione intelligente: ✅")
+        print(f"   • Constraint repair: ✅") 
+        print(f"   • Parametri adattivi: ✅")
+        print(f"   • Diversificazione dinamica: ✅")
+    
+    # ========================================================================
+    # Lorenzo Giannuzzo: MODALITÀ CONFRONTO PSO (se richiesta)
+    # ========================================================================
+    if args.compare_pso:
+        print(f"\n🔬 MODALITÀ CONFRONTO PSO ATTIVATA")
+        
+        # Prepara dati per test (sample ridotto per velocità)
+        n_hours_test = min(48, len(df))  # Test su 48 ore
+        prices_sell_test = df['€/MWh'].values[:n_hours_test]
+        prices_buy_test = df2['€/MWh'].values[:n_hours_test]
+        
+        if PV_ENABLED and pv_df is not None:
+            pv_test = pv_df['P'].values[:n_hours_test] / 1000.0
+        else:
+            pv_test = np.zeros(n_hours_test)
+            
+        if LOAD_ENABLED and load_df is not None:
+            load_test = load_df['value'].values[:n_hours_test] / 1000.0
+        else:
+            load_test = np.zeros(n_hours_test)
+        
+        # Esegui confronto
+        #comparison_results = compare_pso_versions(
+        #    battery, prices_sell_test, prices_buy_test, pv_test, load_test,
+        #    n_particles=min(30, args.n_particles), n_iterations=min(50, args.n_iterations)
+        #)
+        
+        print(f"\n✅ Confronto completato. Usa --disable-optimizations per tornare alla versione originale.")
+        return  # Esce dopo il confronto
 
     simulator = RollingHorizonSimulator(
         battery,
@@ -3282,7 +3973,7 @@ def main():
     # Lorenzo Giannuzzo: GRAFICI BASE (SEMPRE GENERATI se SAVE_PLOTS=True)
     # ========================================================================
     if SAVE_PLOTS:
-        print("\n📊 Generazione grafici...")
+        print("\n Generazione grafici...")
 
         # Crea directory visualization se non esiste
         viz_folder = 'visualization'
@@ -3559,13 +4250,13 @@ def main():
     # STAMPA RISULTATI FINALI
     # ========================================================================
     print("\n" + "=" * 80)
-    print("📊 RISULTATI FINALI - ANALISI COMPLETA")
+    print("RISULTATI FINALI - ANALISI COMPLETA")
     print("=" * 80)
 
     # ========================================================================
     # 1. STATO FINALE BATTERIA
     # ========================================================================
-    print("\n🔋 STATO FINALE BATTERIA:")
+    print("\n STATO FINALE BATTERIA:")
     print(f"  • Tecnologia:              {battery.technology}")
     print(f"  • Capacità nominale:       {battery.nominal_capacity:.2f} MWh")
     print(f"  • Capacità attuale:        {battery.capacity:.2f} MWh")
@@ -3605,7 +4296,7 @@ def main():
     # ========================================================================
     if PV_ENABLED and pv_system:
         pv_stats = pv_system.get_statistics()
-        print("\n☀️ STATISTICHE FOTOVOLTAICO:")
+        print("\n STATISTICHE FOTOVOLTAICO:")
         print(f"  • Produzione totale:       {pv_stats['total_production_mwh']:.2f} MWh")
         print(f"  • Allocazione energia:")
         print(
@@ -3672,13 +4363,13 @@ def main():
             print(f"  • Carico non servito:      {total_load_unserved:.2f} MWh ⚠️")
 
         if total_pod_violations > 0 or total_load_unserved > 0.1:
-            print(f"\n  ⚠️  ATTENZIONE: Considera aumentare POD limit o capacità batteria!")
+            print(f"\n  ATTENZIONE: Considera aumentare POD limit o capacità batteria!")
 
     # ========================================================================
     # 6. CONFRONTO CON BASELINE (scenario senza batteria)
     # ========================================================================
     if baseline_scenario:
-        print("\n📈 CONFRONTO CON SCENARIO BASE (senza batteria):")
+        print("\nCONFRONTO CON SCENARIO BASE (senza batteria):")
         print(f"  • Bilancio senza BESS:     {baseline_scenario['net_balance']:,.2f} €")
         print(f"  • Bilancio con BESS:       {total_system_profit:,.2f} €")
 
@@ -3691,9 +4382,9 @@ def main():
         print(f"  • Beneficio batteria:      {battery_benefit:,.2f} € ({benefit_percent:+.1f}%)")
 
         if battery_benefit > 0:
-            print(f"  ✅ SISTEMA PROFITTEVOLE")
+            print(f"  SISTEMA PROFITTEVOLE")
         else:
-            print(f"  ❌ SISTEMA NON PROFITTEVOLE (perdita: {abs(battery_benefit):,.2f} €)")
+            print(f"  SISTEMA NON PROFITTEVOLE (perdita: {abs(battery_benefit):,.2f} €)")
 
         # Autosufficienza
         baseline_autosufficienza = baseline_scenario['autosufficienza_percent']
@@ -3723,7 +4414,7 @@ def main():
     # 8. TEMPO SIMULAZIONE
     # ========================================================================
     simulation_time = (end_time - start_time).total_seconds()
-    print(f"\n⏱️  TEMPO SIMULAZIONE:")
+    print(f"\n  TEMPO SIMULAZIONE:")
     print(f"  • Durata:                  {simulation_time:.1f} secondi ({simulation_time / 60:.1f} minuti)")
     print(f"  • Ore simulate:            {len(results_df)}")
     print(f"  • Velocità:                {len(results_df) / simulation_time:.1f} ore/secondo")

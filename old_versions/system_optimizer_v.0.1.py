@@ -1,4 +1,4 @@
-""""
+"""
 ------------------------------------------------------------------------------------------------------------------------
 BATTERY ENERGY STORAGE SYSTEM (BESS) OPTIMIZATION - AUTONOMOUS LOAD DECISIONS
 Particle Swarm Optimization with Rolling Horizon, MACSE, Autonomous PV and AUTONOMOUS Load Management
@@ -8,7 +8,6 @@ Author: Lorenzo Giannuzzo (Modified)
 Affiliation: Politecnico di Torino
              Dipartimento Energia (DENERG)
              Energy Center Lab
-
 Description:
     Sistema di ottimizzazione per Battery Energy Storage System (BESS) che
     implementa l'algoritmo Particle Swarm Optimization (PSO) con Rolling
@@ -31,196 +30,9 @@ import os
 import json
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
-from joblib import Parallel, delayed
-import multiprocessing
-import time
-import argparse
-import sys
-
-
-def parse_arguments():
-    """
-    Lorenzo Giannuzzo: Parser argomenti da command line per BESS Optimization
-    """
-    parser = argparse.ArgumentParser(
-        description='BESS Optimization with PSO - Command Line Interface',
-        formatter_class=argparse.RawDescriptionHelpFormatter,
-        epilog="""
-Esempi:
-  # Simulazione base con batteria litio-ione
-  python script.py --price-sell data/vendita.xlsx --price-buy data/acquisto.xlsx
-
-  # Con PV e carico
-  python script.py --price-sell data/vendita.xlsx --price-buy data/acquisto.xlsx \
-                   --pv-file data/pv.csv --pv-enabled \
-                   --load-file data/load.xlsx --load-enabled
-
-  # Batteria grafene custom
-  python script.py --price-sell data/vendita.xlsx --price-buy data/acquisto.xlsx \
-                   --battery-tech GRAFENE --battery-capacity 2.0 --battery-power 2.0 \
-                   --graphene-soc-min 0.0 --graphene-soc-max 1.0
-
-  # Con MACSE
-  python script.py --price-sell data/vendita.xlsx --price-buy data/acquisto.xlsx \
-                   --macse-enabled --macse-capacity 0.5 --macse-contract-years 2
-        """
-    )
-
-    # ========================================================================
-    # Lorenzo Giannuzzo: FILE PATHS (REQUIRED)
-    # ========================================================================
-    required = parser.add_argument_group('File Paths (Obbligatori)')
-    required.add_argument('--price-sell', type=str, required=True,
-                          help='Path assoluto file prezzi vendita (.xlsx)')
-    required.add_argument('--price-buy', type=str, required=True,
-                          help='Path assoluto file prezzi acquisto (.xlsx)')
-
-    # ========================================================================
-    # Lorenzo Giannuzzo: FILE PATHS (OPTIONAL)
-    # ========================================================================
-    optional_files = parser.add_argument_group('File Paths (Opzionali)')
-    optional_files.add_argument('--pv-file', type=str, default=None,
-                                help='Path assoluto file produzione PV (.csv)')
-    optional_files.add_argument('--load-file', type=str, default=None,
-                                help='Path assoluto file carico (.xlsx)')
-
-    # ========================================================================
-    # Lorenzo Giannuzzo: POD (POINT OF DELIVERY)
-    # ========================================================================
-    pod_group = parser.add_argument_group('Point of Delivery')
-    pod_group.add_argument('--pod-limit', type=float, default=1.5,
-                           help='Potenza massima scambio rete [MW] (default: 1.5)')
-
-    # ========================================================================
-    # Lorenzo Giannuzzo: BATTERY PARAMETERS
-    # ========================================================================
-    battery_group = parser.add_argument_group('Parametri Batteria')
-    battery_group.add_argument('--battery-tech', type=str,
-                               choices=['LITIO-IONE', 'GRAFENE'],
-                               default='LITIO-IONE',
-                               help='Tecnologia batteria (default: LITIO-IONE)')
-    battery_group.add_argument('--battery-capacity', type=float, default=1.0,
-                               help='Capacità batteria [MWh] (default: 1.0)')
-    battery_group.add_argument('--battery-power', type=float, default=1.0,
-                               help='Potenza massima batteria [MW] (default: 1.0)')
-    battery_group.add_argument('--battery-c-rate', type=float, default=1.0,
-                               help='C-rate massimo batteria (default: 1.0)')
-
-    # ========================================================================
-    # Lorenzo Giannuzzo: SOC LIMITS
-    # ========================================================================
-    soc_group = parser.add_argument_group('SOC Limits')
-    soc_group.add_argument('--lithium-soc-min', type=float, default=0.1,
-                           help='SOC minimo litio-ione (default: 0.1)')
-    soc_group.add_argument('--lithium-soc-max', type=float, default=0.9,
-                           help='SOC massimo litio-ione (default: 0.9)')
-    soc_group.add_argument('--graphene-soc-min', type=float, default=0.0,
-                           help='SOC minimo grafene (default: 0.0)')
-    soc_group.add_argument('--graphene-soc-max', type=float, default=1.0,
-                           help='SOC massimo grafene (default: 1.0)')
-
-    # ========================================================================
-    # Lorenzo Giannuzzo: PV & LOAD
-    # ========================================================================
-    pv_load_group = parser.add_argument_group('PV e Carico')
-    pv_load_group.add_argument('--pv-enabled', action='store_true',
-                               help='Abilita sistema fotovoltaico')
-    pv_load_group.add_argument('--load-enabled', action='store_true',
-                               help='Abilita carico utente')
-    pv_load_group.add_argument('--pv-nominal-power', type=float, default=1.0,
-                               help='Potenza nominale PV [kWp] (default: 1.0)') # non caricare questo parametro, sballerebbe i risultati
-
-    # ========================================================================
-    # Lorenzo Giannuzzo: MACSE
-    # ========================================================================
-    macse_group = parser.add_argument_group('MACSE (Servizi Ancillari)')
-    macse_group.add_argument('--macse-enabled', action='store_true',
-                             help='Abilita servizi MACSE')
-    macse_group.add_argument('--macse-capacity', type=float, default=1.0,
-                             help='Capacità riservata MACSE [MWh] (default: 1.0)')
-    macse_group.add_argument('--macse-contract-years', type=int, default=1,
-                             help='Anni contratto MACSE (default: 1)')
-    macse_group.add_argument('--macse-price-per-mw-year', type=float, default=50000,
-                             help='Prezzo MACSE [€/MW/anno] (default: 50000)')
-
-    # ========================================================================
-    # Lorenzo Giannuzzo: PARALLELIZATION
-    # ========================================================================
-    parallel_group = parser.add_argument_group('Parallelizzazione')
-    parallel_group.add_argument('--no-parallel', action='store_true',
-                                help='Disabilita parallelizzazione PSO')
-    parallel_group.add_argument('--n-cores', type=int, default=-2,
-                                help='Numero cores (-1=tutti-1, -2=tutti, N=specifico)')
-
-    # ========================================================================
-    # Lorenzo Giannuzzo: PSO PARAMETERS
-    # ========================================================================
-    pso_group = parser.add_argument_group('PSO Parameters')
-    pso_group.add_argument('--n-particles', type=int, default=50,
-                           help='Numero particelle PSO')
-    pso_group.add_argument('--n-iterations', type=int, default=100,
-                           help='Numero iterazioni PSO (default: 100)')
-
-    # ========================================================================
-    # Lorenzo Giannuzzo: OUTPUT
-    # ========================================================================
-    output_group = parser.add_argument_group('Output')
-    output_group.add_argument('--save-plots', action='store_true',
-                              help='Salva grafici visualizzazione')
-    output_group.add_argument('--output-dir', type=str, default='results',
-                              help='Directory output risultati (default: results)')
-
-    args = parser.parse_args()
-
-    # ========================================================================
-    # Lorenzo Giannuzzo: VALIDAZIONE
-    # ========================================================================
-    # Lorenzo Giannuzzo: Verifica esistenza file
-    if not os.path.exists(args.price_sell):
-        parser.error(f"File prezzi vendita non trovato: {args.price_sell}")
-    if not os.path.exists(args.price_buy):
-        parser.error(f"File prezzi acquisto non trovato: {args.price_buy}")
-
-    if args.pv_enabled and args.pv_file and not os.path.exists(args.pv_file):
-        parser.error(f"File PV non trovato: {args.pv_file}")
-
-    if args.load_enabled and args.load_file and not os.path.exists(args.load_file):
-        parser.error(f"File carico non trovato: {args.load_file}")
-
-    # Lorenzo Giannuzzo: Verifica SOC
-    if not (0 <= args.lithium_soc_min < args.lithium_soc_max <= 1):
-        parser.error(f"SOC litio invalido: min={args.lithium_soc_min}, max={args.lithium_soc_max}")
-
-    if not (0 <= args.graphene_soc_min < args.graphene_soc_max <= 1):
-        parser.error(f"SOC grafene invalido: min={args.graphene_soc_min}, max={args.graphene_soc_max}")
-
-    # Lorenzo Giannuzzo: Verifica capacità
-    if args.battery_capacity <= 0:
-        parser.error(f"Capacità batteria deve essere > 0: {args.battery_capacity}")
-
-    if args.battery_power <= 0:
-        parser.error(f"Potenza batteria deve essere > 0: {args.battery_power}")
-
-    if args.pod_limit <= 0:
-        parser.error(f"POD limit deve essere > 0: {args.pod_limit}")
-
-    # Lorenzo Giannuzzo: Verifica MACSE
-    if args.macse_enabled and args.macse_capacity > args.battery_capacity:
-        parser.error(f"Capacità MACSE ({args.macse_capacity}) > capacità batteria ({args.battery_capacity})")
-
-    # Lorenzo Giannuzzo: Auto-calcola particelle se non specificato
-    if args.n_particles is None:
-        n_cores = multiprocessing.cpu_count()
-        if args.no_parallel:
-            args.n_particles = 120
-        else:
-            cores_used = n_cores if args.n_cores == -2 else (n_cores - 1 if args.n_cores == -1 else args.n_cores)
-            args.n_particles = max(120, cores_used * 40)
-
-    return args
 
 # ========================================================================================================
-# Lorenzo Giannuzzo: SEZIONE 1: PARAMETRI CONFIGURABILI PRINCIPALI
+# SEZIONE 1: PARAMETRI CONFIGURABILI PRINCIPALI
 # ========================================================================================================
 energy_selling_price_name = 'Prezzo_Vendita.xlsx'
 energy_buying_price_name = 'Prezzo_Acquisto.xlsx'
@@ -228,21 +40,16 @@ pv_production_file = 'PV_formattato.csv'
 load_file = 'Consumo.xlsx'
 
 # ---------------------------------- PARAMETRI POINT OF DELIVERY (POD) --------------------------------
-POD_POWER_MW = 1.5  # Lorenzo Giannuzzo: Potenza massima scambio con rete [MW]
-
-# ---------------------------------- PARALLELIZZAZIONE ------------------------------------------------
-ENABLE_MULTIPROCESSING = True   # Lorenzo Giannuzzo: True = PSO parallelo, False = PSO sequenziale
-MULTIPROCESSING_CORES = -2     # Lorenzo Giannuzzo: -1 = auto (tutti-1), -2 = tutti, N = N cores specifici
-
+POD_POWER_MW = 0.8  # Potenza massima scambio con rete [MW]
 
 # ---------------------------------- SCELTA TECNOLOGIA BATTERIA -------------------------------------------
-BATTERY_TECHNOLOGY = "LITIO-IONE"
+BATTERY_TECHNOLOGY = "GRAFENE"
 
 # ---------------------------------- PARAMETRI BATTERIA ---------------------------------------------------
 BATTERY_CAPACITY_MWH = 1.0
 BATTERY_MAX_POWER_MW = 1.0
 BATTERY_MAX_C_RATE = 1.0
-BATTERY_BASE_EFFICIENCY = 0.95
+BATTERY_BASE_EFFICIENCY = 0.95 #todo dare come input
 
 # ---------------------------------- PARAMETRI FOTOVOLTAICO -----------------------------------------------
 PV_ENABLED = True
@@ -252,7 +59,7 @@ PV_SYSTEM_LOSSES = 0.0
 
 # ---------------------------------- PARAMETRI CARICO UTENTE -----------------------------------------------
 LOAD_ENABLED = True
-LOAD_SHEET_NAME = None  # Lorenzo Giannuzzo: None = primo sheet disponibile
+LOAD_SHEET_NAME = None  # None = primo sheet disponibile
 
 
 # ---------------------------------- PARAMETRI SPECIFICI PER TECNOLOGIA -----------------------------------
@@ -268,7 +75,7 @@ GRAPHENE_EOL_CYCLES = 500000
 
 # ---------------------------------- PARAMETRI GENERALI ---------------------------------------------------
 SAVE_PLOTS = True
-DEGRADATION_COST_PER_MWH = 20.0
+DEGRADATION_COST_PER_MWH = 0.0
 
 # ---------------------------------- PARAMETRI MACSE ------------------------------------------------------
 MACSE_ENABLED = False
@@ -287,7 +94,7 @@ MACSE_MAX_SOC_FOR_CHARGE = 0.80
 np.random.seed(42)
 
 # ========================================================================================================
-# Lorenzo Giannuzzo: SEZIONE 2: DATI SPERIMENTALI CURVE DI EFFICIENZA
+# SEZIONE 2: DATI SPERIMENTALI CURVE DI EFFICIENZA
 # ========================================================================================================
 LITHIUM_ION_05C_DATA = {
     'charge_energy_kwh': [11.45, 11.42, 11.48],
@@ -318,7 +125,7 @@ GRAPHENE_1C_DATA = {
 }
 
 # ========================================================================================================
-# Lorenzo Giannuzzo: SEZIONE 3: CLASSI
+# SEZIONE 3: CLASSI
 # ========================================================================================================
 class BatteryEfficiencyModel:
     def __init__(self, technology, c_rate):
@@ -370,12 +177,12 @@ class PhotovoltaicSystem:
         self.curtailed_energy_mwh = 0.0
 
     def get_production(self, irradiance_w_per_kwp):
-        """Lorenzo Giannuzzo: Calcola produzione effettiva dato irraggiamento [MW]"""
+        """Calcola produzione effettiva dato irraggiamento [MW]"""
         power_mw = (irradiance_w_per_kwp * self.nominal_power_kwp * self.total_efficiency) * 1000
         return power_mw
 
     def get_energy(self, irradiance_w_per_kwp, dt=1.0):
-        """Lorenzo Giannuzzo: Calcola energia prodotta in un timestep [MWh]"""
+        """Calcola energia prodotta in un timestep [MWh]"""
         power_mw = self.get_production(irradiance_w_per_kwp)
         energy_mwh = power_mw * dt
         self.total_production_mwh += energy_mwh
@@ -383,20 +190,20 @@ class PhotovoltaicSystem:
 
     def load_pv_production(self, pv_value_kw, dt=1.0):
         """
-        Lorenzo Giannuzzo: Carica produzione PV già calcolata in kW
+        Carica produzione PV già calcolata in kW
         """
         energy_mwh = (pv_value_kw / 1000.0) * dt
         self.total_production_mwh += energy_mwh
         return energy_mwh
 
     def allocate_energy(self, to_battery_mwh, to_grid_mwh, to_load_mwh):
-        """Lorenzo Giannuzzo: Registra allocazione energia PV"""
+        """Registra allocazione energia PV"""
         self.energy_to_battery_mwh += to_battery_mwh
         self.energy_to_grid_mwh += to_grid_mwh
         self.energy_to_load_mwh += to_load_mwh
 
     def get_statistics(self):
-        """Lorenzo Giannuzzo: Ritorna statistiche produzione PV"""
+        """Ritorna statistiche produzione PV"""
         total = self.total_production_mwh
         return {
             'total_production_mwh': total,
@@ -420,8 +227,8 @@ class LoadProfile:
         self.energy_from_battery_mwh = 0.0
         self.energy_from_grid_mwh = 0.0
 
-        self.battery_served_load_count = 0   # Lorenzo Giannuzzo: Ore in cui batteria ha SCELTO di servire carico
-        self.grid_served_load_count = 0      # Lorenzo Giannuzzo: Ore in cui batteria ha SCELTO di lasciare carico a rete
+        self.battery_served_load_count = 0  # Ore in cui batteria ha SCELTO di servire carico
+        self.grid_served_load_count = 0      # Ore in cui batteria ha SCELTO di lasciare carico a rete
         self.total_decision_hours = 0
 
     def register_supply(self, from_pv, from_battery, from_grid):
@@ -433,8 +240,8 @@ class LoadProfile:
 
     def register_battery_decision(self, battery_served: bool):
         """
-        Lorenzo Giannuzzo: battery_served=True → Batteria ha SCELTO di servire carico
-        Lorenzo Giannuzzo: battery_served=False → Batteria ha SCELTO di lasciare carico a rete (per trading futuro)
+        battery_served=True → Batteria ha SCELTO di servire carico
+        battery_served=False → Batteria ha SCELTO di lasciare carico a rete (per trading futuro)
         """
         self.total_decision_hours += 1
         if battery_served:
@@ -443,7 +250,7 @@ class LoadProfile:
             self.grid_served_load_count += 1
 
     def get_statistics(self):
-        """Lorenzo Giannuzzo: Ritorna statistiche fornitura carico con decisioni autonome"""
+        """Ritorna statistiche fornitura carico con decisioni autonome"""
         total = self.total_energy_required_mwh
         stats = {
             'total_energy_required_mwh': total,
@@ -472,7 +279,7 @@ class LoadProfile:
         return stats
 
 # ========================================================================================================
-# Lorenzo Giannuzzo: SEZIONE 4: DEGRADO
+# SEZIONE 4: DEGRADO
 # ========================================================================================================
 def degradation(cycle_num):
     capacity_remaining = (
@@ -489,7 +296,7 @@ def degradation(cycle_num):
     return max(0, capacity_remaining)
 
 # ========================================================================================================
-# Lorenzo Giannuzzo: SEZIONE 5: MODELLO BATTERIA
+# SEZIONE 5: MODELLO BATTERIA
 # ========================================================================================================
 class Battery:
     """
@@ -567,7 +374,7 @@ class Battery:
         return energy_consumed
 
     def discharge(self, power_mw, dt=1.0):
-        """Lorenzo Giannuzzo: Scarica batteria"""
+        """Scarica batteria"""
         max_power_c_rate = self.trading_capacity * self.max_c_rate
         max_power_trading = min(self.trading_power, max_power_c_rate)
         power_mw = min(power_mw, max_power_trading)
@@ -645,266 +452,22 @@ class Battery:
 
 
 # ========================================================================================================
-# Lorenzo Giannuzzo: SEZIONE 6: OTTIMIZZATORE PSO
-# ========================================================================================================
-# ========================================================================================================
-# Lorenzo Giannuzzo: SEZIONE NUMBA: VALUTAZIONE ULTRA-VELOCE PARTICELLE PSO
-# ========================================================================================================
-from numba import njit, prange
-import numba
-
-
-@njit(fastmath=True, cache=True)
-def evaluate_particle_numba(
-        # Lorenzo Giannuzzo: Stati batteria
-        soc_init, capacity, trading_capacity, soc_min, soc_max,
-        charge_eff, discharge_eff, eol_cycles,
-        # Lorenzo Giannuzzo: Azioni particella
-        actions,  # (n_hours, 3): [p_batt_trading, alpha_pv_load, p_batt_load]
-        # Lorenzo Giannuzzo: Dati mercato
-        prices_sell, prices_buy, pv_production, load_demand,
-        # Lorenzo Giannuzzo: Flags
-        pv_enabled, load_enabled,
-        # Lorenzo Giannuzzo: Parametri globali
-        pod_power_mw, degradation_cost_per_mwh
-):
-    """
-    Lorenzo Giannuzzo: Valutazione SINGOLA particella con Numba JIT
-    Lorenzo Giannuzzo: VERSIONE CORRETTA: CARICO ha priorità su BATTERIA per POD
-    """
-    n_hours = len(prices_sell)
-    soc = soc_init
-    profit = 0.0
-    penalty = 0.0
-
-    for h in range(n_hours):
-        # Estrai azioni
-        p_batt_trading = actions[h, 0]
-        alpha_pv_load = actions[h, 1]
-        p_batt_load = actions[h, 2]
-
-        # Lorenzo Giannuzzo: Dati ora corrente
-        price_sell = prices_sell[h]
-        price_buy = prices_buy[h]
-        pv_available = pv_production[h] if pv_enabled else 0.0
-        load_required = load_demand[h] if load_enabled else 0.0
-
-        # Lorenzo Giannuzzo: FASE 1: Allocazione PV al carico
-        pv_to_load = min(alpha_pv_load * pv_available, load_required)
-        pv_remaining = pv_available - pv_to_load
-        load_remaining = load_required - pv_to_load
-
-        # Lorenzo Giannuzzo: FASE 2: Vincolo XOR batteria
-        if p_batt_trading > 0.001:  # Lorenzo Giannuzzo: CARICA
-            charge_request = p_batt_trading
-            action_mode = 1  # Lorenzo Giannuzzo: CHARGE
-        elif p_batt_trading < -0.001:  # Lorenzo Giannuzzo: SCARICA TRADING
-            discharge_request_trading = -p_batt_trading
-            discharge_request_load = p_batt_load
-            action_mode = 2  # Lorenzo Giannuzzo: DISCHARGE
-        elif p_batt_load > 0.001:  # Lorenzo Giannuzzo: SCARICA SOLO LOAD
-            discharge_request_trading = 0.0
-            discharge_request_load = p_batt_load
-            action_mode = 2  # Lorenzo Giannuzzo: DISCHARGE
-        else:  # Lorenzo Giannuzzo: IDLE
-            action_mode = 0
-
-        grid_withdrawal = 0.0
-        grid_injection = 0.0
-
-        # ====================================================================
-        # Lorenzo Giannuzzo: FASE 3: SCARICA BATTERIA
-        # ====================================================================
-        if action_mode == 2:
-            total_discharge_request = discharge_request_trading + discharge_request_load
-            max_discharge = (soc - soc_min) * trading_capacity * discharge_eff
-            actual_discharge_total = min(total_discharge_request, max_discharge)
-
-            if actual_discharge_total > 0.001:
-                # Lorenzo Giannuzzo: Proporziona tra trading e load
-                ratio_trading = discharge_request_trading / total_discharge_request if total_discharge_request > 0 else 0.0
-                ratio_load = discharge_request_load / total_discharge_request if total_discharge_request > 0 else 0.0
-
-                discharge_for_trading = actual_discharge_total * ratio_trading
-                discharge_for_load_raw = actual_discharge_total * ratio_load
-                discharge_for_load = min(discharge_for_load_raw, load_remaining)
-
-                # Lorenzo Giannuzzo: Limita trading per POD
-                discharge_for_trading = min(discharge_for_trading, pod_power_mw)
-                actual_discharge_used = discharge_for_trading + discharge_for_load
-
-                # Lorenzo Giannuzzo: Penalità violazione POD trading
-                if discharge_for_trading > pod_power_mw:
-                    penalty += (discharge_for_trading - pod_power_mw) * price_sell * 10.0
-
-                # Lorenzo Giannuzzo: Aggiorna SOC
-                energy_consumed = actual_discharge_used / discharge_eff
-                new_soc = soc - (energy_consumed / capacity)
-                soc = max(new_soc, soc_min)
-
-                # Lorenzo Giannuzzo: Profitti scarica trading
-                if discharge_for_trading > 0.001:
-                    profit += discharge_for_trading * price_sell
-                    profit -= discharge_for_trading * degradation_cost_per_mwh / (2 * eol_cycles)
-                    grid_injection += discharge_for_trading
-
-                # Lorenzo Giannuzzo: Costo scarica load
-                if discharge_for_load > 0.001:
-                    load_remaining -= discharge_for_load
-                    profit -= discharge_for_load * degradation_cost_per_mwh / (2 * eol_cycles)
-
-        # ====================================================================
-        # Lorenzo Giannuzzo: FASE 4: CARICO DALLA RETE
-        # ====================================================================
-        if load_remaining > 0.001:
-
-            pod_available = pod_power_mw - grid_withdrawal
-            load_from_grid = min(load_remaining, pod_available)
-
-            if load_from_grid > 0.001:
-                profit -= load_from_grid * price_buy
-                grid_withdrawal += load_from_grid
-                load_remaining -= load_from_grid
-
-            # Lorenzo Giannuzzo: Carico non servito - PENALITÀ PESANTE (stile Reward/Penalty funciton DRL per accellerare convergenza PSO)
-            if load_remaining > 0.001:
-                penalty += load_remaining * price_buy * 1000.0  # ✅ 1000x!
-
-        # ====================================================================
-        # Lorenzo Giannuzzo: FASE 5: CARICA BATTERIA
-        # ====================================================================
-        if action_mode == 1 and soc < soc_max:
-            max_storable = (soc_max - soc) * trading_capacity
-            max_power = max_storable / (1.0 * charge_eff)
-            actual_power = min(charge_request, max_power)
-
-            if actual_power > 0.01:
-                energy_needed = actual_power * 1.0
-
-                if pv_remaining > 0.0:
-                    energy_from_pv = min(energy_needed, pv_remaining)
-                    energy_stored = energy_from_pv * charge_eff
-                    soc += energy_stored / capacity
-                    pv_remaining -= energy_from_pv
-                    energy_needed -= energy_from_pv
-                    profit -= energy_from_pv * degradation_cost_per_mwh / (2 * eol_cycles)
-
-                # Lorenzo Giannuzzo:  Carica da rete - USA POD RESIDUO DOPO CARICO! ✅
-                if energy_needed > 0.01:
-                    pod_available = pod_power_mw - grid_withdrawal  # ✅ POD RESIDUO!
-                    energy_from_grid = min(energy_needed, pod_available)
-
-                    if energy_from_grid > 0.001:
-                        energy_stored = energy_from_grid * charge_eff
-                        soc += energy_stored / capacity
-                        profit -= energy_from_grid * price_buy
-                        profit -= energy_from_grid * degradation_cost_per_mwh / (2 * eol_cycles)
-                        grid_withdrawal += energy_from_grid
-
-        # ====================================================================
-        # Lorenzo Giannuzzo: FASE 6: PV residuo alla rete
-        # ====================================================================
-        if pv_remaining > 0.001:
-            pv_to_grid = min(pv_remaining, pod_power_mw - grid_injection)
-            if pv_to_grid > 0.001:
-                profit += pv_to_grid * price_sell
-                grid_injection += pv_to_grid
-
-            pv_curtailed = pv_remaining - pv_to_grid
-            if pv_curtailed > 0.001:
-                penalty += pv_curtailed * price_sell * 50.0
-
-        # Lorenzo Giannuzzo: Penalità violazioni POD
-        if grid_withdrawal > pod_power_mw + 0.001:
-            penalty += (grid_withdrawal - pod_power_mw) * price_buy * 50.0
-        if grid_injection > pod_power_mw + 0.001:
-            penalty += (grid_injection - pod_power_mw) * price_sell * 50.0
-
-    return profit - penalty
-
-
-@njit(parallel=True, fastmath=True, cache=True)
-def evaluate_all_particles_numba(
-        # Lorenzo Giannuzzo: Stati batteria (scalari)
-        soc_init, capacity, trading_capacity, soc_min, soc_max,
-        charge_eff, discharge_eff, eol_cycles,
-        # Lorenzo Giannuzzo: Azioni TUTTE le particelle
-        positions,  # (n_particles, n_hours, 3)
-        # Lorenzo Giannuzzo: Dati mercato
-        prices_sell, prices_buy, pv_production, load_demand,
-        # Lorenzo Giannuzzo: Flags
-        pv_enabled, load_enabled,
-        # Lorenzo Giannuzzo: Parametri globali
-        pod_power_mw, degradation_cost_per_mwh
-):
-    """
-    Lorenzo Giannuzzo: Valutazione PARALLELA di TUTTE le particelle con Numba
-
-    Lorenzo Giannuzzo: ULTRA-VELOCE: parallel=True usa threads nativi C
-    Speedup: 50-200x rispetto a Python puro
-    """
-    n_particles = positions.shape[0]
-    scores = np.empty(n_particles, dtype=np.float64)
-
-    # Lorenzo Giannuzzo: PARALLELIZZAZIONE AUTOMATICA NUMBA
-    for i in prange(n_particles):
-        scores[i] = evaluate_particle_numba(
-            soc_init, capacity, trading_capacity, soc_min, soc_max,
-            charge_eff, discharge_eff, eol_cycles,
-            positions[i],  # Azioni particella i
-            prices_sell, prices_buy, pv_production, load_demand,
-            pv_enabled, load_enabled,
-            pod_power_mw, degradation_cost_per_mwh
-        )
-
-    return scores
-
-
-# ========================================================================================================
-# Lorenzo Giannuzzo: WRAPPER PYTHON
-# ========================================================================================================
-def evaluate_particles_fast(battery, positions, prices_sell, prices_buy, pv_production, load_demand):
-    """
-    Lorenzo Giannuzzo: Wrapper Python-friendly per chiamare Numba
-    """
-    # Lorenzo Giannuzzo: Converti bool Python in int per Numba (0=False, 1=True)
-    pv_enabled_int = 1 if PV_ENABLED else 0
-    load_enabled_int = 1 if LOAD_ENABLED else 0
-
-    scores = evaluate_all_particles_numba(
-        # Lorenzo Giannuzzo:  Stati batteria
-        battery.soc,
-        battery.capacity,
-        battery.trading_capacity,
-        battery.soc_min,
-        battery.soc_max,
-        battery.charge_efficiency,
-        battery.discharge_efficiency,
-        battery.eol_cycles,
-        # Lorenzo Giannuzzo: Azioni
-        positions,
-        # Lorenzo Giannuzzo: Dati mercato
-        prices_sell,
-        prices_buy,
-        pv_production,
-        load_demand,
-        # Lorenzo Giannuzzo: Flags
-        pv_enabled_int,
-        load_enabled_int,
-        # Parametri
-        POD_POWER_MW,
-        DEGRADATION_COST_PER_MWH
-    )
-
-    return scores
-# ========================================================================================================
-# Lorenzo Giannuzzo: CLASSE PSO PARALLELIZZATA
+# SEZIONE 6: OTTIMIZZATORE PSO
 # ========================================================================================================
 class PSOOptimizer:
     """
-    Lorenzo Giannuzzo: PSO con NUMBA JIT PARALLELIZZATO
+    PSO con decisioni autonome multi-dimensionali
+    Ogni ora: 3 decisioni continue [p_batt_trading, alpha_pv_load, p_batt_load]
 
-    Lorenzo Giannuzzo: Speedup: 50-200x rispetto a versione Python pura
+    OBIETTIVO ECONOMICO REALE:
+    Minimizzare: Costo Netto = Costi - Ricavi + Degrado
+
+    Dove:
+    - Ricavi = SOLO vendite energia alla rete (PV + batteria)
+    - Costi = SOLO acquisti energia dalla rete (per batteria + per carico)
+    - Degrado = Costo cicli batteria
+
+    L'AUTOCONSUMO NON GENERA RICAVI - riduce solo il carico che deve essere servito dalla rete
     """
 
     def __init__(self, n_particles=120, n_iterations=300, w_start=0.98, w_end=0.4, c1=2.5, c2=1.5):
@@ -916,35 +479,19 @@ class PSOOptimizer:
         self.c2 = c2
         self.stagnation_limit = 15
 
-        # Numba compila al primo utilizzo - warming up
-        print(f"🚀 PSO NUMBA JIT PARALLELIZZATO")
-        print(f"   • Particelle: {n_particles}")
-        print(f"   • Iterazioni: {n_iterations}")
-        print(f"   • Numba parallel: TRUE")
-        print(f"   • Threads Numba: {numba.get_num_threads()}")
-        print(f"   • NOTA: Prima iterazione lenta (compilazione JIT), poi 50-200x più veloce")
-
     def optimize(self, battery, prices_sell, prices_buy, pv_production, load_demand, horizon_hours=24):
-        """
-        Lorenzo Giannuzzo: Ottimizzazione PSO con valutazione Numba parallela
-        """
+        """Ottimizzazione PSO con vincolo POD"""
         n_hours = min(horizon_hours, len(prices_sell))
         max_power_limit = min(battery.trading_power, battery.get_max_power_by_crate())
 
-        # Inizializzazione intelligente (invariata)
-        positions = self._smart_initialization(
-            battery, prices_sell, prices_buy, pv_production, load_demand, max_power_limit
-        )
+        # Inizializzazione smart
+        positions = self._smart_initialization(battery, prices_sell, prices_buy, pv_production, load_demand,
+                                               max_power_limit)
         velocities = np.random.uniform(-0.5, 0.5, (self.n_particles, n_hours, 3))
 
-        # ====================================================================
-        # Lorenzo Giannuzzo: VALUTAZIONE NUMBA (compilazione JIT al primo uso)
-        # ====================================================================
-        personal_best_scores = evaluate_particles_fast(
-            battery, positions, prices_sell, prices_buy, pv_production, load_demand
-        )
-
         personal_best_positions = positions.copy()
+        personal_best_scores = np.array([self._evaluate(battery, p, prices_sell, prices_buy, pv_production, load_demand)
+                                         for p in positions])
         global_best_idx = np.argmax(personal_best_scores)
         global_best_position = personal_best_positions[global_best_idx].copy()
         global_best_score = personal_best_scores[global_best_idx]
@@ -953,45 +500,35 @@ class PSOOptimizer:
         for iteration in range(self.n_iterations):
             w = self.w_start - (self.w_start - self.w_end) * (iteration / self.n_iterations)
 
-            # Lorenzo Giannuzzo: Aggiorna velocità e posizioni (vettoriale NumPy)
             for i in range(self.n_particles):
                 r1, r2 = np.random.random((n_hours, 3)), np.random.random((n_hours, 3))
                 cognitive = self.c1 * r1 * (personal_best_positions[i] - positions[i])
                 social = self.c2 * r2 * (global_best_position - positions[i])
                 velocities[i] = w * velocities[i] + cognitive + social
 
+                # Limiti velocità
                 max_vel = np.array([max_power_limit * 0.5, 0.3, max_power_limit * 0.5])
                 velocities[i] = np.clip(velocities[i], -max_vel, max_vel)
+
                 positions[i] += velocities[i]
 
-                # Clip bounds
-                positions[i, :, 0] = np.clip(positions[i, :, 0],
-                                             -min(max_power_limit, POD_POWER_MW),
+                # Clipping azioni con vincolo POD
+                positions[i, :, 0] = np.clip(positions[i, :, 0], -min(max_power_limit, POD_POWER_MW),
                                              min(max_power_limit, POD_POWER_MW))
                 positions[i, :, 1] = np.clip(positions[i, :, 1], 0, 1)
                 positions[i, :, 2] = np.clip(positions[i, :, 2], 0, min(max_power_limit, POD_POWER_MW))
 
-            # ====================================================================
-            # Lorenzo Giannuzzo: VALUTAZIONE NUMBA PARALLELA
-            # ====================================================================
-            scores = evaluate_particles_fast(
-                battery, positions, prices_sell, prices_buy, pv_production, load_demand
-            )
+                score = self._evaluate(battery, positions[i], prices_sell, prices_buy, pv_production, load_demand)
 
-            # Lorenzo Giannuzzo: Aggiorna best
-            improved_mask = scores > personal_best_scores
-            personal_best_scores[improved_mask] = scores[improved_mask]
-            personal_best_positions[improved_mask] = positions[improved_mask].copy()
+                if score > personal_best_scores[i]:
+                    personal_best_scores[i] = score
+                    personal_best_positions[i] = positions[i].copy()
+                    if score > global_best_score:
+                        global_best_score = score
+                        global_best_position = positions[i].copy()
+                        stagnation_counter = 0
 
-            current_best_idx = np.argmax(personal_best_scores)
-            if personal_best_scores[current_best_idx] > global_best_score:
-                global_best_score = personal_best_scores[current_best_idx]
-                global_best_position = personal_best_positions[current_best_idx].copy()
-                stagnation_counter = 0
-            else:
-                stagnation_counter += 1
-
-            # Lorenzo Giannuzzo: Reinizializzazione particelle stagnanti
+            stagnation_counter += 1
             if stagnation_counter > self.stagnation_limit:
                 n_reinit = self.n_particles // 4
                 worst_indices = np.argsort(personal_best_scores)[:n_reinit]
@@ -1000,8 +537,7 @@ class PSOOptimizer:
                     noise[:, 0] *= min(max_power_limit, POD_POWER_MW)
                     noise[:, 2] *= min(max_power_limit, POD_POWER_MW)
                     positions[idx] = global_best_position + noise
-                    positions[idx, :, 0] = np.clip(positions[idx, :, 0],
-                                                   -min(max_power_limit, POD_POWER_MW),
+                    positions[idx, :, 0] = np.clip(positions[idx, :, 0], -min(max_power_limit, POD_POWER_MW),
                                                    min(max_power_limit, POD_POWER_MW))
                     positions[idx, :, 1] = np.clip(positions[idx, :, 1], 0, 1)
                     positions[idx, :, 2] = np.clip(positions[idx, :, 2], 0, min(max_power_limit, POD_POWER_MW))
@@ -1012,17 +548,21 @@ class PSOOptimizer:
 
     def _smart_initialization(self, battery, prices_sell, prices_buy, pv_production, load_demand, max_power):
         """
-        Lorenzo Giannuzzo: IDENTICA alla versione originale - nessuna modifica necessaria
+        Inizializzazione smart con euristiche economiche E vincolo POD
         """
         n_hours = len(prices_sell)
         positions = np.zeros((self.n_particles, n_hours, 3))
+
         price_low = np.percentile(prices_sell, 25)
         price_high = np.percentile(prices_sell, 75)
+
+        # VINCOLO POD: Limita max_power al POD
         max_power_with_pod = min(max_power, POD_POWER_MW)
 
         for i in range(self.n_particles):
-            if i < self.n_particles // 3:
+            if i < self.n_particles // 3:  # STRATEGIA 1: Price-driven
                 for h in range(n_hours):
+                    # === BATTERIA TRADING ===
                     if prices_sell[h] < price_low:
                         positions[i, h, 0] = np.random.uniform(0.4 * max_power_with_pod, max_power_with_pod)
                     elif prices_sell[h] > price_high:
@@ -1030,17 +570,19 @@ class PSOOptimizer:
                     else:
                         positions[i, h, 0] = np.random.uniform(-0.3 * max_power_with_pod, 0.3 * max_power_with_pod)
 
+                    # === ALLOCAZIONE PV ===
                     if prices_buy[h] > prices_sell[h] * 1.2:
                         positions[i, h, 1] = np.random.uniform(0.7, 1.0)
                     else:
                         positions[i, h, 1] = np.random.uniform(0.3, 0.7)
 
+                    # === BATTERIA PER CARICO ===
                     if prices_buy[h] > np.mean(prices_buy) and load_demand[h] > np.mean(load_demand):
                         positions[i, h, 2] = np.random.uniform(0.3 * max_power_with_pod, 0.8 * max_power_with_pod)
                     else:
                         positions[i, h, 2] = np.random.uniform(0, 0.3 * max_power_with_pod)
 
-            elif i < 2 * self.n_particles // 3:
+            elif i < 2 * self.n_particles // 3:  # STRATEGIA 2: Load-priority
                 for h in range(n_hours):
                     positions[i, h, 0] = np.random.uniform(-0.4 * max_power_with_pod, 0.4 * max_power_with_pod)
                     positions[i, h, 1] = np.random.uniform(0.8, 1.0)
@@ -1048,70 +590,215 @@ class PSOOptimizer:
                         positions[i, h, 2] = np.random.uniform(0.2 * max_power_with_pod, max_power_with_pod)
                     else:
                         positions[i, h, 2] = 0.0
-            else:
+
+            else:  # STRATEGIA 3: Random exploration
                 positions[i, :, 0] = np.random.uniform(-max_power_with_pod, max_power_with_pod, n_hours)
                 positions[i, :, 1] = np.random.uniform(0, 1, n_hours)
                 positions[i, :, 2] = np.random.uniform(0, max_power_with_pod, n_hours)
 
         return positions
 
-    def _smart_initialization(self, battery, prices_sell, prices_buy, pv_production, load_demand, max_power):
+    def _evaluate(self, battery, actions, prices_sell, prices_buy, pv_production, load_demand):
+        """
+        ===============================================================================
+        FUNZIONE OBIETTIVO - CON VINCOLO POD (POINT OF DELIVERY)
+        ===============================================================================
 
-        n_hours = len(prices_sell)
-        positions = np.zeros((self.n_particles, n_hours, 3))
-        price_low = np.percentile(prices_sell, 25)
-        price_high = np.percentile(prices_sell, 75)
-        max_power_with_pod = min(max_power, POD_POWER_MW)
+        VINCOLO FISICO:
+        - POD_POWER_MW: Potenza massima scambio con rete elettrica
+        - Limita PRELIEVO dalla rete: ≤ POD_POWER_MW
+        - Limita IMMISSIONE in rete: ≤ POD_POWER_MW
 
-        for i in range(self.n_particles):
-            if i < self.n_particles // 3:
-                for h in range(n_hours):
-                    if prices_sell[h] < price_low:
-                        positions[i, h, 0] = np.random.uniform(0.4 * max_power_with_pod, max_power_with_pod)
-                    elif prices_sell[h] > price_high:
-                        positions[i, h, 0] = np.random.uniform(-max_power_with_pod, -0.4 * max_power_with_pod)
-                    else:
-                        positions[i, h, 0] = np.random.uniform(-0.3 * max_power_with_pod, 0.3 * max_power_with_pod)
+        APPLICAZIONE:
+        - Prelievo = Energia per batteria + Energia per carico
+        - Immissione = Scarica batteria trading + PV venduto
 
-                    if prices_buy[h] > prices_sell[h] * 1.2:
-                        positions[i, h, 1] = np.random.uniform(0.7, 1.0)
-                    else:
-                        positions[i, h, 1] = np.random.uniform(0.3, 0.7)
+        PENALITÀ:
+        - Se violazione POD → penalità pesante nel profitto
+        ===============================================================================
+        """
+        bat_sim = battery.copy()
+        profit = 0.0
+        pod_violation_penalty = 0.0  # Penalità per violazioni POD
 
-                    if prices_buy[h] > np.mean(prices_buy) and load_demand[h] > np.mean(load_demand):
-                        positions[i, h, 2] = np.random.uniform(0.3 * max_power_with_pod, 0.8 * max_power_with_pod)
-                    else:
-                        positions[i, h, 2] = np.random.uniform(0, 0.3 * max_power_with_pod)
+        for hour, (action, price_sell, price_buy, pv_available, load_required) in enumerate(
+                zip(actions, prices_sell, prices_buy, pv_production, load_demand)
+        ):
+            p_batt_trading = action[0]
+            alpha_pv_load = action[1]
+            p_batt_load = action[2]
 
-            elif i < 2 * self.n_particles // 3:
-                for h in range(n_hours):
-                    positions[i, h, 0] = np.random.uniform(-0.4 * max_power_with_pod, 0.4 * max_power_with_pod)
-                    positions[i, h, 1] = np.random.uniform(0.8, 1.0)
-                    if load_demand[h] > 0.001:
-                        positions[i, h, 2] = np.random.uniform(0.2 * max_power_with_pod, max_power_with_pod)
-                    else:
-                        positions[i, h, 2] = 0.0
+            pv_available = pv_available if PV_ENABLED else 0.0
+            load_required = load_required if LOAD_ENABLED else 0.0
+
+            # ========================================================================
+            # FASE 1: ALLOCAZIONE PV
+            # ========================================================================
+            pv_to_load = min(alpha_pv_load * pv_available, load_required)
+            pv_remaining = pv_available - pv_to_load
+            load_remaining = load_required - pv_to_load
+
+            # ========================================================================
+            # FASE 2: VINCOLO XOR BATTERIA
+            # ========================================================================
+            if p_batt_trading > 0.001:
+                charge_request = p_batt_trading
+                discharge_request_trading = 0.0
+                discharge_request_load = 0.0
+                action_mode = "CHARGE"
+            elif p_batt_trading < -0.001:
+                charge_request = 0.0
+                discharge_request_trading = -p_batt_trading
+                discharge_request_load = p_batt_load
+                action_mode = "DISCHARGE"
+            elif p_batt_load > 0.001:
+                charge_request = 0.0
+                discharge_request_trading = 0.0
+                discharge_request_load = p_batt_load
+                action_mode = "DISCHARGE"
             else:
-                positions[i, :, 0] = np.random.uniform(-max_power_with_pod, max_power_with_pod, n_hours)
-                positions[i, :, 1] = np.random.uniform(0, 1, n_hours)
-                positions[i, :, 2] = np.random.uniform(0, max_power_with_pod, n_hours)
+                charge_request = 0.0
+                discharge_request_trading = 0.0
+                discharge_request_load = 0.0
+                action_mode = "IDLE"
 
-        return positions
+            total_discharge_request = discharge_request_trading + discharge_request_load
+
+            # Tracciamento flussi per vincolo POD
+            grid_withdrawal_this_hour = 0.0  # Prelievo totale dalla rete
+            grid_injection_this_hour = 0.0  # Immissione totale in rete
+
+            # ========================================================================
+            # FASE 3: ESECUZIONE AZIONI BATTERIA CON VINCOLO POD
+            # ========================================================================
+            if action_mode == "DISCHARGE" and total_discharge_request > 0.001:
+                # === SCARICA ===
+                max_discharge = (
+                                            bat_sim.soc - bat_sim.soc_min) * bat_sim.trading_capacity * bat_sim.discharge_efficiency
+                actual_discharge_total = min(total_discharge_request, max_discharge)
+
+                if actual_discharge_total > 0.001:
+                    ratio_trading = discharge_request_trading / total_discharge_request if total_discharge_request > 0 else 0
+                    ratio_load = discharge_request_load / total_discharge_request if total_discharge_request > 0 else 0
+
+                    discharge_for_trading = actual_discharge_total * ratio_trading
+                    discharge_for_load_raw = actual_discharge_total * ratio_load
+                    discharge_for_load = min(discharge_for_load_raw, load_remaining)
+
+                    # VINCOLO POD: Limita scarica trading se eccede POD
+                    discharge_for_trading = min(discharge_for_trading, POD_POWER_MW)
+
+                    actual_discharge_used = discharge_for_trading + discharge_for_load
+
+                    # Controlla violazione POD per immissione
+                    if discharge_for_trading > POD_POWER_MW:
+                        pod_violation_penalty += (discharge_for_trading - POD_POWER_MW) * price_sell * 10.0
+
+                    # Esegui scarica fisica
+                    energy_consumed = actual_discharge_used / bat_sim.discharge_efficiency
+                    new_soc = bat_sim.soc - (energy_consumed / bat_sim.capacity)
+                    bat_sim.soc = max(new_soc, bat_sim.soc_min)
+                    bat_sim.throughput_kwh += energy_consumed * 1000
+
+                    # RICAVO: Vendita trading
+                    if discharge_for_trading > 0.001:
+                        profit += discharge_for_trading * price_sell
+                        profit -= discharge_for_trading * DEGRADATION_COST_PER_MWH / (2 * bat_sim.eol_cycles)
+                        grid_injection_this_hour += discharge_for_trading
+
+                    # AUTOCONSUMO: Scarica per carico
+                    if discharge_for_load > 0.001:
+                        load_remaining -= discharge_for_load
+                        profit -= discharge_for_load * DEGRADATION_COST_PER_MWH / (2 * bat_sim.eol_cycles)
+
+            elif action_mode == "CHARGE" and charge_request > 0.001:
+                # === CARICA ===
+                if bat_sim.soc < bat_sim.soc_max:
+                    max_storable = (bat_sim.soc_max - bat_sim.soc) * bat_sim.trading_capacity
+                    max_power = max_storable / (1.0 * bat_sim.charge_efficiency)
+                    actual_power = min(charge_request, max_power)
+
+                    if actual_power > 0.01:
+                        energy_needed = actual_power * 1.0
+
+                        # Priorità 1: PV (se disponibile)
+                        if pv_remaining > 0:
+                            energy_from_pv = min(energy_needed, pv_remaining)
+                            bat_sim.charge(energy_from_pv / 1.0, dt=1.0, source='pv')
+                            pv_remaining -= energy_from_pv
+                            energy_needed -= energy_from_pv
+                            profit -= energy_from_pv * DEGRADATION_COST_PER_MWH / (2 * bat_sim.eol_cycles)
+
+                        # Priorità 2: Rete (con VINCOLO POD)
+                        if energy_needed > 0.01:
+                            # VINCOLO POD: Limita prelievo da rete
+                            energy_from_grid_requested = energy_needed
+                            energy_from_grid = min(energy_from_grid_requested, POD_POWER_MW)
+
+                            # Controlla violazione POD per prelievo
+                            if energy_from_grid_requested > POD_POWER_MW:
+                                pod_violation_penalty += (energy_from_grid_requested - POD_POWER_MW) * price_buy * 10.0
+
+                            if energy_from_grid > 0.001:
+                                actual_charged = bat_sim.charge(energy_from_grid / 1.0, dt=1.0, source='grid')
+                                profit -= actual_charged * price_buy
+                                profit -= actual_charged * DEGRADATION_COST_PER_MWH / (2 * bat_sim.eol_cycles)
+                                grid_withdrawal_this_hour += actual_charged
+
+            # ========================================================================
+            # FASE 4: GESTIONE PV RESIDUO E CARICO RESIDUO CON VINCOLO POD
+            # ========================================================================
+
+            # PV residuo → Vendi a rete (CON VINCOLO POD)
+            if pv_remaining > 0.001:
+                # VINCOLO POD: Limita immissione PV
+                pv_to_grid = min(pv_remaining, POD_POWER_MW - grid_injection_this_hour)
+
+                if pv_to_grid > 0.001:
+                    profit += pv_to_grid * price_sell
+                    grid_injection_this_hour += pv_to_grid
+
+                # Penalità per PV curtailed causa POD
+                pv_curtailed = pv_remaining - pv_to_grid
+                if pv_curtailed > 0.001:
+                    # Penalità minore: è energia persa ma non costa
+                    pod_violation_penalty += pv_curtailed * price_sell * 0.5
+
+            # Carico residuo → Acquista da rete (CON VINCOLO POD)
+            if load_remaining > 0.001:
+                # VINCOLO POD: Limita prelievo per carico
+                load_from_grid = min(load_remaining, POD_POWER_MW - grid_withdrawal_this_hour)
+
+                if load_from_grid > 0.001:
+                    profit -= load_from_grid * price_buy
+                    grid_withdrawal_this_hour += load_from_grid
+
+                # Penalità PESANTE per carico non servito
+                load_unserved = load_remaining - load_from_grid
+                if load_unserved > 0.001:
+                    # Penalità molto alta: il carico DEVE essere servito
+                    pod_violation_penalty += load_unserved * price_buy * 100.0
+
+            # ========================================================================
+            # CONTROLLO FINALE VIOLAZIONI POD
+            # ========================================================================
+            if grid_withdrawal_this_hour > POD_POWER_MW + 0.001:
+                pod_violation_penalty += (grid_withdrawal_this_hour - POD_POWER_MW) * price_buy * 50.0
+
+            if grid_injection_this_hour > POD_POWER_MW + 0.001:
+                pod_violation_penalty += (grid_injection_this_hour - POD_POWER_MW) * price_sell * 50.0
+
+        # Sottrai penalità POD dal profitto finale
+        final_profit = profit - pod_violation_penalty
+
+        return final_profit
 
 
-# ============================================================================
-# Lorenzo Giannuzzo: ROLLING HORIZON PARALLELIZZATO
-# ============================================================================
-
+# ========================================================================================================
+# SEZIONE 7: ROLLING HORIZON SIMULATOR - v3.2 CORRECTED
+# ========================================================================================================
 class RollingHorizonSimulator:
-    """
-    Lorenzo Giannuzzo: Rolling Horizon Simulator - VERSIONE PULITA
-
-    Lorenzo Giannuzzo: Funziona con PSO parallelizzato senza nested parallelism.
-    Lorenzo Giannuzzo: IDENTICA alla tua originale - zero modifiche inutili.
-
-    Author: Lorenzo Giannuzzo
-    """
+    """Scarica SOLO energia effettivamente utilizzata"""
 
     def __init__(self, battery, optimizer, pv_system=None, load_profile=None, horizon_hours=24, step_hours=1):
         self.battery = battery
@@ -1123,14 +810,19 @@ class RollingHorizonSimulator:
 
     def simulate(self, prices_df, price_df2, pv_df=None, load_df=None):
         """
-        Lorenzo Giannuzzo: Simulazione Rolling Horizon CON VINCOLO POD
+        CON VINCOLO POD (POINT OF DELIVERY)
+
+        NUOVO: Rispetta limite potenza scambio con rete (POD_POWER_MW)
+        - Limita prelievo dalla rete
+        - Limita immissione in rete
+        - Traccia curtailment PV e carico non servito causa POD
         """
         prices_sell = prices_df['€/MWh'].values
         prices_buy = price_df2['€/MWh'].values
         n_hours = len(prices_sell)
 
         # ========================================================================
-        # Lorenzo Giannuzzo: PREPARAZIONE DATI PV
+        # PREPARAZIONE DATI
         # ========================================================================
         if PV_ENABLED and pv_df is not None and self.pv_system is not None:
             pv_production = pv_df['P'].values / 1000.0  # kW → MW
@@ -1142,9 +834,6 @@ class RollingHorizonSimulator:
         else:
             pv_production = np.zeros(n_hours)
 
-        # ========================================================================
-        # Lorenzo Giannuzzo: PREPARAZIONE DATI CARICO
-        # ========================================================================
         if LOAD_ENABLED and load_df is not None:
             load_demand = load_df['value'].values / 1000.0  # kW → MW
             if len(load_demand) < n_hours:
@@ -1155,7 +844,7 @@ class RollingHorizonSimulator:
             load_demand = np.zeros(n_hours)
 
         # ========================================================================
-        # Lorenzo Giannuzzo: ARRAYS RISULTATI
+        # ARRAYS RISULTATI + TRACKING POD
         # ========================================================================
         actions_trading_effective = []
         actions_alpha_pv = []
@@ -1178,8 +867,6 @@ class RollingHorizonSimulator:
         load_from_battery_history = []
         load_from_grid_history = []
         load_unserved_history = []
-        equivalent_cycles_history = []
-        throughput_mwh_history = []
 
         energy_from_grid_to_battery_history = []
         energy_from_pv_to_battery_history = []
@@ -1189,14 +876,15 @@ class RollingHorizonSimulator:
         load_discharge_history = []
         trading_discharge_history = []
 
-        grid_withdrawal_history = []
-        grid_injection_history = []
-        pod_violation_history = []
+        # Tracking POD
+        grid_withdrawal_history = []  # Prelievo orario totale
+        grid_injection_history = []  # Immissione oraria totale
+        pod_violation_history = []  # Flag violazione POD
 
         cumulative_profit = 0.0
 
         print("=" * 80)
-        print("SIMULAZIONE BESS v3.8 NUMBA - CON VINCOLO POD")
+        print("SIMULAZIONE BESS")
         print("=" * 80)
         print(f"Tecnologia: {self.battery.technology}")
         print(f"Capacità: {self.battery.nominal_capacity} MWh")
@@ -1213,9 +901,9 @@ class RollingHorizonSimulator:
         last_progress = 0
         degradation_update_interval = 24
 
-        # Lorenzo Giannuzzo: STAMPA PROGRESSO INIZIALE
-        print(f"Progresso: 0% - SOH: {self.battery.get_soh():.2f}% - SOC: {self.battery.get_soc() * 100:.1f}%")
-
+        # ========================================================================
+        # ROLLING HORIZON LOOP
+        # ========================================================================
         while current_hour < n_hours:
             progress = int((current_hour / n_hours) * 100)
             if progress >= last_progress + 20:
@@ -1226,9 +914,7 @@ class RollingHorizonSimulator:
             if current_hour % degradation_update_interval == 0 and current_hour > 0:
                 self.battery.update_degradation()
 
-            # ====================================================================
-            # Lorenzo Giannuzzo: OTTIMIZZAZIONE PSO
-            # ====================================================================
+            # Ottimizzazione rolling horizon
             end_hour = min(current_hour + self.horizon_hours, n_hours)
             optimal_actions = self.optimizer.optimize(
                 self.battery,
@@ -1250,10 +936,10 @@ class RollingHorizonSimulator:
             load_required = load_demand[current_hour]
 
             # ====================================================================
-            # Lorenzo Giannuzzo: VARIABILI TRACKING POD - RESET OGNI ORA
+            # VARIABILI TRACKING POD - RESET OGNI ORA
             # ====================================================================
-            grid_withdrawal_this_hour = 0.0
-            grid_injection_this_hour = 0.0
+            grid_withdrawal_this_hour = 0.0  # Prelievo totale dalla rete
+            grid_injection_this_hour = 0.0  # Immissione totale in rete
 
             pv_to_battery_this_hour = 0.0
             pv_to_grid_this_hour = 0.0
@@ -1276,7 +962,7 @@ class RollingHorizonSimulator:
             actual_load_discharge_this_hour = 0.0
 
             # ====================================================================
-            # Lorenzo Giannuzzo: FASE 1: ALLOCAZIONE PV AL CARICO
+            # FASE 1: ALLOCAZIONE PV AL CARICO
             # ====================================================================
             pv_to_load_this_hour = min(alpha_pv_load * pv_available, load_required)
             load_from_pv_this_hour = pv_to_load_this_hour
@@ -1284,7 +970,7 @@ class RollingHorizonSimulator:
             load_remaining = load_required - pv_to_load_this_hour
 
             # ====================================================================
-            # Lorenzo Giannuzzo: FASE 2: VINCOLO XOR ESPLICITO
+            # FASE 2: VINCOLO XOR ESPLICITO
             # ====================================================================
             if p_batt_trading_requested > 0.001:
                 charge_request = p_batt_trading_requested
@@ -1316,9 +1002,11 @@ class RollingHorizonSimulator:
             max_energy_storable = (self.battery.soc_max - self.battery.soc) * self.battery.trading_capacity
 
             # ====================================================================
-            # Lorenzo Giannuzzo: FASE 3: SCARICA BATTERIA (invariata)
+            # FASE 3: ESECUZIONE AZIONI BATTERIA CON VINCOLO POD
             # ====================================================================
+
             if action_mode == "DISCHARGE" and total_discharge_request > 0.001:
+                # ===== SCARICA =====
                 actual_discharge_total = min(total_discharge_request, max_power_physical, max_discharge_soc)
 
                 if actual_discharge_total > 0.001:
@@ -1329,7 +1017,7 @@ class RollingHorizonSimulator:
                     discharge_for_load_raw = actual_discharge_total * ratio_load
                     discharge_for_load = min(discharge_for_load_raw, load_remaining)
 
-                    # Lorenzo Giannuzzo: VINCOLO POD: Limita scarica trading per immissione rete
+                    # VINCOLO POD: Limita scarica trading per immissione rete
                     pod_available_for_injection = POD_POWER_MW - grid_injection_this_hour
                     discharge_for_trading = min(discharge_for_trading, pod_available_for_injection)
 
@@ -1338,67 +1026,28 @@ class RollingHorizonSimulator:
                     actual_trading_discharge_this_hour = discharge_for_trading
                     actual_load_discharge_this_hour = discharge_for_load
 
-                    # Lorenzo Giannuzzo: Esegui scarica fisica
+                    # Esegui scarica fisica
                     total_energy_discharge = actual_discharge_used / self.battery.discharge_efficiency
                     new_soc = self.battery.soc - (total_energy_discharge / self.battery.capacity)
                     self.battery.soc = max(new_soc, self.battery.soc_min)
                     self.battery.throughput_kwh += total_energy_discharge * 1000
 
-                    # Lorenzo Giannuzzo: RICAVO: Vendita batteria alla rete
+                    # RICAVO: Vendita batteria alla rete
                     if discharge_for_trading > 0.001:
                         revenue_discharge = discharge_for_trading * price_sell
                         cumulative_profit += revenue_discharge
                         trading_discharge_this_hour = discharge_for_trading
                         grid_injection_this_hour += discharge_for_trading
 
-                    # Lorenzo Giannuzzo: AUTOCONSUMO: Batteria al carico
+                    # AUTOCONSUMO: Batteria al carico
                     if discharge_for_load > 0.001:
                         load_from_battery_this_hour = discharge_for_load
                         load_remaining -= discharge_for_load
                         battery_served_load = True
                         load_discharge_this_hour = discharge_for_load
 
-            # ====================================================================
-            # Lorenzo Giannuzzo: FASE 4: CARICO DALLA RETE
-            # ====================================================================
-            if load_remaining > 0.001:
-                # CARICO USA POD PER PRIMO!
-                pod_available_for_withdrawal = POD_POWER_MW - grid_withdrawal_this_hour
-                load_from_grid_allowed = min(load_remaining, pod_available_for_withdrawal)
-
-                if load_from_grid_allowed > 0.001:
-                    load_from_grid_this_hour = load_from_grid_allowed
-                    grid_withdrawal_this_hour += load_from_grid_allowed
-
-                    # Lorenzo Giannuzzo: COSTO: Acquisto energia dalla rete per carico
-                    cost_grid_load = load_from_grid_this_hour * price_buy
-                    cumulative_profit -= cost_grid_load
-
-                    # Lorenzo Giannuzzo: Aggiorna carico residuo
-                    load_remaining -= load_from_grid_allowed
-
-                # Lorenzo Giannuzzo: Carico non servito causa POD
-                if load_remaining > 0.001:
-                    load_unserved_this_hour = load_remaining
-
-                    # Lorenzo Giannuzzo: PENALITÀ
-                    penalty = load_unserved_this_hour * price_buy * 000.0  # Lorenzo Giannuzzo: zero nel simulate, a differenza dell'evalaute per non falsare i risultati dell'excel
-                    cumulative_profit -= penalty
-
-                    if load_unserved_this_hour > 0.01:  # Log solo se significativo
-                        print(
-                            f"⚠️  Ora {current_hour}: Carico non servito {load_unserved_this_hour:.3f} MWh (POD limit)")
-                        print(f"      → Penalità: {penalty:.2f} €")
-                        print(f"      → POD usato: {grid_withdrawal_this_hour:.3f} MW / {POD_POWER_MW} MW")
-
-            # Lorenzo Giannuzzo: Registra decisione batteria per carico
-            if self.load_profile and (load_from_battery_this_hour > 0.001 or load_from_grid_this_hour > 0.001):
-                self.load_profile.register_battery_decision(battery_served_load)
-
-            # ====================================================================
-            # Lorenzo Giannuzzo: FASE 5: CARICA BATTERIA
-            # ====================================================================
-            if action_mode == "CHARGE" and charge_request > 0.001:
+            elif action_mode == "CHARGE" and charge_request > 0.001:
+                # ===== CARICA =====
                 if self.battery.soc < self.battery.soc_max:
                     max_power_charge = max_energy_storable / (1.0 * self.battery.charge_efficiency)
                     actual_power = min(charge_request, max_power_charge, max_power_physical)
@@ -1407,6 +1056,7 @@ class RollingHorizonSimulator:
                         energy_needed = actual_power * 1.0
                         actual_charge_this_hour = actual_power
 
+                        # Priorità 1: PV (TIME-SHIFTING)
                         if pv_remaining > 0:
                             energy_from_pv = min(energy_needed, pv_remaining)
                             self.battery.charge(energy_from_pv / 1.0, dt=1.0, source='pv')
@@ -1415,9 +1065,9 @@ class RollingHorizonSimulator:
                             energy_needed -= energy_from_pv
                             pv_remaining -= energy_from_pv
 
-
+                        # Priorità 2: Rete CON VINCOLO POD
                         if energy_needed > 0.01:
-
+                            # VINCOLO POD: Limita prelievo da rete
                             pod_available_for_withdrawal = POD_POWER_MW - grid_withdrawal_this_hour
                             energy_from_grid_allowed = min(energy_needed, pod_available_for_withdrawal)
 
@@ -1427,15 +1077,43 @@ class RollingHorizonSimulator:
                                 grid_to_battery_this_hour += energy_from_grid
                                 grid_withdrawal_this_hour += energy_from_grid
 
-                                # Lorenzo Giannuzzo: COSTO: Acquisto energia dalla rete
+                                # COSTO: Acquisto energia dalla rete
                                 cost_grid_charge = energy_from_grid * price_buy
                                 cumulative_profit -= cost_grid_charge
 
             # ====================================================================
-            # Lorenzo Giannuzzo: FASE 6: VENDITA PV RESIDUO CON VINCOLO POD
+            # FASE 4: CARICO RESIDUO DALLA RETE CON VINCOLO POD
+            # ====================================================================
+            if load_remaining > 0.001:
+                # VINCOLO POD: Limita prelievo per carico
+                pod_available_for_withdrawal = POD_POWER_MW - grid_withdrawal_this_hour
+                load_from_grid_allowed = min(load_remaining, pod_available_for_withdrawal)
+
+                if load_from_grid_allowed > 0.001:
+                    load_from_grid_this_hour = load_from_grid_allowed
+                    grid_withdrawal_this_hour += load_from_grid_allowed
+
+                    # COSTO: Acquisto energia dalla rete per carico
+                    cost_grid_load = load_from_grid_this_hour * price_buy
+                    cumulative_profit -= cost_grid_load
+
+                # NUOVO: Carico non servito causa POD
+                load_unserved_this_hour = load_remaining - load_from_grid_allowed
+                if load_unserved_this_hour > 0.001:
+                    # PENALITÀ PESANTE: Carico non servito
+                    penalty = load_unserved_this_hour * price_buy * 000.0
+                    cumulative_profit -= penalty
+                    print(f"⚠️  Ora {current_hour}: Carico non servito {load_unserved_this_hour:.3f} MWh (POD limit)")
+
+            # Registra decisione batteria per carico
+            if self.load_profile and (load_from_battery_this_hour > 0.001 or load_from_grid_this_hour > 0.001):
+                self.load_profile.register_battery_decision(battery_served_load)
+
+            # ====================================================================
+            # FASE 5: VENDITA PV RESIDUO CON VINCOLO POD
             # ====================================================================
             if pv_remaining > 0.001:
-                # Lorenzo Giannuzzo: VINCOLO POD: Limita immissione PV
+                # VINCOLO POD: Limita immissione PV
                 pod_available_for_injection = POD_POWER_MW - grid_injection_this_hour
                 pv_to_grid_allowed = min(pv_remaining, pod_available_for_injection)
 
@@ -1443,21 +1121,21 @@ class RollingHorizonSimulator:
                     pv_to_grid_this_hour += pv_to_grid_allowed
                     grid_injection_this_hour += pv_to_grid_allowed
 
-                    # Lorenzo Giannuzzo: RICAVO: Vendita PV alla rete
+                    # RICAVO: Vendita PV alla rete
                     revenue_pv = pv_to_grid_allowed * price_sell
                     cumulative_profit += revenue_pv
 
-                # Lorenzo Giannuzzo: PV curtailed causa POD
+                # NUOVO: PV curtailed causa POD
                 pv_curtailed_this_hour = pv_remaining - pv_to_grid_allowed
                 if pv_curtailed_this_hour > 0.001:
-                    # Penalità leggera: energia persa ma non costo diretto (sempre 0 per il discorso dell'excel)
+                    # Penalità leggera: energia persa ma non costo diretto
                     penalty = pv_curtailed_this_hour * price_sell * 0.0
                     cumulative_profit -= penalty
-                    if pv_curtailed_this_hour > 0.1:
+                    if pv_curtailed_this_hour > 0.1:  # Log solo se significativo
                         print(f"⚠️  Ora {current_hour}: PV curtailed {pv_curtailed_this_hour:.3f} MWh (POD limit)")
 
             # ====================================================================
-            # Lorenzo Giannuzzo: TRACKING E REGISTRAZIONE
+            # TRACKING E REGISTRAZIONE
             # ====================================================================
             if self.pv_system and (pv_to_battery_this_hour > 0 or pv_to_grid_this_hour > 0 or pv_to_load_this_hour > 0):
                 self.pv_system.allocate_energy(pv_to_battery_this_hour, pv_to_grid_this_hour, pv_to_load_this_hour)
@@ -1472,11 +1150,11 @@ class RollingHorizonSimulator:
             if MACSE_ENABLED:
                 self.battery.update_macse_availability(macse_available)
 
-            # Lorenzo Giannuzzo: Converti scarica in negativo per compatibilità grafici
+            # Converti scarica in negativo per compatibilità grafici
             net_trading_action = actual_charge_this_hour if actual_charge_this_hour > 0 else -actual_trading_discharge_this_hour
 
             # ====================================================================
-            # ALorenzo Giannuzzo: PPEND RISULTATI
+            # APPEND RISULTATI + POD TRACKING
             # ====================================================================
             actions_trading_effective.append(net_trading_action)
             actions_alpha_pv.append(alpha_pv_load)
@@ -1492,13 +1170,13 @@ class RollingHorizonSimulator:
             pv_to_battery_history.append(pv_to_battery_this_hour)
             pv_to_grid_history.append(pv_to_grid_this_hour)
             pv_to_load_history.append(pv_to_load_this_hour)
-            pv_curtailed_history.append(pv_curtailed_this_hour)
+            pv_curtailed_history.append(pv_curtailed_this_hour)  # NUOVO
 
             load_demand_history.append(load_demand[current_hour])
             load_from_pv_history.append(load_from_pv_this_hour)
             load_from_battery_history.append(load_from_battery_this_hour)
             load_from_grid_history.append(load_from_grid_this_hour)
-            load_unserved_history.append(load_unserved_this_hour)
+            load_unserved_history.append(load_unserved_this_hour)  # NUOVO
 
             energy_from_grid_to_battery_history.append(grid_to_battery_this_hour)
             energy_from_pv_to_battery_history.append(pv_for_battery_charging)
@@ -1508,30 +1186,28 @@ class RollingHorizonSimulator:
             load_discharge_history.append(load_discharge_this_hour)
             trading_discharge_history.append(trading_discharge_this_hour)
 
-            # Lorenzo Giannuzzo: POD tracking
+            # NUOVO: POD tracking
             grid_withdrawal_history.append(grid_withdrawal_this_hour)
             grid_injection_history.append(grid_injection_this_hour)
             pod_violated = (grid_withdrawal_this_hour > POD_POWER_MW + 0.001) or (
                         grid_injection_this_hour > POD_POWER_MW + 0.001)
             pod_violation_history.append(1 if pod_violated else 0)
-            # Lorenzo Giannuzzo: Tracking cicli equivalenti
-            equivalent_cycles_history.append(self.battery.equivalent_cycles)
-            throughput_mwh_history.append(self.battery.throughput_kwh / 1000.0)  # Converti kWh -> MWh
+
             current_hour += self.step_hours
 
         # ========================================================================
-        # ALorenzo Giannuzzo: GGIORNAMENTO FINALE DEGRADO
+        # AGGIORNAMENTO FINALE DEGRADO
         # ========================================================================
         self.battery.update_degradation()
 
-        # Lorenzo Giannuzzo: Statistiche POD
+        # Statistiche POD
         total_pod_violations = sum(pod_violation_history)
         total_pv_curtailed = sum(pv_curtailed_history)
         total_load_unserved = sum(load_unserved_history)
 
-        print("\n✅ Simulazione completata!")
+        print("\nSimulazione completata!")
         print(f"Profitto finale: {cumulative_profit:.2f} €")
-        print(f"\n📊 STATISTICHE POD:")
+        print(f"\n STATISTICHE POD:")
         print(f"  • Violazioni POD: {total_pod_violations} ore su {len(pod_violation_history)}")
         print(f"  • PV curtailed: {total_pv_curtailed:.2f} MWh")
         print(f"  • Carico non servito: {total_load_unserved:.2f} MWh")
@@ -1539,65 +1215,63 @@ class RollingHorizonSimulator:
             print(f"  ⚠️  ATTENZIONE: Rilevate {total_pod_violations} violazioni POD")
 
         # ========================================================================
-        # Lorenzo Giannuzzo: CREAZIONE DATAFRAME RISULTATI
+        # CREAZIONE DATAFRAME RISULTATI CON COLONNE POD
         # ========================================================================
         results_df = prices_df.copy()
         pad_length = len(results_df) - len(actions_trading_effective)
 
         results_df['Prezzo_Acquisto_€/MWh'] = price_buy_history + [price_buy_history[-1]] * pad_length
 
-        # Lorenzo Giannuzzo: Azioni PSO effettive
+        # Azioni PSO effettive
         results_df['Azione_Trading_MW'] = actions_trading_effective + [0] * pad_length
         results_df['Azione_Alpha_PV_Load'] = actions_alpha_pv + [0] * pad_length
         results_df['Azione_P_Batt_Load_MW'] = actions_p_load_effective + [0] * pad_length
 
-        # Lorenzo Giannuzzo: Stati batteria
+        # Stati batteria
         results_df['SOC'] = soc_history + [soc_history[-1]] * pad_length
         results_df['Capacita_MWh'] = capacity_history + [capacity_history[-1]] * pad_length
         results_df['SOH_%'] = soh_history + [soh_history[-1]] * pad_length
-        results_df['Equivalent_Cycles'] = equivalent_cycles_history + [equivalent_cycles_history[-1]] * pad_length
-        results_df['Throughput_MWh'] = throughput_mwh_history + [throughput_mwh_history[-1]] * pad_length
 
-        # Lorenzo Giannuzzo: Economia
+        # Economia
         results_df['Profitto_Euro'] = profits_history + [profits_history[-1]] * pad_length
         results_df['MACSE_Availability'] = macse_availability_history + [macse_availability_history[-1]] * pad_length
 
-        # Lorenzo Giannuzzo: PV
+        # PV + NUOVO: curtailment
         results_df['PV_Production_MWh'] = pv_production_history + [0] * pad_length
         results_df['PV_to_Battery_MWh'] = pv_to_battery_history + [0] * pad_length
         results_df['PV_to_Grid_MWh'] = pv_to_grid_history + [0] * pad_length
         results_df['PV_to_Load_MWh'] = pv_to_load_history + [0] * pad_length
-        results_df['PV_Curtailed_MWh'] = pv_curtailed_history + [0] * pad_length
+        results_df['PV_Curtailed_MWh'] = pv_curtailed_history + [0] * pad_length  # NUOVO
 
-        # Lorenzo Giannuzzo: Load
+        # Load + NUOVO: unserved
         results_df['Load_Demand_MWh'] = load_demand_history + [0] * pad_length
         results_df['Load_from_PV_MWh'] = load_from_pv_history + [0] * pad_length
         results_df['Load_from_Battery_MWh'] = load_from_battery_history + [0] * pad_length
         results_df['Load_from_Grid_MWh'] = load_from_grid_history + [0] * pad_length
-        results_df['Load_Unserved_MWh'] = load_unserved_history + [0] * pad_length
+        results_df['Load_Unserved_MWh'] = load_unserved_history + [0] * pad_length  # NUOVO
 
-        # Lorenzo Giannuzzo: Energy sources
+        # Energy sources
         results_df['Energy_from_Grid_MWh'] = energy_from_grid_to_battery_history + [0] * pad_length
         results_df['Energy_from_PV_MWh'] = energy_from_pv_to_battery_history + [0] * pad_length
 
-        # Lorenzo Giannuzzo: Decisioni
+        # Decisioni
         results_df['Battery_Decision'] = battery_decision_history + [0] * pad_length
         results_df['Load_Discharge_MW'] = load_discharge_history + [0] * pad_length
         results_df['Trading_Discharge_MW'] = trading_discharge_history + [0] * pad_length
 
-        # Lorenzo Giannuzzo: POD tracking
+        # NUOVO: POD tracking
         results_df['Grid_Withdrawal_MW'] = grid_withdrawal_history + [0] * pad_length
         results_df['Grid_Injection_MW'] = grid_injection_history + [0] * pad_length
         results_df['POD_Violation'] = pod_violation_history + [0] * pad_length
 
-        # Lorenzo Giannuzzo: Retrocompatibilità
+        # Retrocompatibilità
         results_df['Azione_MW'] = actions_trading_effective + [0] * pad_length
 
         return results_df, cumulative_profit
 
 
 # ========================================================================================================
-# Lorenzo Giannuzzo: SEZIONE 8: MACSE E JSON EXPORT
+# SEZIONE 8: MACSE E JSON EXPORT
 # ========================================================================================================
 def calculate_macse_revenue(battery):
     if not MACSE_ENABLED:
@@ -1615,16 +1289,16 @@ def calculate_macse_revenue(battery):
     return annual_revenue, base_revenue * (365 * 24), penalty, bonus
 
 def export_results_to_json(results_df, battery, pv_system, load_profile, trading_profit, macse_revenue, macse_base,
-                       macse_penalty, macse_bonus, battery_investment, simulation_time, baseline_scenario=None, output_dir='results'):
+                       macse_penalty, macse_bonus, battery_investment, simulation_time, baseline_scenario=None):
     """
-    Lorenzo Giannuzzo: Esporta risultati simulazione in formato JSON con confronto baseline
+    Esporta risultati simulazione in formato JSON con confronto baseline
     """
     actions = results_df['Azione_Trading_MW'].values
     prices_sell = results_df['€/MWh'].values
     prices_buy = results_df['Prezzo_Acquisto_€/MWh'].values
 
     # ========================================================================
-    # Lorenzo Giannuzzo: STATISTICHE PV
+    # STATISTICHE PV
     # ========================================================================
     pv_stats = pv_system.get_statistics() if pv_system else {
         'total_production_mwh': 0,
@@ -1639,7 +1313,7 @@ def export_results_to_json(results_df, battery, pv_system, load_profile, trading
     }
 
     # ========================================================================
-    # Lorenzo Giannuzzo: STATISTICHE CARICO
+    # STATISTICHE CARICO
     # ========================================================================
     load_stats = load_profile.get_statistics() if load_profile else {
         'total_energy_required_mwh': 0,
@@ -1657,7 +1331,7 @@ def export_results_to_json(results_df, battery, pv_system, load_profile, trading
     }
 
     # ========================================================================
-    # Lorenzo Giannuzzo: STATISTICHE TRADING
+    # STATISTICHE TRADING
     # ========================================================================
     charge_hours = np.sum(actions > 0.01)
     discharge_hours = np.sum(actions < -0.01)
@@ -1666,7 +1340,7 @@ def export_results_to_json(results_df, battery, pv_system, load_profile, trading
     total_energy_discharged = np.sum(np.abs(actions[actions < 0]) * 1.0)
 
     # ========================================================================
-    # Lorenzo Giannuzzo: CALCOLI ECONOMICI
+    # CALCOLI ECONOMICI
     # ========================================================================
     total_revenue = trading_profit + macse_revenue
     annual_profit = total_revenue
@@ -1674,7 +1348,7 @@ def export_results_to_json(results_df, battery, pv_system, load_profile, trading
     payback_years = battery_investment / annual_profit if annual_profit > 0 else float('inf')
 
     # ========================================================================
-    # Lorenzo Giannuzzo: CONFRONTO CON BASELINE
+    # CONFRONTO CON BASELINE
     # ========================================================================
     if baseline_scenario:
         battery_benefit = total_revenue - baseline_scenario['net_balance']
@@ -1691,7 +1365,7 @@ def export_results_to_json(results_df, battery, pv_system, load_profile, trading
         delta_grid_dependency = 0
 
     # ========================================================================
-    # Lorenzo Giannuzzo: COSTRUZIONE JSON
+    # COSTRUZIONE JSON
     # ========================================================================
     results_json = {
         "simulation_info": {
@@ -1805,7 +1479,7 @@ def export_results_to_json(results_df, battery, pv_system, load_profile, trading
         },
 
         # ====================================================================
-        # Lorenzo Giannuzzo: SEZIONE CONFRONTO CON BASELINE
+        # NUOVO: SEZIONE CONFRONTO CON BASELINE
         # ====================================================================
         "baseline_comparison": {
             "scenario_without_battery": {
@@ -1851,7 +1525,7 @@ def export_results_to_json(results_df, battery, pv_system, load_profile, trading
         },
 
         # ====================================================================
-        # Lorenzo Giannuzzo: METADATI DECISIONI PSO
+        # METADATI DECISIONI PSO
         # ====================================================================
         "pso_decision_space": {
             "dimensions": 3,
@@ -1881,13 +1555,10 @@ def export_results_to_json(results_df, battery, pv_system, load_profile, trading
     }
 
     # ========================================================================
-    # Lorenzo Giannuzzo: SALVATAGGIO JSON
+    # SALVATAGGIO JSON
     # ========================================================================
-    # Crea directory output se non esiste
-    if not os.path.exists(output_dir):
-        os.makedirs(output_dir)
-
-    json_file = os.path.join(output_dir,f'simulation_results_{battery.technology.lower().replace("-", "_")}_v270_autonomous.json')
+    json_file = os.path.join('../system_optimization/results',
+                             f'simulation_results_{battery.technology.lower().replace("-", "_")}_v270_autonomous.json')
     with open(json_file, 'w', encoding='utf-8') as f:
         json.dump(results_json, f, indent=2, ensure_ascii=False)
 
@@ -1896,78 +1567,13 @@ def export_results_to_json(results_df, battery, pv_system, load_profile, trading
     return results_json
 
 
-def export_complete_results_to_json(results_df, battery, output_dir='results'):
-    """
-    Lorenzo Giannuzzo: Esporta DataFrame completo in JSON (equivalente Excel)
-    """
-    print("\n📄 Esportazione JSON completo...")
-
-    # Converti DataFrame in formato JSON-friendly
-    results_dict = results_df.to_dict(orient='records')
-
-    # Converti datetime in stringhe
-    for record in results_dict:
-        if 'Data' in record and pd.notna(record['Data']):
-            if isinstance(record['Data'], pd.Timestamp):
-                record['Data'] = record['Data'].strftime('%Y-%m-%d %H:%M:%S')
-
-        # Converti NaN in None per JSON valido
-        for key, value in record.items():
-            if pd.isna(value):
-                record[key] = None
-            elif isinstance(value, (np.int64, np.int32)):
-                record[key] = int(value)
-            elif isinstance(value, (np.float64, np.float32)):
-                record[key] = float(value)
-
-    # Crea JSON completo con metadati
-    complete_json = {
-        "metadata": {
-            "version": "3.8.0-COMPLETE-DATA",
-            "description": "Complete hourly simulation data - equivalent to Excel export",
-            "technology": battery.technology,
-            "total_hours": len(results_df),
-            "timestamp": datetime.now().isoformat(),
-            "columns": list(results_df.columns)
-        },
-
-        "battery_info": {
-            "technology": battery.technology,
-            "nominal_capacity_mwh": float(battery.nominal_capacity),
-            "final_capacity_mwh": float(battery.capacity),
-            "final_soc": float(battery.get_soc()),
-            "final_soh_percent": float(battery.get_soh()),
-            "equivalent_cycles": float(battery.equivalent_cycles),
-            "throughput_kwh": float(battery.throughput_kwh)
-        },
-
-        "hourly_data": results_dict
-    }
-
-    # Salva JSON
-    if not os.path.exists(output_dir):
-        os.makedirs(output_dir)
-
-    json_file = os.path.join(output_dir,
-                             f'complete_data_{battery.technology.lower().replace("-", "_")}_v380.json')
-
-    with open(json_file, 'w', encoding='utf-8') as f:
-        json.dump(complete_json, f, indent=2, ensure_ascii=False)
-
-    print(f"✓ JSON completo salvato: {json_file}")
-    print(f"  • Record totali: {len(results_dict)}")
-    print(f"  • Colonne: {len(results_df.columns)}")
-    print(f"  • Dimensione file: {os.path.getsize(json_file) / 1024 / 1024:.2f} MB")
-
-    return json_file
-
 # ========================================================================================================
-# Lorenzo Giannuzzo: SEZIONE 9: GRAFICI (placeholder - implementa come vuoi)
+# SEZIONE 9: GRAFICI (placeholder - implementa come vuoi)
 # ========================================================================================================
 def create_detailed_monthly_pv_plots(results_df, battery, pv_system):
     """
     Lorenzo Giannuzzo: GRAFICI DETTAGLIATI MENSILI con IMPATTO PV
-    VERSIONE CORRETTA v3.2 - Usa colonne DataFrame corrette
+    VERSIONE CORRETTA - Usa colonne DataFrame corrette
     """
     if not SAVE_PLOTS or not PV_ENABLED or pv_system is None:
         return
@@ -1981,7 +1587,7 @@ def create_detailed_monthly_pv_plots(results_df, battery, pv_system):
         os.makedirs(monthly_pv_folder)
 
     print("\n" + "=" * 80)
-    print("GENERAZIONE GRAFICI MENSILI DETTAGLIATI CON IMPATTO PV v3.2")
+    print("GENERAZIONE GRAFICI MENSILI DETTAGLIATI CON IMPATTO PV")
     print("=" * 80)
 
     if not pd.api.types.is_datetime64_any_dtype(results_df['Data']):
@@ -1993,13 +1599,13 @@ def create_detailed_monthly_pv_plots(results_df, battery, pv_system):
     mesi_nomi = ['Gennaio', 'Febbraio', 'Marzo', 'Aprile', 'Maggio', 'Giugno',
                  'Luglio', 'Agosto', 'Settembre', 'Ottobre', 'Novembre', 'Dicembre']
 
-    # Lorenzo Giannuzzo: Per ogni mese, crea grafico dettagliato
+    # Per ogni mese, crea grafico dettagliato
     for mese in range(1, 13):
         df_mese = results_df[results_df['Mese'] == mese].copy()
         if len(df_mese) == 0:
             continue
 
-        # Lorenzo Giannuzzo: Seleziona giorno rappresentativo (15° o medio)
+        # Seleziona giorno rappresentativo (15° o medio)
         giorni_disponibili = df_mese['Giorno'].unique()
         giorno_target = 15 if 15 in giorni_disponibili else giorni_disponibili[len(giorni_disponibili) // 2]
         df_giorno = df_mese[df_mese['Giorno'] == giorno_target].copy()
@@ -2015,7 +1621,7 @@ def create_detailed_monthly_pv_plots(results_df, battery, pv_system):
         df_giorno = df_giorno.head(24).copy()
         df_giorno['Ora'] = range(len(df_giorno))
 
-        # Lorenzo Giannuzzo: Crea figura con 4 subplot per analisi completa
+        # Crea figura con 4 subplot per analisi completa
         fig = plt.figure(figsize=(16, 14))
         gs = fig.add_gridspec(4, 2, hspace=0.35, wspace=0.3)
 
@@ -2023,7 +1629,7 @@ def create_detailed_monthly_pv_plots(results_df, battery, pv_system):
         fig.suptitle(f'Analisi Dettagliata PV - {mesi_nomi[mese - 1]} {data_str}\n{battery.technology}',
                      fontsize=16, fontweight='bold', y=0.995)
 
-        # Lorenzo Giannuzzo: Subplot 1: PRODUZIONE PV E ALLOCAZIONE
+        # Subplot 1: PRODUZIONE PV E ALLOCAZIONE
         ax1 = fig.add_subplot(gs[0, :])
         ax1.plot(df_giorno['Ora'], df_giorno['PV_Production_MWh'],
                  color='#F4A300', linewidth=3, marker='o', markersize=6,
@@ -2050,10 +1656,10 @@ def create_detailed_monthly_pv_plots(results_df, battery, pv_system):
         ax1.set_xlim(-0.5, 23.5)
         ax1.set_xticks(range(0, 24, 2))
 
-        # Lorenzo Giannuzzo: Subplot 2: FONTI DI CARICA BATTERIA
+        # Subplot 2: FONTI DI CARICA BATTERIA
         ax2 = fig.add_subplot(gs[1, 0])
 
-        # Lorenzo Giannuzzo: USA PV_to_Battery per coerenza con grafico sopra
+        # USA PV_to_Battery per coerenza con grafico sopra
         charge_from_grid = []
         charge_from_pv = []
         for idx, row in df_giorno.iterrows():
@@ -2081,25 +1687,25 @@ def create_detailed_monthly_pv_plots(results_df, battery, pv_system):
         ax2.set_xticks(range(0, 24, 2))
         ax2.axhline(y=0, color='black', linewidth=1, linestyle='-')
 
-        # Lorenzo Giannuzzo: Subplot 3: AZIONI BATTERIA
+        # Subplot 3: AZIONI BATTERIA (CORRETTO v3.2)
         ax3 = fig.add_subplot(gs[1, 1])
         ax3_twin = ax3.twinx()
 
-        # Lorenzo Giannuzzo: USA DIRETTAMENTE LE COLONNE CORRETTE DAL DATAFRAME
+        # USA DIRETTAMENTE LE COLONNE CORRETTE DAL DATAFRAME
         charge_pv_bars = []
         charge_grid_bars = []
         discharge_load_bars = []
         discharge_trading_bars = []
 
         for idx, row in df_giorno.iterrows():
-            # Lorenzo Giannuzzo: Usa Azione_Trading_MW che contiene già l'azione trading corretta
+            # Usa Azione_Trading_MW che contiene già l'azione trading corretta
             trading_action = row['Azione_Trading_MW']  # Positivo=carica, Negativo=scarica trading
 
             # Usa le colonne dedicate già presenti nel DataFrame
             load_discharge = row.get('Load_Discharge_MW', 0.0)
             trading_discharge = row.get('Trading_Discharge_MW', 0.0)
 
-            # Lorenzo Giannuzzo: Carica (trading_action positivo)
+            # Carica (trading_action positivo)
             if trading_action > 0.001:
                 # Recupera fonti di carica
                 pv_to_batt = row.get('PV_to_Battery_MWh', 0.0)
@@ -2110,28 +1716,28 @@ def create_detailed_monthly_pv_plots(results_df, battery, pv_system):
                 discharge_load_bars.append(0.0)
                 discharge_trading_bars.append(0.0)
 
-            # Lorenzo Giannuzzo: Scarica trading (trading_action negativo)
+            # Scarica trading (trading_action negativo)
             elif trading_action < -0.001:
                 charge_pv_bars.append(0.0)
                 charge_grid_bars.append(0.0)
 
-                # Lorenzo Giannuzzo: Scarica trading (già registrata correttamente)
+                # Scarica trading (già registrata correttamente)
                 discharge_trading_bars.append(-trading_discharge)  # Negativo per grafico
 
-                # Lorenzo Giannuzzo: Scarica carico (può coesistere con trading se erano entrambi richiesti)
+                # Scarica carico (può coesistere con trading se erano entrambi richiesti)
                 if load_discharge > 0.001:
                     discharge_load_bars.append(-load_discharge)
                 else:
                     discharge_load_bars.append(0.0)
 
-            # Lorenzo Giannuzzo: Solo scarica per carico (nessun trading)
+            # Solo scarica per carico (nessun trading)
             elif load_discharge > 0.001:
                 charge_pv_bars.append(0.0)
                 charge_grid_bars.append(0.0)
                 discharge_trading_bars.append(0.0)
                 discharge_load_bars.append(-load_discharge)
 
-            # Lorenzo Giannuzzo: IDLE
+            # IDLE
             else:
                 charge_pv_bars.append(0.0)
                 charge_grid_bars.append(0.0)
@@ -2140,60 +1746,60 @@ def create_detailed_monthly_pv_plots(results_df, battery, pv_system):
 
         width = 0.8
 
-        # Lorenzo Giannuzzo: Plotta SCARICA per TRADING (viola/rosso)
+        # Plotta SCARICA per TRADING (viola/rosso)
         ax3.bar(df_giorno['Ora'], discharge_trading_bars, width=width,
                 color='#E63946', alpha=0.8, edgecolor='black', linewidth=1,
                 label='Scarica Trading')
 
-        # Lorenzo Giannuzzo: Plotta SCARICA per CARICO (magenta)
+        # Plotta SCARICA per CARICO (magenta)
         ax3.bar(df_giorno['Ora'], discharge_load_bars, width=width,
                 bottom=discharge_trading_bars,
                 color='#9D4EDD', alpha=0.8, edgecolor='black', linewidth=1,
                 label='Scarica Carico')
 
-        # Lorenzo Giannuzzo: Plotta CARICA da RETE (arancione, base)
+        # Plotta CARICA da RETE (arancione, base)
         ax3.bar(df_giorno['Ora'], charge_grid_bars, width=width,
                 color='#F77F00', alpha=0.8, edgecolor='black', linewidth=1,
                 label='Carica da Rete')
 
-        # Lorenzo Giannuzzo: Plotta CARICA da PV (verde, sopra rete)
+        # Plotta CARICA da PV (verde, sopra rete)
         ax3.bar(df_giorno['Ora'], charge_pv_bars, width=width,
                 bottom=charge_grid_bars,
                 color='#06A77D', alpha=0.8, edgecolor='black', linewidth=1,
                 label='Carica da PV')
 
-        # Lorenzo Giannuzzo: Linea prezzo energia
+        # Linea prezzo energia
         ax3_twin.plot(df_giorno['Ora'], df_giorno['€/MWh'],
                       color='#457B9D', linewidth=2.5, marker='s', markersize=5,
                       label='Prezzo Energia', zorder=10)
 
-        # Lorenzo Giannuzzo: Linea zero
+        # Linea zero
         ax3.axhline(y=0, color='black', linewidth=1.5, linestyle='-', zorder=5)
 
-        # Lorenzo Giannuzzo: Etichette e formattazione
+        # Etichette e formattazione
         ax3.set_ylabel('Potenza Batteria (MW)', fontsize=12, fontweight='bold')
         ax3_twin.set_ylabel('Prezzo (€/MWh)', fontsize=12, fontweight='bold', color='#457B9D')
         ax3_twin.tick_params(axis='y', labelcolor='#457B9D')
         ax3.set_xlabel('Ora', fontsize=11)
         ax3.set_title('Azioni Batteria (Carico vs Trading) vs Prezzo', fontsize=13, fontweight='bold')
 
-        # Lorenzo Giannuzzo: Legends
+        # Legends
         ax3.legend(fontsize=9, loc='upper left', framealpha=0.95)
         ax3_twin.legend(fontsize=9, loc='upper right', framealpha=0.95)
 
-        # Lorenzo Giannuzzo: Grid e limiti
+        # Grid e limiti
         ax3.grid(True, alpha=0.3, linestyle='--', axis='y')
         ax3.set_xlim(-0.5, 23.5)
         ax3.set_xticks(range(0, 24, 2))
 
-        # Lorenzo Giannuzzo: Forza limiti corretti asse Y
+        # Forza limiti corretti asse Y
         all_actions = (discharge_trading_bars + discharge_load_bars +
                        [sum(x) for x in zip(charge_pv_bars, charge_grid_bars)])
         if any(x != 0 for x in all_actions):
             y_max = max(abs(min(all_actions)), max(all_actions)) * 1.1
             ax3.set_ylim(-y_max, y_max)
 
-        # Lorenzo Giannuzzo: Subplot 4: SOC E IMPATTO PV
+        # Subplot 4: SOC E IMPATTO PV
         ax4 = fig.add_subplot(gs[2, 0])
         ax4.plot(df_giorno['Ora'], df_giorno['SOC'] * 100,
                  color='#457B9D', linewidth=3, marker='o', markersize=6,
@@ -2217,18 +1823,18 @@ def create_detailed_monthly_pv_plots(results_df, battery, pv_system):
         ax4.set_xlim(-0.5, 23.5)
         ax4.set_xticks(range(0, 24, 2))
 
-        # Lorenzo Giannuzzo: Subplot 5: BILANCIO ECONOMICO ORARIO
+        # Subplot 5: BILANCIO ECONOMICO ORARIO
         ax5 = fig.add_subplot(gs[2, 1])
         profitto_orario = []
         for idx, row in df_giorno.iterrows():
             profit_hour = 0
-            # Lorenzo Giannuzzo: Costi: acquisto da rete
+            # Costi: acquisto da rete
             if row['Energy_from_Grid_MWh'] > 0:
                 profit_hour -= row['Energy_from_Grid_MWh'] * row.get('Prezzo_Acquisto_€/MWh', row['€/MWh'])
             if 'Load_from_Grid_MWh' in row and row['Load_from_Grid_MWh'] > 0:
                 profit_hour -= row['Load_from_Grid_MWh'] * row.get('Prezzo_Acquisto_€/MWh', row['€/MWh'])
 
-            # Lorenzo Giannuzzo: Ricavi: vendite a rete
+            # Ricavi: vendite a rete
             if row.get('Trading_Discharge_MW', 0) > 0:
                 profit_hour += row['Trading_Discharge_MW'] * row['€/MWh']
             if row['PV_to_Grid_MWh'] > 0:
@@ -2247,7 +1853,7 @@ def create_detailed_monthly_pv_plots(results_df, battery, pv_system):
         ax5.set_xlim(-0.5, 23.5)
         ax5.set_xticks(range(0, 24, 2))
 
-        # Lorenzo Giannuzzo: Subplot 6: STATISTICHE GIORNALIERE
+        # Subplot 6: STATISTICHE GIORNALIERE
         ax6 = fig.add_subplot(gs[3, :])
         ax6.axis('off')
         total_pv_prod = df_giorno['PV_Production_MWh'].sum()
@@ -2325,7 +1931,7 @@ def create_pv_impact_comparison(results_df, battery, pv_system):
 
     pv_stats = pv_system.get_statistics()
 
-    # Lorenzo Giannuzzo: Subplot 1: Pie chart allocazione energia PV
+    # Subplot 1: Pie chart allocazione energia PV
     ax1 = axes[0, 0]
     labels = ['Batteria', 'Rete', 'Carico', 'Curtailment']
     sizes = [
@@ -2344,7 +1950,7 @@ def create_pv_impact_comparison(results_df, battery, pv_system):
         autotext.set_fontweight('bold')
     ax1.set_title('Allocazione Energia PV', fontsize=12, fontweight='bold')
 
-    # Lorenzo Giannuzzo: Subplot 2: Grafico a barre energia PV per destinazione
+    # Subplot 2: Grafico a barre energia PV per destinazione
     ax2 = axes[0, 1]
     destinations = ['Batteria', 'Rete\nDiretta', 'Carico\nDiretto', 'Curtailment']
     values = [
@@ -2364,7 +1970,7 @@ def create_pv_impact_comparison(results_df, battery, pv_system):
                  f'{val:.1f} MWh\n({val / pv_stats["total_production_mwh"] * 100:.1f}%)',
                  ha='center', va='bottom', fontsize=9, fontweight='bold')
 
-    # Lorenzo Giannuzzo: Subplot 3: Timeline profitto cumulativo (stima contributo PV)
+    # Subplot 3: Timeline profitto cumulativo (stima contributo PV)
     ax3 = axes[1, 0]
     if 'Profitto_Euro' in results_df.columns and len(results_df) > 0:
         hours = range(len(results_df))
@@ -2376,7 +1982,7 @@ def create_pv_impact_comparison(results_df, battery, pv_system):
         ax3.grid(True, alpha=0.3)
         ax3.legend(fontsize=10)
 
-    # Lorenzo Giannuzzo: Subplot 4: Statistiche testuali PV
+    # Subplot 4: Statistiche testuali PV
     ax4 = axes[1, 1]
     ax4.axis('off')
 
@@ -2436,7 +2042,7 @@ def create_pv_impact_summary(results_df, battery, pv_system):
 
     pv_stats = pv_system.get_statistics()
 
-    # Lorenzo Giannuzzo: Grafico 1: Produzione PV oraria (sample 7 giorni)
+    # Grafico 1: Produzione PV oraria (sample 7 giorni)
     ax1 = fig.add_subplot(gs[0, :])
     if 'PV_Production_MWh' in results_df.columns:
         sample_hours = min(168, len(results_df))  # 7 giorni max
@@ -2451,7 +2057,7 @@ def create_pv_impact_summary(results_df, battery, pv_system):
         ax1.grid(True, alpha=0.3)
         ax1.legend(fontsize=10)
 
-    # Lorenzo Giannuzzo: Grafico 2: Confronto fonti carica batteria
+    # Grafico 2: Confronto fonti carica batteria
     ax2 = fig.add_subplot(gs[1, 0])
     sources = ['PV', 'Rete']
     energy_values = [battery.energy_from_pv_mwh, battery.energy_from_grid_mwh]
@@ -2468,7 +2074,7 @@ def create_pv_impact_summary(results_df, battery, pv_system):
                  f'{val:.1f} MWh\n({val / total * 100:.1f}%)',
                  ha='center', va='bottom', fontsize=10, fontweight='bold')
 
-    # Lorenzo Giannuzzo: Grafico 3: Utilizzo PV nel tempo (aggregato giornaliero)
+    # Grafico 3: Utilizzo PV nel tempo (aggregato giornaliero)
     ax3 = fig.add_subplot(gs[1, 1:])
     if 'PV_to_Battery_MWh' in results_df.columns and 'PV_to_Grid_MWh' in results_df.columns:
         # Aggrega per giorno
@@ -2499,7 +2105,7 @@ def create_pv_impact_summary(results_df, battery, pv_system):
         ax3.legend(fontsize=9)
         ax3.grid(True, alpha=0.3, axis='y')
 
-    # Lorenzo Giannuzzo: Grafico 4: Impatto economico PV (stima ricavi)
+    # Grafico 4: Impatto economico PV (stima ricavi)
     ax4 = fig.add_subplot(gs[2, 0])
     if '€/MWh' in results_df.columns:
         avg_price = results_df['€/MWh'].mean()
@@ -2523,7 +2129,7 @@ def create_pv_impact_summary(results_df, battery, pv_system):
             ax4.text(bar.get_x() + bar.get_width() / 2., height,
                      f'{val:.0f} €', ha='center', va='bottom', fontsize=9, fontweight='bold')
 
-    # Lorenzo Giannuzzo: Grafico 5: Percentuali utilizzo PV
+    # Grafico 5: Percentuali utilizzo PV
     ax5 = fig.add_subplot(gs[2, 1])
     categories = ['Batteria', 'Rete', 'Carico']
     percentages = [
@@ -2543,7 +2149,7 @@ def create_pv_impact_summary(results_df, battery, pv_system):
         ax5.text(width, bar.get_y() + bar.get_height() / 2.,
                  f' {val:.1f}%', ha='left', va='center', fontsize=10, fontweight='bold')
 
-    # Lorenzo Giannuzzo: Grafico 6: Indici prestazione PV
+    # Grafico 6: Indici prestazione PV
     ax6 = fig.add_subplot(gs[2, 2])
     ax6.axis('off')
 
@@ -2605,7 +2211,7 @@ def create_pv_visualizations(results_df, battery, pv_system):
     sample_hours = min(168, len(results_df))  # 7 giorni
     hours = range(sample_hours)
 
-    # Lorenzo Giannuzzo: Subplot 1: Produzione PV e allocazione
+    # Subplot 1: Produzione PV e allocazione
     ax1 = axes[0]
     if 'PV_Production_MWh' in results_df.columns:
         ax1.plot(hours, results_df['PV_Production_MWh'].iloc[:sample_hours],
@@ -2626,7 +2232,7 @@ def create_pv_visualizations(results_df, battery, pv_system):
     ax1.legend(fontsize=9, loc='upper right')
     ax1.grid(True, alpha=0.3)
 
-    # Lorenzo Giannuzzo: Subplot 2: SOC batteria con evidenza carica da PV
+    # Subplot 2: SOC batteria con evidenza carica da PV
     ax2 = axes[1]
     if 'SOC' in results_df.columns:
         ax2.plot(hours, results_df['SOC'].iloc[:sample_hours] * 100,
@@ -2635,7 +2241,7 @@ def create_pv_visualizations(results_df, battery, pv_system):
                          results_df['SOC'].iloc[:sample_hours] * 100,
                          color='#457B9D', alpha=0.2)
 
-        # Lorenzo Giannuzzo: Evidenzia ore con carica da PV
+        # Evidenzia ore con carica da PV
         if 'Energy_from_PV_MWh' in results_df.columns:
             for h in hours:
                 if h < len(results_df) and results_df['Energy_from_PV_MWh'].iloc[h] > 0.01:
@@ -2652,7 +2258,7 @@ def create_pv_visualizations(results_df, battery, pv_system):
     ax2.grid(True, alpha=0.3)
     ax2.set_ylim(0, 100)
 
-    # Lorenzo Giannuzzo: Subplot 3: Prezzo energia
+    # Subplot 3: Prezzo energia
     ax3 = axes[2]
     if '€/MWh' in results_df.columns:
         ax3.plot(hours, results_df['€/MWh'].iloc[:sample_hours],
@@ -2701,7 +2307,7 @@ def create_load_analysis_plots(results_df, battery, load_profile):
 
     load_stats = load_profile.get_statistics()
 
-    # Lorenzo Giannuzzo: Grafico 1: Pie chart fonti fornitura carico
+    # Grafico 1: Pie chart fonti fornitura carico
     ax1 = fig.add_subplot(gs[0, 0])
     labels = ['PV Diretto', 'Batteria', 'Rete']
     sizes = [
@@ -2719,7 +2325,7 @@ def create_load_analysis_plots(results_df, battery, load_profile):
         autotext.set_fontweight('bold')
     ax1.set_title('Fonti di Fornitura Carico', fontsize=12, fontweight='bold')
 
-    # Lorenzo Giannuzzo: Grafico 2: Barre energia per fonte
+    # Grafico 2: Barre energia per fonte
     ax2 = fig.add_subplot(gs[0, 1])
     sources = ['PV\nDiretto', 'Batteria', 'Rete']
     values = [
@@ -2738,7 +2344,7 @@ def create_load_analysis_plots(results_df, battery, load_profile):
                  f'{val:.2f} MWh\n({val / load_stats["total_energy_required_mwh"] * 100:.1f}%)',
                  ha='center', va='bottom', fontsize=9, fontweight='bold')
 
-    # Lorenzo Giannuzzo: Grafico 3: Timeline fornitura carico (sample 7 giorni)
+    # Grafico 3: Timeline fornitura carico (sample 7 giorni)
     ax3 = fig.add_subplot(gs[1, :])
     if all(col in results_df.columns for col in ['Load_Demand_MWh', 'Load_from_PV_MWh',
                                                  'Load_from_Battery_MWh', 'Load_from_Grid_MWh']):
@@ -2764,7 +2370,7 @@ def create_load_analysis_plots(results_df, battery, load_profile):
         ax3.legend(fontsize=10, loc='upper right')
         ax3.grid(True, alpha=0.3, axis='y')
 
-    # Lorenzo Giannuzzo: Grafico 4: Percentuali coverage
+    # Grafico 4: Percentuali coverage
     ax4 = fig.add_subplot(gs[2, 0])
     coverage_types = ['PV\nDiretto', 'Batteria', 'Rete\n(dipendenza)']
     coverage_values = [
@@ -2786,7 +2392,7 @@ def create_load_analysis_plots(results_df, battery, load_profile):
         ax4.text(width, bar.get_y() + bar.get_height() / 2.,
                  f' {val:.1f}%', ha='left', va='center', fontsize=10, fontweight='bold')
 
-    # Lorenzo Giannuzzo: Grafico 5: Statistiche testuali
+    # Grafico 5: Statistiche testuali
     ax5 = fig.add_subplot(gs[2, 1])
     ax5.axis('off')
 
@@ -2829,7 +2435,7 @@ Strategia Ottimizzazione:
 
 def calculate_baseline_scenario(prices_sell, prices_buy, pv_production, load_demand):
     """
-    Lorenzo Giannuzzo: Calcola scenario BASELINE senza batteria CON VINCOLO POD
+    Calcola scenario BASELINE senza batteria CON VINCOLO POD
     """
     total_cost_buy = 0.0
     total_revenue_sell = 0.0
@@ -2839,7 +2445,7 @@ def calculate_baseline_scenario(prices_sell, prices_buy, pv_production, load_dem
     total_load_from_grid = 0.0
     total_load_required = 0.0
 
-    # Lorenzo Giannuzzo: tracking POD baseline
+    # NUOVO: tracking POD baseline
     total_pv_curtailed_baseline = 0.0
     total_load_unserved_baseline = 0.0
 
@@ -2853,16 +2459,16 @@ def calculate_baseline_scenario(prices_sell, prices_buy, pv_production, load_dem
 
         total_load_required += load_required
 
-        # Lorenzo Giannuzzo: LOGICA BASELINE: PV al carico prima
+        # LOGICA BASELINE: PV al carico prima
         pv_to_load = min(pv_available, load_required)
         pv_remaining = pv_available - pv_to_load
         load_remaining = load_required - pv_to_load
 
         total_pv_to_load += pv_to_load
 
-        # Lorenzo Giannuzzo: PV eccesso venduto CON VINCOLO POD
+        # PV eccesso venduto CON VINCOLO POD
         if pv_remaining > 0.001:
-            pv_to_grid = min(pv_remaining, POD_POWER_MW)
+            pv_to_grid = min(pv_remaining, POD_POWER_MW)  # ✅ VINCOLO POD
             pv_curtailed = pv_remaining - pv_to_grid
 
             total_pv_to_grid += pv_to_grid
@@ -2873,9 +2479,9 @@ def calculate_baseline_scenario(prices_sell, prices_buy, pv_production, load_dem
                 # Penalità leggera per PV perso
                 total_cost_buy += pv_curtailed * price_sell * 0.0
 
-        # Lorenzo Giannuzzo: Carico residuo comprato da rete CON VINCOLO POD
+        # Carico residuo comprato da rete CON VINCOLO POD
         if load_remaining > 0.001:
-            load_from_grid = min(load_remaining, POD_POWER_MW)
+            load_from_grid = min(load_remaining, POD_POWER_MW)  # ✅ VINCOLO POD
             load_unserved = load_remaining - load_from_grid
 
             total_load_from_grid += load_from_grid
@@ -2883,7 +2489,7 @@ def calculate_baseline_scenario(prices_sell, prices_buy, pv_production, load_dem
 
             if load_unserved > 0.001:
                 total_load_unserved_baseline += load_unserved
-                # Lorenzo Giannuzzo: Penalità pesante per carico non servito
+                # Penalità pesante per carico non servito
                 total_cost_buy += load_unserved * price_buy * 000.0
 
     net_balance = total_revenue_sell - total_cost_buy
@@ -2903,137 +2509,59 @@ def calculate_baseline_scenario(prices_sell, prices_buy, pv_production, load_dem
     }
 
 # ========================================================================================================
-# Lorenzo Giannuzzo: FUNZIONE MAIN
+# FUNZIONE MAIN
 # ========================================================================================================
-def main():
-    """
-    Lorenzo Giannuzzo: Main function con argomenti da command line
-    """
-    # ========================================================================
-    # PARSE ARGOMENTI
-    # ========================================================================
-    args = parse_arguments()
+def main(file_name, file_name2, pv_file_name=None, load_file_name=None):
+    file_path = os.path.join('../system_optimization/data', file_name)
+    file_path2 = os.path.join('../system_optimization/data', file_name2)
 
-    # ========================================================================
-    # Lorenzo Giannuzzo: OVERRIDE VARIABILI GLOBALI CON ARGOMENTI CLI
-    # ========================================================================
-    global POD_POWER_MW, BATTERY_TECHNOLOGY, BATTERY_CAPACITY_MWH, BATTERY_MAX_POWER_MW
-    global BATTERY_MAX_C_RATE, PV_ENABLED, LOAD_ENABLED, PV_NOMINAL_POWER_KWP
-    global LITHIUM_ION_SOC_MIN, LITHIUM_ION_SOC_MAX, GRAPHENE_SOC_MIN, GRAPHENE_SOC_MAX
-    global SAVE_PLOTS, MACSE_ENABLED, MACSE_CAPACITY_MWH, MACSE_CONTRACT_YEARS, MACSE_PRICE_PER_MW_YEAR
-    global ENABLE_MULTIPROCESSING, MULTIPROCESSING_CORES
-
-    POD_POWER_MW = args.pod_limit
-    BATTERY_TECHNOLOGY = args.battery_tech
-    BATTERY_CAPACITY_MWH = args.battery_capacity
-    BATTERY_MAX_POWER_MW = args.battery_power
-    BATTERY_MAX_C_RATE = args.battery_c_rate
-
-    LITHIUM_ION_SOC_MIN = args.lithium_soc_min
-    LITHIUM_ION_SOC_MAX = args.lithium_soc_max
-    GRAPHENE_SOC_MIN = args.graphene_soc_min
-    GRAPHENE_SOC_MAX = args.graphene_soc_max
-
-    PV_ENABLED = args.pv_enabled
-    LOAD_ENABLED = args.load_enabled
-    PV_NOMINAL_POWER_KWP = args.pv_nominal_power
-
-    SAVE_PLOTS = args.save_plots
-
-    MACSE_ENABLED = args.macse_enabled
-    MACSE_CAPACITY_MWH = args.macse_capacity
-    MACSE_CONTRACT_YEARS = args.macse_contract_years
-    MACSE_PRICE_PER_MW_YEAR = args.macse_price_per_mw_year
-
-    ENABLE_MULTIPROCESSING = not args.no_parallel
-    MULTIPROCESSING_CORES = args.n_cores
-
-    # ========================================================================
-    # Lorenzo Giannuzzo: PRINT CONFIGURAZIONE
-    # ========================================================================
     print("=" * 80)
-    print("BESS OPTIMIZATION v3.8 - COMMAND LINE MODE")
-    print("=" * 80)
-    print("\n📋 CONFIGURAZIONE:")
-    print(f"  • Prezzi vendita:         {args.price_sell}")
-    print(f"  • Prezzi acquisto:        {args.price_buy}")
-    print(f"  • POD Limit:              {args.pod_limit} MW")
-    print(f"  • Tecnologia batteria:    {args.battery_tech}")
-    print(f"  • Capacità:               {args.battery_capacity} MWh")
-    print(f"  • Potenza:                {args.battery_power} MW")
-    print(f"  • C-rate:                 {args.battery_c_rate}")
-
-    if args.battery_tech == "LITIO-IONE":
-        print(f"  • SOC range:              {args.lithium_soc_min * 100:.0f}% - {args.lithium_soc_max * 100:.0f}%")
-    else:
-        print(f"  • SOC range:              {args.graphene_soc_min * 100:.0f}% - {args.graphene_soc_max * 100:.0f}%")
-
-    if args.pv_enabled:
-        print(f"  • PV abilitato:           SÌ ({args.pv_nominal_power} kWp)")
-        print(f"  • File PV:                {args.pv_file}")
-    else:
-        print(f"  • PV abilitato:           NO")
-
-    if args.load_enabled:
-        print(f"  • Carico abilitato:       SÌ")
-        print(f"  • File carico:            {args.load_file}")
-    else:
-        print(f"  • Carico abilitato:       NO")
-
-    if args.macse_enabled:
-        print(f"  • MACSE abilitato:        SÌ ({args.macse_capacity} MWh, {args.macse_contract_years} anni)")
-    else:
-        print(f"  • MACSE abilitato:        NO")
-
-    print(f"  • Parallelizzazione:      {'SÌ' if not args.no_parallel else 'NO'}")
-    if not args.no_parallel:
-        print(f"  • Cores:                  {args.n_cores} ({'auto' if args.n_cores < 0 else 'manual'})")
-    print(f"  • Particelle PSO:         {args.n_particles}")
-    print(f"  • Iterazioni PSO:         {args.n_iterations}")
-    print(f"  • Salva grafici:          {'SÌ' if args.save_plots else 'NO'}")
-    print(f"  • Directory output:       {args.output_dir}")
+    print("BESS OPTIMIZATION")
     print("=" * 80)
 
-    # ========================================================================
-    # Lorenzo Giannuzzo: CARICAMENTO DATI
-    # ========================================================================
     try:
-        df = pd.read_excel(args.price_sell)
+        df = pd.read_excel(file_path)
         if df['€/MWh'].dtype == 'object':
             df['€/MWh'] = df['€/MWh'].astype(str).str.replace(',', '.').astype(float)
-        print(f"\n✓ Prezzi vendita: {len(df)} righe, media {df['€/MWh'].mean():.2f} €/MWh")
+        print(f"✓ Prezzi vendita: {len(df)} righe, media {df['€/MWh'].mean():.2f} €/MWh")
     except Exception as e:
-        print(f"❌ Errore caricamento prezzi vendita: {e}")
-        sys.exit(1)
+        print(f"❌ Errore caricamento prezzi: {e}")
+        return
 
     try:
-        df2 = pd.read_excel(args.price_buy)
+        df2 = pd.read_excel(file_path2)
         if df2['€/MWh'].dtype == 'object':
             df2['€/MWh'] = df2['€/MWh'].astype(str).str.replace(',', '.').astype(float)
-        print(f"✓ Prezzi acquisto: {len(df2)} righe, media {df2['€/MWh'].mean():.2f} €/MWh")
+        print(f"✓ Prezzi vendita: {len(df2)} righe, media {df2['€/MWh'].mean():.2f} €/MWh")
     except Exception as e:
-        print(f"❌ Errore caricamento prezzi acquisto: {e}")
-        sys.exit(1)
+        print(f"❌ Errore caricamento prezzi: {e}")
+        return
+
 
     pv_df = None
     pv_system = None
-    if PV_ENABLED and args.pv_file:
+    if PV_ENABLED and pv_file_name:
         try:
-            pv_df = pd.read_csv(args.pv_file, sep=';')
-            pv_system = PhotovoltaicSystem(nominal_power_kwp=args.pv_nominal_power)
-            print(f"✓ PV: {len(pv_df)} righe caricato")
+            pv_file_path = os.path.join('../system_optimization/data', pv_file_name)
+            pv_df = pd.read_csv(pv_file_path, sep=';')
+            pv_system = PhotovoltaicSystem()
         except Exception as e:
-            print(f"❌ Errore caricamento PV: {e}")
+            print(f"❌ Errore PV: {e}")
             pv_df = None
             pv_system = None
 
     load_df = None
     load_profile = None
-    if LOAD_ENABLED and args.load_file:
+    if LOAD_ENABLED and load_file_name:
         try:
-            xls = pd.ExcelFile(args.load_file)
-            first_sheet = xls.sheet_names[0]
-            load_df_raw = pd.read_excel(args.load_file, sheet_name=first_sheet)
+            load_file_path = os.path.join('../system_optimization/data', load_file_name)
+            if LOAD_SHEET_NAME:
+                load_df_raw = pd.read_excel(load_file_path, sheet_name=LOAD_SHEET_NAME)
+            else:
+                xls = pd.ExcelFile(load_file_path)
+                first_sheet = xls.sheet_names[0]
+                print(f"  Sheet: {first_sheet}")
+                load_df_raw = pd.read_excel(load_file_path, sheet_name=first_sheet)
 
             load_column = None
             for col_name in ['value', 'Value', 'VALUE', 'load', 'Load', 'LOAD', 'Power', 'power', 'POWER']:
@@ -3051,52 +2579,31 @@ def main():
             load_df = pd.DataFrame()
             load_df['value'] = load_df_raw[load_column].copy()
             load_profile = LoadProfile()
-            print(f"✓ Carico: {len(load_df)} righe, media {load_df['value'].mean():.2f} kW")
+            print(f"✓ Carico: {len(load_df)} righe, media {load_df['value'].mean():.2f} kW, totale {load_df['value'].sum()/1000:.2f} MWh")
         except Exception as e:
-            print(f"❌ Errore caricamento carico: {e}")
+            print(f"❌ Errore carico: {e}")
             load_df = None
             load_profile = None
 
-    # ========================================================================
-    # Lorenzo Giannuzzo: SETUP BATTERIA E OTTIMIZZATORE
-    # ========================================================================
-    battery = Battery(
-        technology=BATTERY_TECHNOLOGY,
-        capacity_mwh=BATTERY_CAPACITY_MWH,
-        max_power_mw=BATTERY_MAX_POWER_MW,
-        max_c_rate=BATTERY_MAX_C_RATE
-    )
+    battery = Battery()
+    optimizer = PSOOptimizer(n_particles=50, n_iterations=200)
+    simulator = RollingHorizonSimulator(battery, optimizer, pv_system=pv_system, load_profile=load_profile)
 
-    optimizer = PSOOptimizer(
-        n_particles=args.n_particles,
-        n_iterations=args.n_iterations
-    )
-
-    simulator = RollingHorizonSimulator(
-        battery,
-        optimizer,
-        pv_system=pv_system,
-        load_profile=load_profile
-    )
-
-    # ========================================================================
-    # Lorenzo Giannuzzo: ESECUZIONE SIMULAZIONE
-    # ========================================================================
     start_time = datetime.now()
     results_df, trading_profit = simulator.simulate(df, df2, pv_df, load_df)
     end_time = datetime.now()
 
-    # ========================================================================
-    # Lorenzo Giannuzzo: CALCOLI FINALI
-    # ========================================================================
     macse_revenue, macse_base, macse_penalty, macse_bonus = calculate_macse_revenue(battery)
     total_system_profit = trading_profit + macse_revenue
 
+    # ========================================================================
+    # NUOVO: CALCOLO SCENARIO BASELINE (SENZA BATTERIA)
+    # ========================================================================
     prices_sell = df['€/MWh'].values
     prices_buy = df2['€/MWh'].values
 
     if PV_ENABLED and pv_df is not None:
-        pv_production = pv_df['P'].values / 1000.0
+        pv_production = pv_df['P'].values / 1000.0  # kW → MWh
         if len(pv_production) < len(prices_sell):
             pv_production = np.pad(pv_production, (0, len(prices_sell) - len(pv_production)), 'constant')
         elif len(pv_production) > len(prices_sell):
@@ -3105,7 +2612,7 @@ def main():
         pv_production = np.zeros(len(prices_sell))
 
     if LOAD_ENABLED and load_df is not None:
-        load_demand = load_df['value'].values / 1000.0
+        load_demand = load_df['value'].values / 1000.0  # kW → MWh
         if len(load_demand) < len(prices_sell):
             load_demand = np.pad(load_demand, (0, len(prices_sell) - len(load_demand)), 'constant')
         elif len(load_demand) > len(prices_sell):
@@ -3115,485 +2622,188 @@ def main():
 
     baseline_scenario = calculate_baseline_scenario(prices_sell, prices_buy, pv_production, load_demand)
 
-
-    # ========================================================================
-    # Lorenzo Giannuzzo: STAMPA RISULTATI (usa la tua funzione print esistente)
-    # ========================================================================
     print("\n" + "=" * 80)
     print("RISULTATI FINALI - CONFRONTO ECONOMICO")
     print("=" * 80)
-    # ... (tutto il tuo codice di stampa esistente) ...
 
     # ========================================================================
-    # Lorenzo Giannuzzo: SALVATAGGIO RISULTATI
+    # PRINT 1: SCENARIO SENZA BATTERIA (BASELINE)
     # ========================================================================
-    if not os.path.exists(args.output_dir):
-        os.makedirs(args.output_dir)
+    print("\n" + "🔵 " * 40)
+    print("SCENARIO 1: SENZA BATTERIA (BASELINE)")
+    print("🔵 " * 40)
+    print(f"\n📊 BILANCIO ENERGETICO:")
+    print(f"  • Carico totale richiesto:        {baseline_scenario['total_load_required']:>10.2f} MWh")
+    print(
+        f"  • PV copre carico direttamente:   {baseline_scenario['total_pv_to_load']:>10.2f} MWh ({baseline_scenario['autosufficienza_percent']:.1f}%)")
+    print(
+        f"  • Carico coperto da rete:         {baseline_scenario['total_load_from_grid']:>10.2f} MWh ({baseline_scenario['total_load_from_grid'] / baseline_scenario['total_load_required'] * 100 if baseline_scenario['total_load_required'] > 0 else 0:.1f}%)")
+    print(f"  • PV venduto a rete:              {baseline_scenario['total_pv_to_grid']:>10.2f} MWh")
 
-    output_file = os.path.join(args.output_dir,
-                               f'risultati_{battery.technology.lower().replace("-", "_")}_cli.xlsx')
+    print(f"\n💰 BILANCIO ECONOMICO:")
+    print(f"  • Costi acquisto energia:         {baseline_scenario['total_cost_buy']:>10,.2f} €  ❌")
+    print(f"  • Ricavi vendita PV:              {baseline_scenario['total_revenue_sell']:>10,.2f} €  ✅")
+    print(f"  • {'─' * 60}")
+
+    baseline_sign = "✅" if baseline_scenario['net_balance'] >= 0 else "❌"
+    print(f"  • BILANCIO NETTO (senza batteria): {baseline_scenario['net_balance']:>10,.2f} €  {baseline_sign}")
+    print(f"  • Autosufficienza energetica:     {baseline_scenario['autosufficienza_percent']:>10.1f} %")
+
+    # ========================================================================
+    # PRINT 2: SCENARIO CON BATTERIA (SISTEMA OTTIMIZZATO)
+    # ========================================================================
+    print("\n" + "🟢 " * 40)
+    print("SCENARIO 2: CON BATTERIA (SISTEMA OTTIMIZZATO)")
+    print("🟢 " * 40)
+
+    if LOAD_ENABLED and load_profile:
+        load_stats = load_profile.get_statistics()
+        print(f"\n📊 BILANCIO ENERGETICO:")
+        print(f"  • Carico totale richiesto:        {load_stats['total_energy_required_mwh']:>10.2f} MWh")
+        print(
+            f"  • Carico da PV diretto:           {load_stats['energy_from_pv_mwh']:>10.2f} MWh ({load_stats['pv_coverage_percent']:.1f}%)")
+        print(
+            f"  • Carico da BATTERIA:             {load_stats['energy_from_battery_mwh']:>10.2f} MWh ({load_stats['battery_coverage_percent']:.1f}%)")
+        print(
+            f"  • Carico da rete:                 {load_stats['energy_from_grid_mwh']:>10.2f} MWh ({load_stats['grid_dependency_percent']:.1f}%)")
+        autosufficienza_with_bess = 100 - load_stats['grid_dependency_percent']
+        print(f"  • Autosufficienza energetica:     {autosufficienza_with_bess:>10.1f} %")
+
+    if PV_ENABLED and pv_system:
+        pv_stats = pv_system.get_statistics()
+        print(f"\n☀️ UTILIZZO PV:")
+        print(f"  • Produzione totale:              {pv_stats['total_production_mwh']:>10.2f} MWh")
+        print(
+            f"  • PV → Carico diretto:            {pv_stats['energy_to_load_mwh']:>10.2f} MWh ({pv_stats['load_service_percent']:.1f}%)")
+        print(
+            f"  • PV → Batteria (storage):        {pv_stats['energy_to_battery_mwh']:>10.2f} MWh ({pv_stats['battery_utilization_percent']:.1f}%)")
+        print(
+            f"  • PV → Vendita diretta:           {pv_stats['energy_to_grid_mwh']:>10.2f} MWh ({pv_stats['grid_sale_percent']:.1f}%)")
+
+    print(f"\n🔋 STATO BATTERIA:")
+    print(f"  • SOH finale:                     {battery.get_soh():>10.2f} %")
+    print(f"  • Cicli equivalenti:              {battery.equivalent_cycles:>10.2f}")
+    print(f"  • Throughput totale:              {battery.throughput_kwh:>10,.0f} kWh")
+    print(f"  • Energia da rete → batteria:     {battery.energy_from_grid_mwh:>10.2f} MWh")
+    print(f"  • Energia da PV → batteria:       {battery.energy_from_pv_mwh:>10.2f} MWh")
+
+    print(f"\n💰 BILANCIO ECONOMICO:")
+    print(f"  • Profitto trading batteria:      {trading_profit:>10,.2f} €")
+    if MACSE_ENABLED:
+        print(f"  • Ricavi servizi MACSE:           {macse_revenue:>10,.2f} €")
+    print(f"  • {'─' * 60}")
+
+    system_sign = "✅" if total_system_profit >= 0 else "❌"
+    print(f"  • BILANCIO NETTO (con batteria):   {total_system_profit:>10,.2f} €  {system_sign}")
+
+    if 'POD_Violation' in results_df.columns:
+        print("\n" + "⚡ " * 40)
+        print("ANALISI VINCOLO POD (POINT OF DELIVERY)")
+        print("⚡ " * 40)
+
+        total_violations = results_df['POD_Violation'].sum()
+        violation_rate = (total_violations / len(results_df) * 100)
+        total_pv_curtailed = results_df['PV_Curtailed_MWh'].sum()
+        total_load_unserved = results_df['Load_Unserved_MWh'].sum()
+        max_withdrawal = results_df['Grid_Withdrawal_MW'].max()
+        max_injection = results_df['Grid_Injection_MW'].max()
+
+        print(f"\n📊 LIMITE POD: {POD_POWER_MW} MW")
+        print(f"\n🔴 VIOLAZIONI:")
+        print(
+            f"  • Ore con violazione:             {int(total_violations)} / {len(results_df)} ({violation_rate:.1f}%)")
+        print(f"  • PV curtailed (perso):           {total_pv_curtailed:.2f} MWh")
+        print(f"  • Carico non servito:             {total_load_unserved:.2f} MWh")
+
+        print(f"\n📈 SCAMBI MASSIMI:")
+        print(
+            f"  • Max prelievo rete:              {max_withdrawal:.2f} MW {'⚠️ VIOLA POD' if max_withdrawal > POD_POWER_MW else '✅'}")
+        print(
+            f"  • Max immissione rete:            {max_injection:.2f} MW {'⚠️ VIOLA POD' if max_injection > POD_POWER_MW else '✅'}")
+
+        if baseline_scenario and 'pv_curtailed_baseline' in baseline_scenario:
+            print(f"\n🔵 CONFRONTO CON BASELINE:")
+            print(f"  • PV curtailed SENZA batteria:    {baseline_scenario['pv_curtailed_baseline']:.2f} MWh")
+            print(f"  • PV curtailed CON batteria:      {total_pv_curtailed:.2f} MWh")
+            delta_curtailment = baseline_scenario['pv_curtailed_baseline'] - total_pv_curtailed
+            print(
+                f"  • Riduzione curtailment:          {delta_curtailment:.2f} MWh {'✅' if delta_curtailment > 0 else '❌'}")
+
+    # ========================================================================
+    # CONFRONTO E DELTA
+    # ========================================================================
+    print("\n" + "⚡ " * 40)
+    print("CONFRONTO E BENEFICI BATTERIA")
+    print("⚡ " * 40)
+
+    delta_economic = total_system_profit - baseline_scenario['net_balance']
+    delta_percent = (delta_economic / abs(baseline_scenario['net_balance']) * 100) if baseline_scenario[
+                                                                                          'net_balance'] != 0 else float(
+        'inf')
+
+    if LOAD_ENABLED and load_profile:
+        delta_autosufficienza = autosufficienza_with_bess - baseline_scenario['autosufficienza_percent']
+        delta_grid_dependency = baseline_scenario['total_load_from_grid'] - load_stats['energy_from_grid_mwh']
+    else:
+        delta_autosufficienza = 0
+        delta_grid_dependency = 0
+
+    print(f"\n💵 IMPATTO ECONOMICO:")
+    print(f"  • Bilancio SENZA batteria:        {baseline_scenario['net_balance']:>10,.2f} €")
+    print(f"  • Bilancio CON batteria:          {total_system_profit:>10,.2f} €")
+    print(f"  • {'─' * 60}")
+
+    delta_sign = "✅ MIGLIORAMENTO" if delta_economic > 0 else "❌ PEGGIORAMENTO"
+    delta_arrow = "📈" if delta_economic > 0 else "📉"
+    print(f"  • DELTA (beneficio batteria):     {delta_economic:>10,.2f} €  {delta_arrow} {delta_sign}")
+
+    if baseline_scenario['net_balance'] != 0:
+        print(f"  • Variazione percentuale:         {delta_percent:>10.1f} %")
+
+    print(f"\n⚡ IMPATTO ENERGETICO:")
+    print(f"  • Autosufficienza SENZA batteria: {baseline_scenario['autosufficienza_percent']:>10.1f} %")
+    if LOAD_ENABLED and load_profile:
+        print(f"  • Autosufficienza CON batteria:   {autosufficienza_with_bess:>10.1f} %")
+        print(
+            f"  • Incremento autosufficienza:     {delta_autosufficienza:>10.1f} punti %  {'✅' if delta_autosufficienza > 0 else '➖'}")
+        print(
+            f"  • Riduzione dipendenza rete:      {delta_grid_dependency:>10.2f} MWh  {'✅' if delta_grid_dependency > 0 else '❌'}")
+
+    print(f"\n⏱️ PRESTAZIONI:")
+    print(f"  • Tempo simulazione:              {(end_time - start_time).total_seconds():>10.1f} s")
+    print(f"  • Ore simulate:                   {len(prices_sell):>10.0f} h")
+    print(
+        f"  • Velocità:                       {len(prices_sell) / (end_time - start_time).total_seconds():>10.1f} ore/s")
+
+    print("\n" + "=" * 80)
+
+    results_folder = 'results'
+    if not os.path.exists(results_folder):
+        os.makedirs(results_folder)
+
+    output_file = os.path.join(results_folder, f'risultati_{battery.technology.lower().replace("-", "_")}_v250.xlsx')
     with pd.ExcelWriter(output_file, engine='openpyxl') as writer:
         results_df.to_excel(writer, sheet_name='Risultati', index=False)
-    print(f"\n✓ Excel salvato: {output_file}")
+    print(f"✓ Excel: {output_file}")
 
     export_results_to_json(results_df, battery, pv_system, load_profile, trading_profit, macse_revenue,
-                           macse_base, macse_penalty, macse_bonus, 600000,
-                           (end_time - start_time).total_seconds(), baseline_scenario,
-                           output_dir=args.output_dir)
+                          macse_base, macse_penalty, macse_bonus, 600000, (end_time - start_time).total_seconds())
 
-    export_complete_results_to_json(results_df, battery, output_dir=args.output_dir)
+    if PV_ENABLED and pv_system:
+        create_pv_impact_comparison(results_df, battery, pv_system)
+        create_pv_impact_summary(results_df, battery, pv_system)
+        create_pv_visualizations(results_df, battery, pv_system)
+        create_detailed_monthly_pv_plots(results_df, battery, pv_system)
 
-    # ========================================================================
-    # Lorenzo Giannuzzo: GRAFICI BASE (SEMPRE GENERATI se SAVE_PLOTS=True)
-    # ========================================================================
-    if SAVE_PLOTS:
-        print("\n📊 Generazione grafici...")
-
-        # Crea directory visualization se non esiste
-        viz_folder = 'visualization'
-        if not os.path.exists(viz_folder):
-            os.makedirs(viz_folder)
-
-        # ====================================================================
-        # Lorenzo Giannuzzo: GRAFICO 1: Overview Generale (4 subplot)
-        # ====================================================================
-        fig, axes = plt.subplots(2, 2, figsize=(16, 12))
-        fig.suptitle(f'BESS Optimization Overview - {battery.technology}', fontsize=16, fontweight='bold')
-
-        # Subplot 1: SOC nel tempo
-        ax1 = axes[0, 0]
-        hours = range(len(results_df))
-        ax1.plot(hours, results_df['SOC'] * 100, color='#457B9D', linewidth=2, label='SOC')
-        ax1.fill_between(hours, battery.soc_min * 100, results_df['SOC'] * 100, color='#457B9D', alpha=0.2)
-        ax1.axhline(y=battery.soc_min * 100, color='red', linestyle='--', linewidth=1, alpha=0.7,
-                    label=f'SOC min ({battery.soc_min * 100:.0f}%)')
-        ax1.axhline(y=battery.soc_max * 100, color='green', linestyle='--', linewidth=1, alpha=0.7,
-                    label=f'SOC max ({battery.soc_max * 100:.0f}%)')
-        ax1.set_xlabel('Ora', fontsize=11)
-        ax1.set_ylabel('SOC (%)', fontsize=11, fontweight='bold')
-        ax1.set_title('State of Charge', fontsize=12, fontweight='bold')
-        ax1.legend(fontsize=9)
-        ax1.grid(True, alpha=0.3)
-        ax1.set_ylim(0, 100)
-
-        # Lorenzo Giannuzzo: Subplot 2: Profitto Cumulativo
-        ax2 = axes[0, 1]
-        ax2.plot(hours, results_df['Profitto_Euro'], color='#06A77D', linewidth=2.5, label='Profitto Cumulativo')
-        ax2.fill_between(hours, 0, results_df['Profitto_Euro'], color='#06A77D', alpha=0.2)
-        ax2.axhline(y=0, color='black', linestyle='-', linewidth=1)
-        ax2.set_xlabel('Ora', fontsize=11)
-        ax2.set_ylabel('Profitto (€)', fontsize=11, fontweight='bold')
-        ax2.set_title('Profitto Cumulativo', fontsize=12, fontweight='bold')
-        ax2.legend(fontsize=9)
-        ax2.grid(True, alpha=0.3)
-
-        # SLorenzo Giannuzzo: ubplot 3: Azioni Batteria vs Prezzi
-        ax3 = axes[1, 0]
-        ax3_twin = ax3.twinx()
-
-        # Lorenzo Giannuzzo:  Azioni batteria
-        colors_action = ['#06A77D' if a > 0 else '#E63946' if a < 0 else '#999999' for a in
-                         results_df['Azione_Trading_MW']]
-        ax3.bar(hours, results_df['Azione_Trading_MW'], color=colors_action, alpha=0.7, width=1, edgecolor='none')
-        ax3.axhline(y=0, color='black', linewidth=1)
-        ax3.set_xlabel('Ora', fontsize=11)
-        ax3.set_ylabel('Potenza Batteria (MW)', fontsize=11, fontweight='bold')
-        ax3.set_title('Azioni Batteria vs Prezzi Energia', fontsize=12, fontweight='bold')
-
-        # Lorenzo Giannuzzo: Prezzi
-        ax3_twin.plot(hours, results_df['€/MWh'], color='#457B9D', linewidth=1.5, alpha=0.8, label='Prezzo Vendita')
-        if 'Prezzo_Acquisto_€/MWh' in results_df.columns:
-            ax3_twin.plot(hours, results_df['Prezzo_Acquisto_€/MWh'], color='#8B0000', linewidth=1.5, alpha=0.6,
-                          linestyle='--', label='Prezzo Acquisto')
-        ax3_twin.set_ylabel('Prezzo (€/MWh)', fontsize=11, fontweight='bold', color='#457B9D')
-        ax3_twin.tick_params(axis='y', labelcolor='#457B9D')
-        ax3_twin.legend(fontsize=9, loc='upper right')
-
-        # Lorenzo Giannuzzo: Subplot 4: SOH (Degradazione)
-        ax4 = axes[1, 1]
-        ax4.plot(hours, results_df['SOH_%'], color='#F77F00', linewidth=2.5, label='State of Health')
-        ax4.fill_between(hours, 80, results_df['SOH_%'], where=(results_df['SOH_%'] >= 80), color='#06A77D', alpha=0.2,
-                         label='SOH OK (>80%)')
-        ax4.fill_between(hours, 0, results_df['SOH_%'], where=(results_df['SOH_%'] < 80), color='#E63946', alpha=0.2,
-                         label='SOH Degradato (<80%)')
-        ax4.axhline(y=80, color='red', linestyle='--', linewidth=1, alpha=0.7, label='Soglia EOL (80%)')
-        ax4.set_xlabel('Ora', fontsize=11)
-        ax4.set_ylabel('SOH (%)', fontsize=11, fontweight='bold')
-        ax4.set_title('State of Health (Degradazione)', fontsize=12, fontweight='bold')
-        ax4.legend(fontsize=9)
-        ax4.grid(True, alpha=0.3)
-        ax4.set_ylim(75, 101)
-
-        plt.tight_layout()
-        overview_file = os.path.join(viz_folder, f'overview_{battery.technology.lower().replace("-", "_")}.png')
-        plt.savefig(overview_file, dpi=300, bbox_inches='tight')
-        plt.close()
-        print(f"  ✓ Salvato: {overview_file}")
-
-        # ====================================================================
-        # Lorenzo Giannuzzo: GRAFICO 2: POD Tracking (se LOAD_ENABLED)
-        # ====================================================================
-        if LOAD_ENABLED and 'Grid_Withdrawal_MW' in results_df.columns:
-            fig, axes = plt.subplots(2, 1, figsize=(16, 10))
-            fig.suptitle(f'POD Monitoring - Limite {POD_POWER_MW} MW', fontsize=16, fontweight='bold')
-
-            # Subplot 1: Prelievo da rete
-            ax1 = axes[0]
-            ax1.plot(hours, results_df['Grid_Withdrawal_MW'], color='#E63946', linewidth=1.5, label='Prelievo Rete')
-            ax1.fill_between(hours, 0, results_df['Grid_Withdrawal_MW'], color='#E63946', alpha=0.2)
-            ax1.axhline(y=POD_POWER_MW, color='red', linestyle='--', linewidth=2,
-                        label=f'POD Limit ({POD_POWER_MW} MW)')
-
-            # Lorenzo Giannuzzo: Evidenzia violazioni
-            violations_withdrawal = results_df['Grid_Withdrawal_MW'] > POD_POWER_MW
-            if violations_withdrawal.any():
-                ax1.fill_between(hours, POD_POWER_MW, results_df['Grid_Withdrawal_MW'],
-                                 where=violations_withdrawal, color='red', alpha=0.5, label='Violazioni POD')
-
-            ax1.set_ylabel('Prelievo (MW)', fontsize=11, fontweight='bold')
-            ax1.set_title('Prelievo da Rete vs POD Limit', fontsize=12, fontweight='bold')
-            ax1.legend(fontsize=10)
-            ax1.grid(True, alpha=0.3)
-
-            # Lorenzo Giannuzzo: Subplot 2: Immissione in rete
-            ax2 = axes[1]
-            ax2.plot(hours, results_df['Grid_Injection_MW'], color='#06A77D', linewidth=1.5, label='Immissione Rete')
-            ax2.fill_between(hours, 0, results_df['Grid_Injection_MW'], color='#06A77D', alpha=0.2)
-            ax2.axhline(y=POD_POWER_MW, color='green', linestyle='--', linewidth=2,
-                        label=f'POD Limit ({POD_POWER_MW} MW)')
-
-            # Lorenzo Giannuzzo: Evidenzia violazioni
-            violations_injection = results_df['Grid_Injection_MW'] > POD_POWER_MW
-            if violations_injection.any():
-                ax2.fill_between(hours, POD_POWER_MW, results_df['Grid_Injection_MW'],
-                                 where=violations_injection, color='red', alpha=0.5, label='Violazioni POD')
-
-            ax2.set_xlabel('Ora', fontsize=11)
-            ax2.set_ylabel('Immissione (MW)', fontsize=11, fontweight='bold')
-            ax2.set_title('Immissione in Rete vs POD Limit', fontsize=12, fontweight='bold')
-            ax2.legend(fontsize=10)
-            ax2.grid(True, alpha=0.3)
-
-            plt.tight_layout()
-            pod_file = os.path.join(viz_folder, f'pod_tracking_{battery.technology.lower().replace("-", "_")}.png')
-            plt.savefig(pod_file, dpi=300, bbox_inches='tight')
-            plt.close()
-            print(f"  ✓ Salvato: {pod_file}")
-
-        # ====================================================================
-        # Lorenzo Giannuzzo: GRAFICO 3: Analisi Economica
-        # ====================================================================
-        fig, axes = plt.subplots(2, 2, figsize=(16, 12))
-        fig.suptitle(f'Analisi Economica - {battery.technology}', fontsize=16, fontweight='bold')
-
-        # Lorenzo Giannuzzo: Subplot 1: Profitto orario
-        ax1 = axes[0, 0]
-        profit_hourly = results_df['Profitto_Euro'].diff().fillna(results_df['Profitto_Euro'].iloc[0])
-        colors_profit = ['#06A77D' if p >= 0 else '#E63946' for p in profit_hourly]
-        ax1.bar(hours, profit_hourly, color=colors_profit, alpha=0.7, width=1, edgecolor='none')
-        ax1.axhline(y=0, color='black', linewidth=1)
-        ax1.set_xlabel('Ora', fontsize=11)
-        ax1.set_ylabel('Profitto Orario (€)', fontsize=11, fontweight='bold')
-        ax1.set_title('Profitto/Perdita Oraria', fontsize=12, fontweight='bold')
-        ax1.grid(True, alpha=0.3, axis='y')
-
-        # Lorenzo Giannuzzo: Subplot 2: Breakdown costi/ricavi (sample 7 giorni)
-        ax2 = axes[0, 1]
-        sample_hours = min(168, len(results_df))
-        hours_sample = range(sample_hours)
-
-        # Lorenzo Giannuzzo: Calcola ricavi e costi per ogni ora
-        revenues = []
-        costs = []
-        for idx in range(sample_hours):
-            row = results_df.iloc[idx]
-
-            # Lorenzo Giannuzzo: Ricavi: vendite batteria + vendite PV
-            revenue = 0
-            if row.get('Trading_Discharge_MW', 0) > 0:
-                revenue += row['Trading_Discharge_MW'] * row['€/MWh']
-            if row.get('PV_to_Grid_MWh', 0) > 0:
-                revenue += row['PV_to_Grid_MWh'] * row['€/MWh']
-            revenues.append(revenue)
-
-            # Lorenzo Giannuzzo: Costi: acquisti rete
-            cost = 0
-            if row.get('Energy_from_Grid_MWh', 0) > 0:
-                cost += row['Energy_from_Grid_MWh'] * row.get('Prezzo_Acquisto_€/MWh', row['€/MWh'])
-            if row.get('Load_from_Grid_MWh', 0) > 0:
-                cost += row['Load_from_Grid_MWh'] * row.get('Prezzo_Acquisto_€/MWh', row['€/MWh'])
-            costs.append(cost)
-
-        ax2.bar(hours_sample, revenues, color='#06A77D', alpha=0.7, label='Ricavi')
-        ax2.bar(hours_sample, [-c for c in costs], color='#E63946', alpha=0.7, label='Costi')
-        ax2.axhline(y=0, color='black', linewidth=1)
-        ax2.set_xlabel('Ora (sample 7 giorni)', fontsize=11)
-        ax2.set_ylabel('€', fontsize=11, fontweight='bold')
-        ax2.set_title('Ricavi vs Costi', fontsize=12, fontweight='bold')
-        ax2.legend(fontsize=10)
-        ax2.grid(True, alpha=0.3, axis='y')
-
-        # Subplot 3: Distribuzione prezzi energia
-        ax3 = axes[1, 0]
-        ax3.hist(results_df['€/MWh'], bins=50, color='#457B9D', alpha=0.7, edgecolor='black')
-        ax3.axvline(x=results_df['€/MWh'].mean(), color='red', linestyle='--', linewidth=2,
-                    label=f'Media: {results_df["€/MWh"].mean():.2f} €/MWh')
-        ax3.axvline(x=results_df['€/MWh'].median(), color='green', linestyle='--', linewidth=2,
-                    label=f'Mediana: {results_df["€/MWh"].median():.2f} €/MWh')
-        ax3.set_xlabel('Prezzo (€/MWh)', fontsize=11)
-        ax3.set_ylabel('Frequenza', fontsize=11, fontweight='bold')
-        ax3.set_title('Distribuzione Prezzi Energia', fontsize=12, fontweight='bold')
-        ax3.legend(fontsize=10)
-        ax3.grid(True, alpha=0.3, axis='y')
-
-        # Lorenzo Giannuzzo: Subplot 4: Statistiche testuali
-        ax4 = axes[1, 1]
-        ax4.axis('off')
-
-        total_revenue = sum(revenues)
-        total_cost = sum(costs)
-        net_profit = total_revenue - total_cost
-
-        stats_text = f"""
-    STATISTICHE ECONOMICHE
-
-    Ricavi Totali:
-      • Vendita energia:        {total_revenue:.2f} €
-      • Servizi MACSE:          {macse_revenue:.2f} €
-      • TOTALE RICAVI:          {total_revenue + macse_revenue:.2f} €
-
-    Costi Totali:
-      • Acquisto energia:       {total_cost:.2f} €
-      • Degrado batteria:       (incluso in calcolo)
-      • TOTALE COSTI:           {total_cost:.2f} €
-
-    Bilancio:
-      • Profitto netto:         {trading_profit:.2f} €
-      • ROI batteria:           {(trading_profit / 600000 * 100):.2f}%
-      • Payback (stimato):      {(600000 / trading_profit if trading_profit > 0 else 999):.1f} anni
-
-    Prezzi Energia:
-      • Min:                    {results_df['€/MWh'].min():.2f} €/MWh
-      • Max:                    {results_df['€/MWh'].max():.2f} €/MWh
-      • Media:                  {results_df['€/MWh'].mean():.2f} €/MWh
-      • Volatilità (std):       {results_df['€/MWh'].std():.2f} €/MWh
-        """
-
-        ax4.text(0.05, 0.95, stats_text, transform=ax4.transAxes,
-                 fontsize=11, verticalalignment='top', fontfamily='monospace',
-                 bbox=dict(boxstyle='round', facecolor='lightyellow', alpha=0.3))
-
-        plt.tight_layout()
-        economic_file = os.path.join(viz_folder,
-                                     f'economic_analysis_{battery.technology.lower().replace("-", "_")}.png')
-        plt.savefig(economic_file, dpi=300, bbox_inches='tight')
-        plt.close()
-        print(f"  ✓ Salvato: {economic_file}")
-
-        print("✓ Grafici base completati")
-
-    # ========================================================================
-    # GLorenzo Giannuzzo: GRAFICI PV E LOAD ì
-    # ========================================================================
-    if SAVE_PLOTS:
-        if PV_ENABLED and pv_system:
-            create_pv_impact_comparison(results_df, battery, pv_system)
-            create_pv_impact_summary(results_df, battery, pv_system)
-            create_pv_visualizations(results_df, battery, pv_system)
-            create_detailed_monthly_pv_plots(results_df, battery, pv_system)
-
-        if LOAD_ENABLED and load_profile:
-            create_load_analysis_plots(results_df, battery, load_profile)
-
-    # Grafici (se richiesti)
-    if SAVE_PLOTS:
-        if PV_ENABLED and pv_system:
-            create_pv_impact_comparison(results_df, battery, pv_system)
-            create_pv_impact_summary(results_df, battery, pv_system)
-            create_pv_visualizations(results_df, battery, pv_system)
-            create_detailed_monthly_pv_plots(results_df, battery, pv_system)
-
-        if LOAD_ENABLED and load_profile:
-            create_load_analysis_plots(results_df, battery, load_profile)
+    if LOAD_ENABLED and load_profile:
+        create_load_analysis_plots(results_df, battery, load_profile)
 
     print("\n" + "=" * 80)
     print("✓ SIMULAZIONE COMPLETATA")
     print("=" * 80)
 
-    # ========================================================================
-    # STAMPA RISULTATI FINALI
-    # ========================================================================
-    print("\n" + "=" * 80)
-    print("📊 RISULTATI FINALI - ANALISI COMPLETA")
-    print("=" * 80)
-
-    # ========================================================================
-    # 1. STATO FINALE BATTERIA
-    # ========================================================================
-    print("\n🔋 STATO FINALE BATTERIA:")
-    print(f"  • Tecnologia:              {battery.technology}")
-    print(f"  • Capacità nominale:       {battery.nominal_capacity:.2f} MWh")
-    print(f"  • Capacità attuale:        {battery.capacity:.2f} MWh")
-    print(f"  • SOC finale:              {battery.get_soc() * 100:.1f}%")
-    print(f"  • SOH finale:              {battery.get_soh():.2f}%")
-    print(f"  • Cicli equivalenti:       {battery.equivalent_cycles:.1f}")
-    print(f"  • Throughput:              {battery.throughput_kwh / 1000:.2f} MWh")
-    print(f"  • Energia da rete:         {battery.energy_from_grid_mwh:.2f} MWh")
-    print(f"  • Energia da PV:           {battery.energy_from_pv_mwh:.2f} MWh")
-    if battery.energy_from_grid_mwh + battery.energy_from_pv_mwh > 0:
-        pv_percent = battery.energy_from_pv_mwh / (battery.energy_from_grid_mwh + battery.energy_from_pv_mwh) * 100
-        print(f"  • % carica da PV:          {pv_percent:.1f}%")
-
-    # ========================================================================
-    # 2. RISULTATI ECONOMICI
-    # ========================================================================
-    print("\n💰 RISULTATI ECONOMICI:")
-    print(f"  • Profitto trading:        {trading_profit:,.2f} €")
-    if MACSE_ENABLED:
-        print(f"  • Ricavi MACSE:")
-        print(f"    - Base:                  {macse_base:,.2f} €")
-        print(f"    - Bonus:                 {macse_bonus:,.2f} €")
-        print(f"    - Penalità:              {macse_penalty:,.2f} €")
-        print(f"    - Netto:                 {macse_revenue:,.2f} €")
-        print(f"  • Profitto TOTALE:         {total_system_profit:,.2f} €")
-    else:
-        print(f"  • Profitto TOTALE:         {trading_profit:,.2f} €")
-
-    # Prezzi energia
-    print(f"\n  • Prezzo medio vendita:    {results_df['€/MWh'].mean():.2f} €/MWh")
-    print(f"  • Prezzo medio acquisto:   {results_df['Prezzo_Acquisto_€/MWh'].mean():.2f} €/MWh")
-    print(
-        f"  • Spread medio:            {(results_df['€/MWh'].mean() - results_df['Prezzo_Acquisto_€/MWh'].mean()):.2f} €/MWh")
-
-    # ========================================================================
-    # 3. STATISTICHE FOTOVOLTAICO (se abilitato)
-    # ========================================================================
-    if PV_ENABLED and pv_system:
-        pv_stats = pv_system.get_statistics()
-        print("\n☀️ STATISTICHE FOTOVOLTAICO:")
-        print(f"  • Produzione totale:       {pv_stats['total_production_mwh']:.2f} MWh")
-        print(f"  • Allocazione energia:")
-        print(
-            f"    - A batteria:            {pv_stats['energy_to_battery_mwh']:.2f} MWh ({pv_stats['battery_utilization_percent']:.1f}%)")
-        print(
-            f"    - A rete (vendita):      {pv_stats['energy_to_grid_mwh']:.2f} MWh ({pv_stats['grid_sale_percent']:.1f}%)")
-        print(
-            f"    - A carico:              {pv_stats['energy_to_load_mwh']:.2f} MWh ({pv_stats['load_service_percent']:.1f}%)")
-        if pv_stats['curtailed_energy_mwh'] > 0:
-            print(
-                f"    - Curtailed (POD):       {pv_stats['curtailed_energy_mwh']:.2f} MWh ({pv_stats['curtailment_percent']:.1f}%) ⚠️")
-
-        # Valore economico PV stimato
-        pv_value = (pv_stats['energy_to_grid_mwh'] * results_df['€/MWh'].mean() +
-                    pv_stats['energy_to_battery_mwh'] * results_df['€/MWh'].mean() * 0.5 +
-                    pv_stats['energy_to_load_mwh'] * results_df['Prezzo_Acquisto_€/MWh'].mean())
-        print(f"  • Valore economico PV:     {pv_value:,.2f} €")
-
-    # ========================================================================
-    # 4. STATISTICHE CARICO (se abilitato)
-    # ========================================================================
-    if LOAD_ENABLED and load_profile:
-        load_stats = load_profile.get_statistics()
-        print("\n⚡ STATISTICHE CARICO:")
-        print(f"  • Energia richiesta:       {load_stats['total_energy_required_mwh']:.2f} MWh")
-        print(f"  • Fonti di fornitura:")
-        print(
-            f"    - Da PV:                 {load_stats['energy_from_pv_mwh']:.2f} MWh ({load_stats['pv_coverage_percent']:.1f}%)")
-        print(
-            f"    - Da batteria:           {load_stats['energy_from_battery_mwh']:.2f} MWh ({load_stats['battery_coverage_percent']:.1f}%)")
-        print(
-            f"    - Da rete:               {load_stats['energy_from_grid_mwh']:.2f} MWh ({load_stats['grid_dependency_percent']:.1f}%)")
-
-        autosufficienza = 100 - load_stats['grid_dependency_percent']
-        print(f"\n  • Autosufficienza:         {autosufficienza:.1f}%")
-        print(f"  • Dipendenza rete:         {load_stats['grid_dependency_percent']:.1f}%")
-
-        # Decisioni autonome batteria
-        if load_stats.get('total_decisions', 0) > 0:
-            print(f"\n  • Decisioni batteria:")
-            print(
-                f"    - Servito carico:        {load_stats['battery_served_count']} ore ({load_stats['battery_served_decisions_percent']:.1f}%)")
-            print(
-                f"    - Lasciato a rete:       {load_stats['grid_served_count']} ore ({load_stats['grid_served_decisions_percent']:.1f}%)")
-
-    # ========================================================================
-    # 5. STATISTICHE POD
-    # ========================================================================
-    if LOAD_ENABLED and 'POD_Violation' in results_df.columns:
-        total_pod_violations = int(results_df['POD_Violation'].sum())
-        total_pv_curtailed = results_df['PV_Curtailed_MWh'].sum() if 'PV_Curtailed_MWh' in results_df.columns else 0
-        total_load_unserved = results_df['Load_Unserved_MWh'].sum() if 'Load_Unserved_MWh' in results_df.columns else 0
-        max_withdrawal = results_df['Grid_Withdrawal_MW'].max() if 'Grid_Withdrawal_MW' in results_df.columns else 0
-        max_injection = results_df['Grid_Injection_MW'].max() if 'Grid_Injection_MW' in results_df.columns else 0
-
-        print(f"\n🔌 STATISTICHE POD (Limite: {POD_POWER_MW} MW):")
-        print(
-            f"  • Violazioni totali:       {total_pod_violations} ore ({total_pod_violations / len(results_df) * 100:.1f}%)")
-        print(f"  • Max prelievo:            {max_withdrawal:.3f} MW")
-        print(f"  • Max immissione:          {max_injection:.3f} MW")
-        if total_pv_curtailed > 0:
-            print(f"  • PV curtailed:            {total_pv_curtailed:.2f} MWh ⚠️")
-        if total_load_unserved > 0:
-            print(f"  • Carico non servito:      {total_load_unserved:.2f} MWh ⚠️")
-
-        if total_pod_violations > 0 or total_load_unserved > 0.1:
-            print(f"\n  ⚠️  ATTENZIONE: Considera aumentare POD limit o capacità batteria!")
-
-    # ========================================================================
-    # 6. CONFRONTO CON BASELINE (scenario senza batteria)
-    # ========================================================================
-    if baseline_scenario:
-        print("\n📈 CONFRONTO CON SCENARIO BASE (senza batteria):")
-        print(f"  • Bilancio senza BESS:     {baseline_scenario['net_balance']:,.2f} €")
-        print(f"  • Bilancio con BESS:       {total_system_profit:,.2f} €")
-
-        battery_benefit = total_system_profit - baseline_scenario['net_balance']
-        if baseline_scenario['net_balance'] != 0:
-            benefit_percent = (battery_benefit / abs(baseline_scenario['net_balance']) * 100)
-        else:
-            benefit_percent = 0
-
-        print(f"  • Beneficio batteria:      {battery_benefit:,.2f} € ({benefit_percent:+.1f}%)")
-
-        if battery_benefit > 0:
-            print(f"  ✅ SISTEMA PROFITTEVOLE")
-        else:
-            print(f"  ❌ SISTEMA NON PROFITTEVOLE (perdita: {abs(battery_benefit):,.2f} €)")
-
-        # Autosufficienza
-        baseline_autosufficienza = baseline_scenario['autosufficienza_percent']
-        if LOAD_ENABLED and load_profile:
-            current_autosufficienza = 100 - load_stats['grid_dependency_percent']
-            delta_autosufficienza = current_autosufficienza - baseline_autosufficienza
-
-            print(f"\n  • Autosufficienza base:    {baseline_autosufficienza:.1f}%")
-            print(f"  • Autosufficienza BESS:    {current_autosufficienza:.1f}%")
-            print(f"  • Miglioramento:           {delta_autosufficienza:+.1f} punti percentuali")
-
-    # ========================================================================
-    # 7. OPERAZIONI BATTERIA
-    # ========================================================================
-    charge_hours = np.sum(results_df['Azione_Trading_MW'] > 0.01)
-    discharge_hours = np.sum(results_df['Azione_Trading_MW'] < -0.01)
-    idle_hours = len(results_df) - charge_hours - discharge_hours
-    utilization = (charge_hours + discharge_hours) / len(results_df) * 100
-
-    print(f"\n🔄 OPERAZIONI BATTERIA:")
-    print(f"  • Ore carica:              {charge_hours} ({charge_hours / len(results_df) * 100:.1f}%)")
-    print(f"  • Ore scarica:             {discharge_hours} ({discharge_hours / len(results_df) * 100:.1f}%)")
-    print(f"  • Ore idle:                {idle_hours} ({idle_hours / len(results_df) * 100:.1f}%)")
-    print(f"  • Utilizzo totale:         {utilization:.1f}%")
-
-    # ========================================================================
-    # 8. TEMPO SIMULAZIONE
-    # ========================================================================
-    simulation_time = (end_time - start_time).total_seconds()
-    print(f"\n⏱️  TEMPO SIMULAZIONE:")
-    print(f"  • Durata:                  {simulation_time:.1f} secondi ({simulation_time / 60:.1f} minuti)")
-    print(f"  • Ore simulate:            {len(results_df)}")
-    print(f"  • Velocità:                {len(results_df) / simulation_time:.1f} ore/secondo")
-
-    print("\n" + "=" * 80)
 
 if __name__ == "__main__":
-    main()
+    pv_file = pv_production_file if PV_ENABLED else None
+    load_file_input = load_file if LOAD_ENABLED else None
+    main(energy_selling_price_name,energy_buying_price_name, pv_file, load_file_input)

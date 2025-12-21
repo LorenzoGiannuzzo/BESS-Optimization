@@ -313,7 +313,7 @@ GRAPHENE_EOL_CYCLES = 500000
 
 # ---------------------------------- PARAMETRI GENERALI ---------------------------------------------------
 SAVE_PLOTS = True
-DEGRADATION_COST_PER_MWH = 25.0  # Lorenzo Giannuzzo: €/MWh di throughput per guidare ottimizzazione PSO
+DEGRADATION_COST_PER_MWH = 1000000  # Lorenzo Giannuzzo: €/MWh di throughput per guidare ottimizzazione PSO
 
 # ---------------------------------- BIAS OTTIMIZZAZIONE -----------------------------------------------
 ARBITRAGE_BIAS_MULTIPLIER = 1.0    # Lorenzo Giannuzzo: Moltiplicatore ricavi arbitraggio
@@ -1039,10 +1039,10 @@ class PSOOptimizer:
         self.c1 = c1
         self.c2 = c2
         self.stagnation_limit = 20
-        self.use_temporal_patterns = True
+        self.use_temporal_patterns = False
         self.use_intelligent_init = True
         self.use_constraint_repair = False
-        self.use_adaptive_parameters = True
+        self.use_adaptive_parameters = False
         
         # Tracking per parametri adattivi
         self.best_score_history = []

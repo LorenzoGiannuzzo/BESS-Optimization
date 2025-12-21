@@ -172,10 +172,10 @@ python system_optimizer.py \
 
 ### 🔴 Required Parameters
 
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| `--price-sell` | string | Path to electricity selling prices file (.xlsx) |
-| `--price-buy` | string | Path to electricity purchase prices file (.xlsx) |
+| Parameter | Type | Description                                                           |
+|-----------|------|-----------------------------------------------------------------------|
+| `--price-sell` | string | Path to electricity selling prices file (.xlsx). Prices are in €/MWh. |
+| `--price-buy` | string | Path to electricity purchase prices file (.xlsx) Prices are in €/MWh. |
 
 ### 🔋 Battery Configuration
 
@@ -229,7 +229,6 @@ python system_optimizer.py \
 |-----------|------|---------|-------------|
 | `--pv-enabled` | flag | False | Enable photovoltaic system |
 | `--pv-file` | string | None | Path to PV production file (.csv) |
-| `--pv-nominal-power` | float | 1.0 | Nominal PV power (kWp) |
 
 **⚠️ Warning:** Modifying `--pv-nominal-power` may cause data inconsistencies. Use default value unless you know what you're doing.
 
@@ -294,12 +293,12 @@ python system_optimizer.py \
 
 #### ⚖️ Performance vs. Quality Trade-offs
 
-| Configuration | Particles | Iterations | Time | Quality | Use Case |
-|---------------|-----------|------------|------|---------|----------|
-| **Fast** | 30 | 50 | ~2 min | Good | Testing, debugging |
-| **Balanced** | 50 | 100 | ~5 min | Excellent | Daily use |
-| **High Quality** | 120 | 200 | ~15 min | Maximum | Production runs |
-| **Research Grade** | 200 | 400 | ~45 min | Ultimate | Academic research |
+| Configuration | Particles | Iterations | Time      | Quality   | Use Case |
+|---------------|-----------|------------|-----------|-----------|----------|
+| **Fast** | 30 | 50 | Very Fast | Mediocre  | Testing, debugging |
+| **Balanced** | 50 | 100 | Fast      | Decent    | Daily use |
+| **High Quality** | 120 | 200 | Medium    | Good      | Production runs |
+| **Research Grade** | 200 | 400 | Slow      | Excellent | Academic research |
 
 ### 🔧 Parallelization
 
@@ -324,13 +323,6 @@ python system_optimizer.py \
 | `--save-plots` | flag | False | Generate visualization plots |
 | `--output-dir` | string | results | Output directory path |
 | `--output-filename` | string | None | Custom output filename (without extension) |
-
-### 🧪 Testing and Debug
-
-| Parameter | Type | Default | Description |
-|-----------|------|---------|-------------|
-| `--compare-pso` | flag | False | Compare original vs optimized PSO (test mode) |
-| `--disable-optimizations` | flag | False | Use original PSO for speed comparison |
 
 ---
 ## 📄 Input Data Formats

@@ -313,7 +313,7 @@ GRAPHENE_EOL_CYCLES = 500000
 
 # ---------------------------------- PARAMETRI GENERALI ---------------------------------------------------
 SAVE_PLOTS = True
-DEGRADATION_COST_PER_MWH = 1000000  # Lorenzo Giannuzzo: €/MWh di throughput per guidare ottimizzazione PSO
+DEGRADATION_COST_PER_MWH = 500000  # Lorenzo Giannuzzo: €/MWh, da dividere poi per il numero di cicli EOL (x2)
 
 # ---------------------------------- BIAS OTTIMIZZAZIONE -----------------------------------------------
 ARBITRAGE_BIAS_MULTIPLIER = 1.0    # Lorenzo Giannuzzo: Moltiplicatore ricavi arbitraggio

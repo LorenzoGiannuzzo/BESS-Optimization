@@ -1900,8 +1900,7 @@ class RollingHorizonSimulator:
         print(f"Tecnologia: {self.battery.technology}")
         print(f"Capacità: {self.battery.nominal_capacity} MWh")
         print(f"POD Power: {POD_POWER_MW} MW ⚡")
-        if PV_ENABLED and self.pv_system:
-            print(f"PV: {self.pv_system.nominal_power_kwp:.0f} kWp")
+
         if LOAD_ENABLED:
             print(f"Carico: {np.sum(load_demand):.2f} MWh totali")
         print(f"Obiettivo: Minimizzare costo netto energia")

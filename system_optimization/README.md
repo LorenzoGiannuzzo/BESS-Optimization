@@ -332,18 +332,21 @@ python system_optimizer.py \
 **Files:** `Prezzo_Vendita.xlsx`, `Prezzo_Acquisto.xlsx`
 
 **Required Format:**
-| Data | €/MWh |
-|------|-------|
-| 01/01/2024 00:00 | 85.34 |
-| 01/01/2024 01:00 | 78.21 |
-| 01/01/2024 02:00 | 72.15 |
-| ... | ... |
+| Data | Ora | €/MWh |
+|------|-----|-------|
+| 01/01/2024 | 00:00 | 85.34 |
+| 01/01/2024 | 01:00 | 78.21 |
+| 01/01/2024 | 02:00 | 72.15 |
+| 01/01/2024 | 03:00 | 68.90 |
+| ... | ... | ... |
 
 **Requirements:**
-- **Column header:** `€/MWh` (mandatory, case-sensitive)
+- **Column headers:** `Data`, `Ora`, `€/MWh` (mandatory, case-sensitive)
 - **8760 rows:** One year, hourly resolution
-- **Numeric values:** Or text with comma decimal separator (auto-converted)
-- **Date column:** Optional (for reference only)
+- **Date format:** DD/MM/YYYY in `Data` column
+- **Time format:** HH:MM in `Ora` column (00:00 to 23:00)
+- **Price values:** Numeric or text with comma decimal separator (auto-converted)
+- **Sequential hours:** Must cover complete year without gaps
 
 ### ☀️ PV Production (CSV)
 

@@ -193,9 +193,9 @@ Esempi:
     # Lorenzo Giannuzzo: BIAS OTTIMIZZAZIONE
     # ========================================================================
     bias_group = parser.add_argument_group('Bias Ottimizzazione')
-    bias_group.add_argument('--bias-arbitrage', type=float, default=1.0,
+    bias_group.add_argument('--bias-arbitrage', type=float, default=2.5,
                            help='Moltiplicatore ricavi arbitraggio (>1.0 favorisce trading, default: 1.0)')
-    bias_group.add_argument('--bias-autoconsumo', type=float, default=1.0,
+    bias_group.add_argument('--bias-autoconsumo', type=float, default=2.5,
                            help='Moltiplicatore ricavi autoconsumo (>1.0 favorisce autoconsumo, default: 1.0)')
     
     args = parser.parse_args()

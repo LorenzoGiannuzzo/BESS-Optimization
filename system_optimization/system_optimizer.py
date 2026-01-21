@@ -193,9 +193,9 @@ Esempi:
     # Lorenzo Giannuzzo: BIAS OTTIMIZZAZIONE
     # ========================================================================
     bias_group = parser.add_argument_group('Bias Ottimizzazione')
-    bias_group.add_argument('--bias-arbitrage', type=float, default=2.5,
+    bias_group.add_argument('--bias-arbitrage', type=float, default=1.0,
                            help='Moltiplicatore ricavi arbitraggio (>1.0 favorisce trading, default: 1.0)')
-    bias_group.add_argument('--bias-autoconsumo', type=float, default=2.5,
+    bias_group.add_argument('--bias-autoconsumo', type=float, default=1.0,
                            help='Moltiplicatore ricavi autoconsumo (>1.0 favorisce autoconsumo, default: 1.0)')
     
     args = parser.parse_args()
@@ -292,7 +292,7 @@ BATTERY_BASE_EFFICIENCY = 0.95
 # ---------------------------------- PARAMETRI FOTOVOLTAICO -----------------------------------------------
 PV_ENABLED = True
 PV_NOMINAL_POWER_KWP = 1.0
-PV_INVERTER_EFFICIENCY = 0.98
+PV_INVERTER_EFFICIENCY = 1.0
 PV_SYSTEM_LOSSES = 0.0
 
 # ---------------------------------- PARAMETRI CARICO UTENTE -----------------------------------------------
@@ -313,7 +313,7 @@ GRAPHENE_EOL_CYCLES = 500000
 
 # ---------------------------------- PARAMETRI GENERALI ---------------------------------------------------
 SAVE_PLOTS = True
-DEGRADATION_COST_PER_MWH = 500000  # Lorenzo Giannuzzo: €/MWh, da dividere poi per il numero di cicli EOL (x2)
+DEGRADATION_COST_PER_MWH = 0000  # Lorenzo Giannuzzo: €/MWh, da dividere poi per il numero di cicli EOL (x2)
 
 # ---------------------------------- BIAS OTTIMIZZAZIONE -----------------------------------------------
 ARBITRAGE_BIAS_MULTIPLIER = 1.0    # Lorenzo Giannuzzo: Moltiplicatore ricavi arbitraggio
@@ -775,6 +775,7 @@ def evaluate_particle_numba(
     - Fix gestione POD coordinata (batteria + PV)
     - Penalità POD realistiche
     """
+
     n_hours = len(prices_sell)
     soc = soc_init
     profit = 0.0
@@ -798,14 +799,14 @@ def evaluate_particle_numba(
         load_remaining = load_required - pv_to_load
 
         # Lorenzo Giannuzzo: FASE 2: Vincolo XOR batteria
-        if p_batt_trading > 0.001:  # Lorenzo Giannuzzo: CARICA
+        if p_batt_trading > 0.000:  # Lorenzo Giannuzzo: CARICA
             charge_request = p_batt_trading
             action_mode = 1  # Lorenzo Giannuzzo: CHARGE
-        elif p_batt_trading < -0.001:  # Lorenzo Giannuzzo: SCARICA TRADING
+        elif p_batt_trading < -0.000:  # Lorenzo Giannuzzo: SCARICA TRADING
             discharge_request_trading = -p_batt_trading
             discharge_request_load = p_batt_load
             action_mode = 2  # Lorenzo Giannuzzo: DISCHARGE
-        elif p_batt_load > 0.001:  # Lorenzo Giannuzzo: SCARICA SOLO LOAD
+        elif p_batt_load > 0.000:  # Lorenzo Giannuzzo: SCARICA SOLO LOAD
             discharge_request_trading = 0.0
             discharge_request_load = p_batt_load
             action_mode = 2  # Lorenzo Giannuzzo: DISCHARGE
@@ -823,7 +824,7 @@ def evaluate_particle_numba(
             max_discharge = (soc - soc_min) * trading_capacity * discharge_eff
             actual_discharge_total = min(total_discharge_request, max_discharge)
 
-            if actual_discharge_total > 0.001:
+            if actual_discharge_total > 0.000:
                 ratio_trading = discharge_request_trading / total_discharge_request if total_discharge_request > 0 else 0.0
                 ratio_load = discharge_request_load / total_discharge_request if total_discharge_request > 0 else 0.0
 
@@ -848,7 +849,7 @@ def evaluate_particle_numba(
                 # ============================================================
                 # TRADING: Ricavo ESPLICITO vendita rete (con bias)
                 # ============================================================
-                if discharge_for_trading > 0.001:
+                if discharge_for_trading > 0.000:
                     profit += discharge_for_trading * price_sell * arbitrage_bias
                     profit -= discharge_for_trading * degradation_cost_per_mwh / (2 * eol_cycles)
                     grid_injection += discharge_for_trading
@@ -856,28 +857,28 @@ def evaluate_particle_numba(
                 # ============================================================
                 # AUTOCONSUMO (con bias)
                 # ============================================================
-                if discharge_for_load > 0.001:
+                if discharge_for_load > 0.000:
                     # Lorenzo Giannuzzo: Autoconsumo = "ricavo equivalente" (risparmio acquisto rete)
-                    profit += discharge_for_load * price_buy * autoconsumo_bias
+                    #profit += discharge_for_load * price_buy * autoconsumo_bias
                     profit -= discharge_for_load * degradation_cost_per_mwh / (2 * eol_cycles)
                     # Nota: load_remaining già aggiornato sopra
 
         # ====================================================================
         # Lorenzo Giannuzzo: FASE 4: CARICO DALLA RETE
         # ====================================================================
-        if load_remaining > 0.001:
+        if load_remaining > 0.000:
             pod_available = pod_power_mw - grid_withdrawal
             load_from_grid = min(load_remaining, pod_available)
 
-            if load_from_grid > 0.001:
+            if load_from_grid > 0.000:
                 # COSTO acquisto energia per carico
                 # Questo bilancia il "risparmio" della FASE 3
-                profit -= load_from_grid * price_buy
+                profit -= load_from_grid * price_buy * autoconsumo_bias
                 grid_withdrawal += load_from_grid
                 load_remaining -= load_from_grid
 
             # Carico non servito (penalità pesante)
-            if load_remaining > 0.001:
+            if load_remaining > 0.000:
                 penalty += load_remaining * price_buy * 1000.0
 
         # ====================================================================
@@ -914,14 +915,14 @@ def evaluate_particle_numba(
         # ====================================================================
         # Lorenzo Giannuzzo: FASE 6: PV residuo alla rete
         # ====================================================================
-        if pv_remaining > 0.001:
+        if pv_remaining > 0.000:
             pv_to_grid = min(pv_remaining, pod_power_mw - grid_injection)
-            if pv_to_grid > 0.001:
+            if pv_to_grid > 0.000:
                 profit += pv_to_grid * price_sell
                 grid_injection += pv_to_grid
 
             pv_curtailed = pv_remaining - pv_to_grid
-            if pv_curtailed > 0.001:
+            if pv_curtailed > 0.000:
                 penalty += pv_curtailed * price_sell * 50.0
 
         # Lorenzo Giannuzzo: Penalità POD disabilitate per confronto
@@ -1029,7 +1030,7 @@ class PSOOptimizer:
     6. Diversificazione dinamica
     """
 
-    def __init__(self, n_particles=120, n_iterations=300, w_start=0.9, w_end=0.1, c1=1.5, c2=2.5):
+    def __init__(self, n_particles=120, n_iterations=300, w_start=0.9, w_end=0.1, c1=2.0, c2=2.0):
         self.n_particles = n_particles
         self.n_iterations = n_iterations
         self.w_start = w_start
@@ -1038,7 +1039,7 @@ class PSOOptimizer:
         self.c2_start = c2
         self.c1 = c1
         self.c2 = c2
-        self.stagnation_limit = 20
+        self.stagnation_limit = 10
         self.use_temporal_patterns = False
         self.use_intelligent_init = True
         self.use_constraint_repair = False
@@ -1118,14 +1119,16 @@ class PSOOptimizer:
         # ====================================================================
         # 1. INIZIALIZZAZIONE INTELLIGENTE MULTI-STRATEGIA
         # ====================================================================
-        if self.use_intelligent_init:
-            positions = self._intelligent_initialization(
-                battery, prices_sell, prices_buy, pv_production, load_demand, max_power_limit, n_hours
-            )
-        else:
-            positions = self._smart_initialization(
-                battery, prices_sell, prices_buy, pv_production, load_demand, max_power_limit
-            )
+        # if self.use_intelligent_init:
+        #     positions = self._intelligent_initialization(
+        #         battery, prices_sell, prices_buy, pv_production, load_demand, max_power_limit, n_hours
+        #     )
+        # else:
+        #     positions = self._smart_initialization(
+        #         battery, prices_sell, prices_buy, pv_production, load_demand, max_power_limit
+        #     )
+
+        positions = self._random_initialization(max_power_limit, n_hours)
 
         # ====================================================================
         # 2. CONSTRAINT REPAIR INIZIALE
@@ -1575,6 +1578,18 @@ class PSOOptimizer:
 
         return results
 
+    def _random_initialization(self, max_power, n_hours):
+        """Inizializzazione completamente random"""
+        positions = np.zeros((self.n_particles, n_hours, 3))
+        max_power_with_pod = min(max_power, POD_POWER_MW)
+
+        positions[:, :, 0] = np.random.uniform(-max_power_with_pod, max_power_with_pod,
+                                               (self.n_particles, n_hours))
+        positions[:, :, 1] = np.random.uniform(0, 1, (self.n_particles, n_hours))
+        positions[:, :, 2] = np.random.uniform(0, max_power_with_pod, (self.n_particles, n_hours))
+
+        return positions
+
     def _intelligent_initialization(self, battery, prices_sell, prices_buy, pv_production, load_demand, max_power, n_hours):
         """
         Lorenzo Giannuzzo: Inizializzazione intelligente multi-strategia
@@ -1590,10 +1605,10 @@ class PSOOptimizer:
         max_power_with_pod = min(max_power, POD_POWER_MW)
 
         # Calcola percentili prezzi per strategie
-        price_low = np.percentile(prices_sell, 25)
-        price_high = np.percentile(prices_sell, 75)
-        price_very_low = np.percentile(prices_sell, 10)
-        price_very_high = np.percentile(prices_sell, 90)
+        price_low = np.percentile(prices_sell, 40)
+        price_high = np.percentile(prices_sell, 60)
+        price_very_low = np.percentile(prices_sell, 25)
+        price_very_high = np.percentile(prices_sell, 75)
 
         particle_idx = 0
 
@@ -1719,6 +1734,8 @@ class PSOOptimizer:
                     positions[particle_idx, h, dim] = greedy_solution[h, dim] * (1 + noise)
 
             particle_idx += 1
+
+
 
         # ====================================================================
         # STRATEGIA 5: RANDOM MIGLIORATO (10% particelle rimanenti)
@@ -1984,17 +2001,17 @@ class RollingHorizonSimulator:
             # ====================================================================
             # Lorenzo Giannuzzo: FASE 2: VINCOLO XOR ESPLICITO
             # ====================================================================
-            if p_batt_trading_requested > 0.001:
+            if p_batt_trading_requested > 0.000:
                 charge_request = p_batt_trading_requested
                 discharge_request_trading = 0.0
                 discharge_request_load = 0.0
                 action_mode = "CHARGE"
-            elif p_batt_trading_requested < -0.001:
+            elif p_batt_trading_requested < -0.000:
                 charge_request = 0.0
                 discharge_request_trading = -p_batt_trading_requested
                 discharge_request_load = p_batt_load_requested
                 action_mode = "DISCHARGE"
-            elif p_batt_load_requested > 0.001:
+            elif p_batt_load_requested > 0.000:
                 charge_request = 0.0
                 discharge_request_trading = 0.0
                 discharge_request_load = p_batt_load_requested
@@ -2019,7 +2036,7 @@ class RollingHorizonSimulator:
             if action_mode == "DISCHARGE" and total_discharge_request > 0.001:
                 actual_discharge_total = min(total_discharge_request, max_power_physical, max_discharge_soc)
 
-                if actual_discharge_total > 0.001:
+                if actual_discharge_total > 0.000:
                     ratio_trading = discharge_request_trading / total_discharge_request
                     ratio_load = discharge_request_load / total_discharge_request
 
@@ -2045,7 +2062,7 @@ class RollingHorizonSimulator:
                     # ============================================================
                     # TRADING: Ricavo ESPLICITO vendita rete
                     # ============================================================
-                    if discharge_for_trading > 0.001:
+                    if discharge_for_trading > 0.000:
                         revenue_discharge = discharge_for_trading * price_sell
                         cumulative_profit += revenue_discharge
                         
@@ -2059,7 +2076,7 @@ class RollingHorizonSimulator:
                     # ============================================================
                     # AUTOCONSUMO - CORREZIONE: Aggiungi risparmio batteria
                     # ============================================================
-                    if discharge_for_load > 0.001:
+                    if discharge_for_load > 0.000:
                         savings_from_battery_to_load = discharge_for_load * price_buy
                         # cumulative_profit += savings_from_battery_to_load  # Lorenzo Giannuzzo: questo non ci deve essere nel simulate
                         
@@ -2076,12 +2093,12 @@ class RollingHorizonSimulator:
             # ====================================================================
             # Lorenzo Giannuzzo: FASE 4: CARICO DALLA RETE
             # ====================================================================
-            if load_remaining > 0.001:
+            if load_remaining > 0.000:
                 # CARICO USA POD PER PRIMO
                 pod_available_for_withdrawal = POD_POWER_MW - grid_withdrawal_this_hour
                 load_from_grid_allowed = min(load_remaining, pod_available_for_withdrawal)
 
-                if load_from_grid_allowed > 0.001:
+                if load_from_grid_allowed > 0.000:
                     load_from_grid_this_hour = load_from_grid_allowed
                     grid_withdrawal_this_hour += load_from_grid_allowed
 
@@ -2093,7 +2110,7 @@ class RollingHorizonSimulator:
                     load_remaining -= load_from_grid_allowed
 
                 # Lorenzo Giannuzzo: Carico non servito causa POD
-                if load_remaining > 0.001:
+                if load_remaining > 0.000:
                     load_unserved_this_hour = load_remaining
 
                     # Lorenzo Giannuzzo: PENALITÀ - CORREZIONE: Usa stessa penalità dell'evaluate
@@ -2113,7 +2130,7 @@ class RollingHorizonSimulator:
             # ====================================================================
             # Lorenzo Giannuzzo: FASE 5: CARICA BATTERIA
             # ====================================================================
-            if action_mode == "CHARGE" and charge_request > 0.001:
+            if action_mode == "CHARGE" and charge_request > 0.00:
                 if self.battery.soc < self.battery.soc_max:
                     max_power_charge = max_energy_storable / (1.0 * self.battery.charge_efficiency)
                     actual_power = min(charge_request, max_power_charge, max_power_physical)
@@ -2149,12 +2166,12 @@ class RollingHorizonSimulator:
             # ====================================================================
             # Lorenzo Giannuzzo: FASE 6: VENDITA PV RESIDUO CON VINCOLO POD
             # ====================================================================
-            if pv_remaining > 0.001:
+            if pv_remaining > 0.000:
                 # Lorenzo Giannuzzo: VINCOLO POD: Limita immissione PV
                 pod_available_for_injection = POD_POWER_MW - grid_injection_this_hour
                 pv_to_grid_allowed = min(pv_remaining, pod_available_for_injection)
 
-                if pv_to_grid_allowed > 0.001:
+                if pv_to_grid_allowed > 0.000:
                     pv_to_grid_this_hour += pv_to_grid_allowed
                     grid_injection_this_hour += pv_to_grid_allowed
 
@@ -2164,7 +2181,7 @@ class RollingHorizonSimulator:
 
                 # Lorenzo Giannuzzo: PV curtailed causa POD
                 pv_curtailed_this_hour = pv_remaining - pv_to_grid_allowed
-                if pv_curtailed_this_hour > 0.001:
+                if pv_curtailed_this_hour > 0.000:
                     # Penalità leggera: energia persa ma non costo diretto (sempre 0 per il discorso dell'excel)
                     penalty = pv_curtailed_this_hour * price_sell * 0.0
                     cumulative_profit -= penalty
@@ -3480,79 +3497,46 @@ Strategia Ottimizzazione:
 
 def calculate_baseline_scenario(prices_sell, prices_buy, pv_production, load_demand):
     """
-    Lorenzo Giannuzzo: Calcola scenario BASELINE senza batteria CON VINCOLO POD
+    Lorenzo Giannuzzo: Scenario SENZA batteria - PV va prima al carico, eccesso venduto
     """
-    total_cost_buy = 0.0
-    total_revenue_sell = 0.0
-
+    total_revenue = 0.0
+    total_cost = 0.0
     total_pv_to_load = 0.0
     total_pv_to_grid = 0.0
     total_load_from_grid = 0.0
-    total_load_required = 0.0
-
-    # Lorenzo Giannuzzo: tracking POD baseline
-    total_pv_curtailed_baseline = 0.0
-    total_load_unserved_baseline = 0.0
 
     n_hours = len(prices_sell)
 
     for h in range(n_hours):
-        pv_available = pv_production[h] if PV_ENABLED else 0.0
-        load_required = load_demand[h] if LOAD_ENABLED else 0.0
-        price_sell = prices_sell[h]
-        price_buy = prices_buy[h]
+        pv = pv_production[h]
+        load = load_demand[h]
 
-        total_load_required += load_required
+        pv_to_load = min(pv, load)
+        pv_to_grid = pv - pv_to_load
+        load_from_grid = load - pv_to_load
 
-        # Lorenzo Giannuzzo: LOGICA BASELINE: PV al carico prima
-        pv_to_load = min(pv_available, load_required)
-        pv_remaining = pv_available - pv_to_load
-        load_remaining = load_required - pv_to_load
+        total_revenue += pv_to_grid * prices_sell[h]
+        total_cost += load_from_grid * prices_buy[h]
 
         total_pv_to_load += pv_to_load
+        total_pv_to_grid += pv_to_grid
+        total_load_from_grid += load_from_grid
 
-        # Lorenzo Giannuzzo: PV eccesso venduto CON VINCOLO POD
-        if pv_remaining > 0.001:
-            pv_to_grid = min(pv_remaining, POD_POWER_MW)
-            pv_curtailed = pv_remaining - pv_to_grid
-
-            total_pv_to_grid += pv_to_grid
-            total_revenue_sell += pv_to_grid * price_sell
-
-            if pv_curtailed > 0.001:
-                total_pv_curtailed_baseline += pv_curtailed
-                # Penalità leggera per PV perso
-                total_cost_buy += pv_curtailed * price_sell * 0.0
-
-        # Lorenzo Giannuzzo: Carico residuo comprato da rete CON VINCOLO POD
-        if load_remaining > 0.001:
-            load_from_grid = min(load_remaining, POD_POWER_MW)
-            load_unserved = load_remaining - load_from_grid
-
-            total_load_from_grid += load_from_grid
-            total_cost_buy += load_from_grid * price_buy
-
-            if load_unserved > 0.001:
-                total_load_unserved_baseline += load_unserved
-                # Lorenzo Giannuzzo: Penalità pesante per carico non servito
-                total_cost_buy += load_unserved * price_buy * 1000.0
-
-    net_balance = total_revenue_sell - total_cost_buy
-    autosufficienza = (total_pv_to_load / total_load_required * 100) if total_load_required > 0 else 0
+    total_load = sum(load_demand)
+    autosufficienza = (total_pv_to_load / total_load * 100) if total_load > 0 else 0
 
     return {
-        'net_balance': net_balance,
-        'total_cost_buy': total_cost_buy,
-        'total_revenue_sell': total_revenue_sell,
+        'net_balance': total_revenue - total_cost,
+        'total_cost_buy': total_cost,
+        'total_revenue_sell': total_revenue,
         'total_pv_to_load': total_pv_to_load,
         'total_pv_to_grid': total_pv_to_grid,
         'total_load_from_grid': total_load_from_grid,
-        'total_load_required': total_load_required,
+        'total_load_required': total_load,
         'autosufficienza_percent': autosufficienza,
-        'pv_curtailed_baseline': total_pv_curtailed_baseline,
-        'load_unserved_baseline': total_load_unserved_baseline
+        'pv_curtailed_baseline': 0.0,
+        'load_unserved_baseline': 0.0
     }
-
 def export_complete_results_to_json(results_df, battery, output_dir='results', output_filename=None):
     """
     Lorenzo Giannuzzo: Esporta DataFrame completo in JSON (equivalente Excel)
@@ -3685,7 +3669,7 @@ def main():
 
     ENABLE_MULTIPROCESSING = not args.no_parallel
     MULTIPROCESSING_CORES = args.n_cores
-    
+
     # Lorenzo Giannuzzo: Bias ottimizzazione
     ARBITRAGE_BIAS_MULTIPLIER = args.bias_arbitrage
     AUTOCONSUMO_BIAS_MULTIPLIER = args.bias_autoconsumo
@@ -3833,11 +3817,11 @@ def main():
         n_particles=args.n_particles,
         n_iterations=args.n_iterations,
         w_start=0.9,    # Migliorato da 0.95
-        w_end=0.1,      # Migliorato da 0.005  
+        w_end=0.1,      # Migliorato da 0.005
         c1=1.5,         # Migliorato da 2.0
         c2=2.5          # Migliorato da 2.0
     )
-    
+
     # Configura ottimizzazioni in base agli argomenti
     if args.disable_optimizations:
         optimizer.configure_optimizations(intelligent_init=False, temporal_patterns=False,
@@ -3846,37 +3830,37 @@ def main():
     else:
         print(f"\n🚀 OTTIMIZZAZIONI PSO ATTIVE:")
         print(f"   • Inizializzazione intelligente: ✅")
-        print(f"   • Constraint repair: ✅") 
+        print(f"   • Constraint repair: ✅")
         print(f"   • Parametri adattivi: ✅")
         print(f"   • Diversificazione dinamica: ✅")
-    
+
     # ========================================================================
     # Lorenzo Giannuzzo: MODALITÀ CONFRONTO PSO (se richiesta)
     # ========================================================================
     if args.compare_pso:
         print(f"\n🔬 MODALITÀ CONFRONTO PSO ATTIVATA")
-        
+
         # Prepara dati per test (sample ridotto per velocità)
         n_hours_test = min(48, len(df))  # Test su 48 ore
         prices_sell_test = df['€/MWh'].values[:n_hours_test]
         prices_buy_test = df2['€/MWh'].values[:n_hours_test]
-        
+
         if PV_ENABLED and pv_df is not None:
             pv_test = pv_df['P'].values[:n_hours_test] / 1000.0
         else:
             pv_test = np.zeros(n_hours_test)
-            
+
         if LOAD_ENABLED and load_df is not None:
             load_test = load_df['value'].values[:n_hours_test] / 1000.0
         else:
             load_test = np.zeros(n_hours_test)
-        
+
         # Esegui confronto
         #comparison_results = compare_pso_versions(
         #    battery, prices_sell_test, prices_buy_test, pv_test, load_test,
         #    n_particles=min(30, args.n_particles), n_iterations=min(50, args.n_iterations)
         #)
-        
+
         print(f"\n✅ Confronto completato. Usa --disable-optimizations per tornare alla versione originale.")
         return  # Esce dopo il confronto
 
@@ -3900,28 +3884,28 @@ def main():
     macse_revenue, macse_base, macse_penalty, macse_bonus = calculate_macse_revenue(battery)
     total_system_profit = trading_profit + macse_revenue
 
-    prices_sell = df['€/MWh'].values
-    prices_buy = df2['€/MWh'].values
+    # Lorenzo Giannuzzo: Calcola baseline usando i dati dall'Excel dei risultati
+    pv_baseline = pv_df['P'].values / 1000.0 if (PV_ENABLED and pv_df is not None) else np.zeros(len(df))
+    load_baseline = load_df['value'].values / 1000.0 if (LOAD_ENABLED and load_df is not None) else np.zeros(len(df))
 
-    if PV_ENABLED and pv_df is not None:
-        pv_production = pv_df['P'].values / 1000.0
-        if len(pv_production) < len(prices_sell):
-            pv_production = np.pad(pv_production, (0, len(prices_sell) - len(pv_production)), 'constant')
-        elif len(pv_production) > len(prices_sell):
-            pv_production = pv_production[:len(prices_sell)]
-    else:
-        pv_production = np.zeros(len(prices_sell))
+    # Allinea lunghezze
+    n_hours = len(df)
+    if len(pv_baseline) < n_hours:
+        pv_baseline = np.pad(pv_baseline, (0, n_hours - len(pv_baseline)), 'constant')
+    elif len(pv_baseline) > n_hours:
+        pv_baseline = pv_baseline[:n_hours]
 
-    if LOAD_ENABLED and load_df is not None:
-        load_demand = load_df['value'].values / 1000.0
-        if len(load_demand) < len(prices_sell):
-            load_demand = np.pad(load_demand, (0, len(prices_sell) - len(load_demand)), 'constant')
-        elif len(load_demand) > len(prices_sell):
-            load_demand = load_demand[:len(prices_sell)]
-    else:
-        load_demand = np.zeros(len(prices_sell))
+    if len(load_baseline) < n_hours:
+        load_baseline = np.pad(load_baseline, (0, n_hours - len(load_baseline)), 'constant')
+    elif len(load_baseline) > n_hours:
+        load_baseline = load_baseline[:n_hours]
 
-    baseline_scenario = calculate_baseline_scenario(prices_sell, prices_buy, pv_production, load_demand)
+    baseline_scenario = calculate_baseline_scenario(
+        df['€/MWh'].values,
+        df2['€/MWh'].values,
+        pv_baseline,
+        load_baseline
+    )
 
     # ========================================================================
     # Lorenzo Giannuzzo: STAMPA RISULTATI (usa la tua funzione print esistente)
@@ -4373,17 +4357,40 @@ def main():
         print(f"  • Bilancio con BESS:       {total_system_profit:,.2f} €")
 
         battery_benefit = total_system_profit - baseline_scenario['net_balance']
-        if baseline_scenario['net_balance'] != 0:
-            benefit_percent = (battery_benefit / abs(baseline_scenario['net_balance']) * 100)
+
+        # Lorenzo Giannuzzo: Calcolo percentuale più intuitivo
+        baseline_val = baseline_scenario['net_balance']
+        optimized_val = total_system_profit
+
+        if baseline_val != 0:
+            # Percentuale di miglioramento rispetto al baseline
+            benefit_percent = (battery_benefit / abs(baseline_val)) * 100
         else:
             benefit_percent = 0
 
-        print(f"  • Beneficio batteria:      {battery_benefit:,.2f} € ({benefit_percent:+.1f}%)")
+        print(f"  • Beneficio batteria:      {battery_benefit:,.2f} €")
 
-        if battery_benefit > 0:
-            print(f"  SISTEMA PROFITTEVOLE")
+        # Lorenzo Giannuzzo: Messaggio più chiaro in base al segno dei bilanci
+        if baseline_val < 0 and optimized_val < 0:
+            # Entrambi in perdita
+            reduction_percent = abs(benefit_percent)
+            print(f"    → Riduzione perdita:     {reduction_percent:.1f}%")
+        elif baseline_val < 0 and optimized_val >= 0:
+            # Da perdita a profitto
+            print(f"    → Sistema passa da PERDITA a PROFITTO!")
+        elif baseline_val >= 0 and optimized_val >= 0:
+            # Entrambi in profitto
+            increase_percent = benefit_percent
+            print(f"    → Aumento profitto:      {increase_percent:+.1f}%")
         else:
-            print(f"  SISTEMA NON PROFITTEVOLE (perdita: {abs(battery_benefit):,.2f} €)")
+            # Da profitto a perdita (caso raro)
+            print(f"    → Sistema passa da PROFITTO a PERDITA!")
+
+        # Lorenzo Giannuzzo: Valutazione finale
+        if battery_benefit > 0:
+            print(f"  ✅ BATTERIA MIGLIORA IL SISTEMA")
+        else:
+            print(f"  ❌ BATTERIA PEGGIORA IL SISTEMA (perdita: {abs(battery_benefit):,.2f} €)")
 
         # Autosufficienza
         baseline_autosufficienza = baseline_scenario['autosufficienza_percent']
